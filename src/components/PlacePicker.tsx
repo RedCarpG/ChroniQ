@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { CITIES } from '../lib/solarTime'
 import { cityPlace, type StarPlace } from '../lib/starPrefs'
 import { WORLD_CITIES, allTimeZones } from '../lib/worldCities'
+import { useT } from '../settingsContext'
 
 /**
  * A place for 星盘 and 天象: a city (China or overseas), or custom coordinates
@@ -10,19 +11,21 @@ import { WORLD_CITIES, allTimeZones } from '../lib/worldCities'
 export function PlacePicker({
   place,
   onChange,
-  label = '出生地',
+  label,
 }: {
   place: StarPlace
   onChange: (p: StarPlace) => void
+  /** Already in the UI language; 出生地 by default */
   label?: string
 }) {
+  const t = useT()
   const known = findCity(place.name)
   const custom = !known
   const zones = useMemo(allTimeZones, [])
   return (
     <>
       <label>
-        {label}
+        {label ?? t('出生地')}
         <select
           value={custom ? '' : place.name}
           onChange={(e) => {
@@ -31,29 +34,29 @@ export function PlacePicker({
             else onChange({ ...place, name: '自定义' })
           }}
         >
-          <optgroup label="中国">
+          <optgroup label={t('中国')}>
             {CITIES.map((c) => (
               <option key={c.name} value={c.name}>
-                {c.name}
+                {t(c.name)}
               </option>
             ))}
           </optgroup>
           {WORLD_CITIES.map((r) => (
-            <optgroup key={r.region} label={r.region}>
+            <optgroup key={r.region} label={t(r.region)}>
               {r.cities.map((c) => (
                 <option key={c.name} value={c.name}>
-                  {c.name}
+                  {t(c.name)}
                 </option>
               ))}
             </optgroup>
           ))}
-          <option value="">自定义经纬度…</option>
+          <option value="">{t('自定义经纬度…')}</option>
         </select>
       </label>
       {custom && (
         <>
           <label>
-            纬度（南为负）
+            {t('纬度（南为负）')}
             <input
               type="number"
               className="narrow"
@@ -68,7 +71,7 @@ export function PlacePicker({
             />
           </label>
           <label>
-            经度（西为负）
+            {t('经度（西为负）')}
             <input
               type="number"
               className="narrow"
@@ -83,7 +86,7 @@ export function PlacePicker({
             />
           </label>
           <label>
-            时区
+            {t('时区')}
             <select value={place.timeZone} onChange={(e) => onChange({ ...place, timeZone: e.target.value })}>
               {zones.map((z) => (
                 <option key={z} value={z}>

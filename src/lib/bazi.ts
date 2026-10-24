@@ -22,7 +22,7 @@ import { computeRelations, type Relation, type RelationMember } from './relation
 import { DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
 import { computeShenSha, type ShenSha } from './shensha'
 import { DEFAULT_PLACE, type Place } from './place'
-import { toTrueSolarTime } from './solarTime'
+import { toTrueSolarTime, type WallTime } from './solarTime'
 
 export type ElementName = '木' | '火' | '土' | '金' | '水'
 export const ELEMENTS: ElementName[] = ['木', '火', '土', '金', '水']
@@ -78,13 +78,15 @@ export interface BaziChart {
   ownSign: string
   bodySign: string
   startText: string
+  /** The numbers behind startText, for building it in other languages */
+  start: { years: number; months: number; days: number; year: number; month: number; day: number; forward: boolean }
   decades: DecadeInfo[]
   elementCount: Record<ElementName, number>
   relations: Relation[]
   /** Born 23:00–24:00 (after 真太阳时), where the 晚子时 setting matters */
   lateZiHour: boolean
   /** Set when 真太阳时 is applied */
-  trueSolar?: { text: string; offsetMinutes: number }
+  trueSolar?: { text: string; offsetMinutes: number; time: WallTime }
 }
 
 export interface BaziInput {
@@ -214,11 +216,20 @@ export function buildBazi(input: BaziInput, schools: SchoolSettings = DEFAULT_SC
     ownSign: ec.getOwnSign().getName(),
     bodySign: ec.getBodySign().getName(),
     startText: `出生后${childLimit.getYearCount()}年${childLimit.getMonthCount()}个月${childLimit.getDayCount()}天起运（${end.getYear()}年${end.getMonth()}月${end.getDay()}日交运），${childLimit.isForward() ? '顺' : '逆'}排`,
+    start: {
+      years: childLimit.getYearCount(),
+      months: childLimit.getMonthCount(),
+      days: childLimit.getDayCount(),
+      year: end.getYear(),
+      month: end.getMonth(),
+      day: end.getDay(),
+      forward: childLimit.isForward(),
+    },
     decades,
     elementCount,
     relations: computeRelations(relationMembers(pillars), undefined, schools),
     lateZiHour: t.hour === 23,
-    trueSolar: corrected && { text: formatTime(corrected.time), offsetMinutes: corrected.offsetMinutes },
+    trueSolar: corrected && { text: formatTime(corrected.time), offsetMinutes: corrected.offsetMinutes, time: corrected.time },
   }
 }
 

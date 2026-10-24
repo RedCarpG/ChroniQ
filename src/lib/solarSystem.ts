@@ -85,8 +85,9 @@ export function orbits(utc: Date, samples = 180): Record<PlanetKey, [number, num
   return out
 }
 
-/** Light travel time for a distance in AU, e.g. 8.3 分钟, 4.1 小时 */
-export function lightTime(au: number): string {
+/** Light travel time for a distance in AU, e.g. 8.3 分钟, 4.1 小时 (8.3 min, 4.1 h in English) */
+export function lightTime(au: number, lang: 'zh' | 'en' = 'zh'): string {
   const minutes = (au * 149597870.7) / 299792.458 / 60
+  if (lang === 'en') return minutes < 60 ? `${minutes.toFixed(1)} min` : `${(minutes / 60).toFixed(1)} h`
   return minutes < 60 ? `${minutes.toFixed(1)} 分钟` : `${(minutes / 60).toFixed(1)} 小时`
 }

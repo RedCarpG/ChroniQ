@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { SETTING_OPTIONS } from '../../lib/settings'
+import { CITIES } from '../../lib/solarTime'
+import { WORLD_CITIES } from '../../lib/worldCities'
 import { EN, EN_PARTS } from '../en'
 import { translate } from '..'
 
@@ -51,6 +53,11 @@ describe('English dictionary', () => {
 
   it('has no empty or untranslated entries', () => {
     expect(Object.entries(EN).filter(([, v]) => !v.trim()).map(([k]) => k)).toEqual([])
+  })
+
+  it('names every city in the place pickers', () => {
+    const names = [...CITIES, ...WORLD_CITIES.flatMap((r) => r.cities)].map((c) => c.name)
+    expect(names.filter((n) => EN[n] === undefined)).toEqual([])
   })
 
   it('covers the settings menu', () => {

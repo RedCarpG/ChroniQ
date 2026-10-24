@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
-import { todaySolar } from '../lib/calendar'
+import { enMonth, todaySolar } from '../lib/calendar'
+import { useSettings, useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 interface Props {
@@ -16,6 +17,8 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Calendar-icon button opening a year grid, month grid and jump-to-date panel. */
 export function MonthPicker({ year, month, minYear, maxYear, onPickMonth, onPickDay }: Props) {
+  const t = useT()
+  const en = useSettings().language === 'en'
   const [open, setOpen] = useState(false)
   // Year shown in the month grid while browsing; committed when a month is picked.
   const [draftYear, setDraftYear] = useState(year)
@@ -36,7 +39,7 @@ export function MonthPicker({ year, month, minYear, maxYear, onPickMonth, onPick
 
   return (
     <div className="month-picker" ref={ref}>
-      <button type="button" className="icon-btn" aria-label="选择年月" aria-expanded={open} onClick={toggle}>
+      <button type="button" className="icon-btn" aria-label={t('选择年月')} aria-expanded={open} onClick={toggle}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path
             fill="currentColor"
@@ -45,15 +48,15 @@ export function MonthPicker({ year, month, minYear, maxYear, onPickMonth, onPick
         </svg>
       </button>
       {open && (
-        <div className="picker-panel" role="dialog" aria-label="选择年月">
+        <div className="picker-panel" role="dialog" aria-label={t('选择年月')}>
           <div className="picker-head">
-            <button type="button" aria-label="前十二年" disabled={pageStart <= minYear} onClick={() => setPageStart((p) => p - 12)}>
+            <button type="button" aria-label={t('前十二年')} disabled={pageStart <= minYear} onClick={() => setPageStart((p) => p - 12)}>
               ‹
             </button>
             <span>
               {Math.max(pageStart, minYear)} – {Math.min(pageStart + 11, maxYear)}
             </span>
-            <button type="button" aria-label="后十二年" disabled={pageStart + 11 >= maxYear} onClick={() => setPageStart((p) => p + 12)}>
+            <button type="button" aria-label={t('后十二年')} disabled={pageStart + 11 >= maxYear} onClick={() => setPageStart((p) => p + 12)}>
               ›
             </button>
           </div>
@@ -89,14 +92,14 @@ export function MonthPicker({ year, month, minYear, maxYear, onPickMonth, onPick
                   setOpen(false)
                 }}
               >
-                {m}月
+                {en ? enMonth(m, 'short') : `${m}月`}
               </button>
             ))}
           </div>
           <div className="picker-foot">
             <input
               type="date"
-              aria-label="跳到日期"
+              aria-label={t('跳到日期')}
               min={`${minYear}-01-01`}
               max={`${maxYear}-12-31`}
               defaultValue={`${year}-${pad(month)}-01`}
@@ -116,7 +119,7 @@ export function MonthPicker({ year, month, minYear, maxYear, onPickMonth, onPick
                 setOpen(false)
               }}
             >
-              今天
+              {t('今天')}
             </button>
           </div>
         </div>

@@ -28,6 +28,7 @@ import type { BaziInput } from '../lib/bazi'
 import { loadCharts, sameInput } from '../lib/savedCharts'
 import { DEFAULT_PLACE } from '../lib/place'
 import { STAR_SCHOOLS } from '../lib/starPrefs'
+import { useSettings, useT } from '../settingsContext'
 import { BirthForm, DateParts } from './BirthForm'
 import { InfoTip, TipLine } from './InfoTip'
 import { TitleMark } from './Logo'
@@ -36,9 +37,23 @@ import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
 import { PlacePicker } from './PlacePicker'
 
-/** Short name of each overlay, as used in labels: 行运金星, 对方金星 … */
-const OVERLAY_LABEL: Record<OverlayKind, string> = { transit: '行运', progressed: '推运', synastry: '对方' }
-const OVERLAY_TITLE: Record<OverlayKind, string> = { transit: '行运', progressed: '推运', synastry: '合盘' }
+type T = ReturnType<typeof useT>
+
+/** Section title of each overlay */
+const overlayTitle = (t: T, kind: OverlayKind) => (kind === 'transit' ? t('行运') : kind === 'progressed' ? t('推运') : t('合盘'))
+/** Short name of each overlay, as a table heading */
+const overlayLabel = (t: T, kind: OverlayKind) => (kind === 'transit' ? t('行运') : kind === 'progressed' ? t('推运') : t('对方'))
+/** An overlay body by name: 行运金星, 推运金星, 对方金星 */
+const overlayName = (t: T, kind: OverlayKind, name: string) =>
+  kind === 'transit' ? t('行运{name}', { name }) : kind === 'progressed' ? t('推运{name}', { name }) : t('对方{name}', { name })
+/** A natal body by name, as the other end of an overlay aspect: 本命太阳, 我的太阳 */
+const natalName = (t: T, kind: OverlayKind, name: string) => (kind === 'synastry' ? t('我的{name}', { name }) : t('本命{name}', { name }))
+/** 第1宫 … 第12宫 (each has its own entry: English uses ordinals) */
+const houseName = (t: T, n: number) => t(`第${n}宫`)
+/** 白羊座 */
+const signName = (t: T, sign: number) => t('{sign}座', { sign: t(SIGNS[sign]) })
+/** The default partner is called 对方; a saved chart keeps its own name. */
+const partnerLabel = (t: T, name: string) => (name === '对方' ? t('对方') : name)
 
 interface Props {
   input: BaziInput
@@ -49,6 +64,7 @@ interface Props {
 
 /** 西洋占星 natal chart: the shared birth form, a birthplace, the wheel and the tables. */
 export function StarChartView({ input, onChange, settings, onSettingsChange }: Props) {
+  const t = useT()
   // The chart's own birthplace, shared with 八字 / 紫微 and saved with the chart
   const place = input.place ?? DEFAULT_PLACE
   const chart = useMemo(() => buildStarChart(input, place, settings), [input, place, settings])
@@ -107,46 +123,49 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       />
       <SectionNav
         items={[
-          ['star-natal', '本命'],
-          ...(overlay ? [['star-overlay', OVERLAY_TITLE[overlay.kind]] as [string, string]] : []),
-          ...(compositeChart ? [['star-composite', '组合盘'] as [string, string]] : []),
-          ['star-houses', '宫位'],
+          ['star-natal', t('本命')],
+          ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
+          ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
+          ['star-houses', t('宫位')],
         ]}
       />
 
       <section className="card" id="star-natal">
         <div className="big-three">
           {[
-            [sun, '太阳'],
-            [moon, '月亮'],
-            [asc, '上升'],
+            [sun, t('太阳')],
+            [moon, t('月亮')],
+            [asc, t('上升')],
           ].map(([p, label]) => {
             const pt = p as ChartPoint
             return (
               <div key={label as string} className={`b3 el-${SIGN_ELEMENT[pt.sign]}`}>
                 <small className="muted">{label as string}</small>
                 <span className="b3-glyph">{SIGN_GLYPHS[pt.sign]}</span>
-                <strong>{SIGNS[pt.sign]}座</strong>
+                <strong>{signName(t, pt.sign)}</strong>
               </div>
             )
           })}
         </div>
         <p className="muted row-note star-meta">
-          {place.name}（{formatCoords(place.latitude, place.longitude)}）· 按出生地时间{' '}
-          {formatOffset(chart.offsetMinutes)}
-          {chart.dst && '（当时实行夏令时，已换算）'} · 回归黄道 ·{' '}
-          {STAR_SCHOOLS.houses.options.find((o) => o.value === settings.houses)?.label}
-          {chart.housesFallback && '（极圈内无法使用普拉西度，已改用等宫制）'}
+          {t('{place}（{coords}）· 按出生地时间 {offset}', {
+            place: t(place.name),
+            coords: formatCoords(place.latitude, place.longitude),
+            offset: formatOffset(chart.offsetMinutes),
+          })}
+          {chart.dst && t('（当时实行夏令时，已换算）')} · {t('回归黄道')} ·{' '}
+          {t(STAR_SCHOOLS.houses.options.find((o) => o.value === settings.houses)?.label ?? '')}
+          {chart.housesFallback && t('（极圈内无法使用普拉西度，已改用等宫制）')}
         </p>
         <div className="overlay-bar">
-          <div className="seg small" role="group" aria-label="比较盘">
+          <div className="seg small" role="group" aria-label={t('比较盘')}>
             {(
               [
-                ['natal', '本命'],
-                ['transit', '行运'],
-                ['progressed', '推运'],
-                ['synastry', '合盘'],
-                ['composite', '组合盘'],
+                ['natal', t('本命')],
+                ['transit', t('行运')],
+                ['progressed', t('推运')],
+                ['synastry', t('合盘')],
+                ['composite', t('组合盘')],
               ] as const
             ).map(([v, label]) => (
               <button key={v} className={mode === v ? 'on' : undefined} onClick={() => mode !== v && smoothUpdate('star', () => setMode(v))}>
@@ -158,7 +177,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
             <>
               <input
                 type="date"
-                aria-label="日期"
+                aria-label={t('日期')}
                 value={when.date}
                 min="1900-01-01"
                 max="2100-12-31"
@@ -166,19 +185,19 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
               />
               <input
                 type="time"
-                aria-label="时间"
+                aria-label={t('时间')}
                 value={when.time}
                 onChange={(e) => e.target.value && setWhen({ ...when, time: e.target.value })}
               />
               <button type="button" className="ghost" onClick={() => setWhen(nowLocal())}>
-                现在
+                {t('现在')}
               </button>
             </>
           )}
         </div>
         {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} input={input} />}
         {(mode === 'transit' || mode === 'progressed') && !overlay && (
-          <p className="muted row-note">请选择出生之后的日期。</p>
+          <p className="muted row-note">{t('请选择出生之后的日期。')}</p>
         )}
         <div className="star-layout">
           <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
@@ -187,7 +206,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
             <div className="element-bars">
               {elements.map(({ e, n }) => (
                 <span key={e} className={`el-${e}`}>
-                  {ELEMENT_NAME[e]} <b>{n}</b>
+                  {t(ELEMENT_NAME[e])} <b>{n}</b>
                 </span>
               ))}
             </div>
@@ -199,41 +218,42 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         <OverlayCard
           overlay={overlay}
           timeZone={place.timeZone}
-          partnerName={partner.name}
+          partnerName={partnerLabel(t, partner.name)}
           hl={hl}
           hover={hover}
           active={!!focus}
         />
       )}
 
-      {compositeChart && <CompositeCard chart={compositeChart} partnerName={partner.name} settings={settings} />}
+      {compositeChart && <CompositeCard chart={compositeChart} partnerName={partnerLabel(t, partner.name)} settings={settings} />}
 
       <section className="card" id="star-houses">
         <h3 className="section-title">
           <TitleMark />
-          宫位
+          {t('宫位')}
         </h3>
         <div className="house-grid">
           {chart.cusps.map((c, i) => (
             <div key={i} className={`house-cell${hl.house === i + 1 ? ' on' : ''}`} {...hover({ house: i + 1 })}>
-              <InfoTip label={`第${i + 1}宫`} title={`第${i + 1}宫`}>
+              <InfoTip label={houseName(t, i + 1)} title={houseName(t, i + 1)}>
                 <span>{HOUSE_INFO[i]}</span>
               </InfoTip>
-              <span className={`el-${SIGN_ELEMENT[Math.floor(c / 30)]}`}>{formatLon(c)}</span>
+              <span className={`el-${SIGN_ELEMENT[Math.floor(c / 30)]}`}>{formatLon(c, t)}</span>
             </div>
           ))}
         </div>
 
         <h3 className="section-title aspects-title">
           <TitleMark />
-          相位
+          {t('相位')}
         </h3>
         <AspectList aspects={chart.aspects} hl={hl} hover={hover} active={!!focus} />
         <p className="muted row-note">
-          容许度：合、冲 8°，刑、拱 7°，六合 5°，涉及日月再加 2°。星体位置由{' '}
-          <a href="https://github.com/cosinekitty/astronomy">astronomy-engine</a> 计算（误差约 1′）·{' '}
-          <a href="https://github.com/RedCarpG/web-paipan-ChroniQ/blob/main/docs/schools.md#星盘">宫位制说明</a> ·
-          仅供参考
+          {t('容许度：合、冲 8°，刑、拱 7°，六合 5°，涉及日月再加 2°。')}
+          {t('星体位置由')} <a href="https://github.com/cosinekitty/astronomy">astronomy-engine</a>{' '}
+          {t('计算（误差约 1′）·')}{' '}
+          <a href="https://github.com/RedCarpG/web-paipan-ChroniQ/blob/main/docs/schools.md#星盘">{t('宫位制说明')}</a> ·{' '}
+          {t('仅供参考')}
         </p>
       </section>
 
@@ -251,13 +271,14 @@ function PointTable({
   hl: Highlight
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
 }) {
+  const t = useT()
   return (
     <table className="star-table">
       <thead>
         <tr>
-          <th>星体</th>
-          <th>位置</th>
-          <th>宫</th>
+          <th>{t('星体')}</th>
+          <th>{t('位置')}</th>
+          <th>{t('宫')}</th>
         </tr>
       </thead>
       <tbody>
@@ -269,22 +290,22 @@ function PointTable({
           >
             <td>
               <span className="planet-glyph">{p.key === 'asc' || p.key === 'mc' ? '' : p.glyph}</span>
-              <InfoTip label={p.name} title={p.name}>
+              <InfoTip label={t(p.name)} title={t(p.name)}>
                 <span>{PLANET_INFO[p.key]}</span>
               </InfoTip>
               {p.retrograde && (
-                <InfoTip className="plain retro" label="℞" title="逆行">
+                <InfoTip className="plain retro" label="℞" title={t('逆行')}>
                   <span>从地球看，这颗行星正在黄道上倒退。传统上认为它的作用更内省、迟缓或需要回顾。</span>
                 </InfoTip>
               )}
             </td>
             <td className={`el-${SIGN_ELEMENT[p.sign]}`}>
-              <InfoTip label={formatLon(p.lon)} title={`${SIGNS[p.sign]}座 ${SIGN_GLYPHS[p.sign]}`}>
-                <TipLine name={ELEMENT_NAME[SIGN_ELEMENT[p.sign]]}>{SIGN_INFO[p.sign]}</TipLine>
+              <InfoTip label={formatLon(p.lon, t)} title={`${signName(t, p.sign)} ${SIGN_GLYPHS[p.sign]}`}>
+                <TipLine name={t(ELEMENT_NAME[SIGN_ELEMENT[p.sign]])}>{SIGN_INFO[p.sign]}</TipLine>
               </InfoTip>
             </td>
             <td>
-              <InfoTip label={String(p.house)} title={`第${p.house}宫`}>
+              <InfoTip label={String(p.house)} title={houseName(t, p.house)}>
                 <span>{HOUSE_INFO[p.house - 1]}</span>
               </InfoTip>
             </td>
@@ -307,8 +328,9 @@ function AspectList({
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
   active: boolean
 }) {
+  const t = useT()
   return aspects.length === 0 ? (
-    <p className="muted">没有主要相位。</p>
+    <p className="muted">{t('没有主要相位。')}</p>
   ) : (
     <div className={`aspect-list${active ? ' has-focus' : ''}`}>
       {aspects.map((a) => (
@@ -317,11 +339,11 @@ function AspectList({
           className={`aspect-chip tone-${a.type.tone}${hl.aspect(a) ? ' on' : ''}`}
           {...hover({ aspect: a, cross: false })}
         >
-          {a.a.name}
-          <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
+          {t(a.a.name)}
+          <InfoTip className="plain" label={aspectChip(t, a)} title={t(`${a.type.name}相`)}>
             <span>{ASPECT_INFO[a.type.key]}</span>
           </InfoTip>
-          {a.b.name}
+          {t(a.b.name)}
           <small>{a.orb.toFixed(1)}°</small>
         </span>
       ))}
@@ -329,11 +351,16 @@ function AspectList({
   )
 }
 
+/** ☌合: an aspect's glyph and name (合相 … have their own entries, as titles) */
+const aspectChip = (t: T, a: Aspect) => t('{glyph}{name}', { glyph: a.type.glyph, name: t(a.type.name) })
+
 /**
  * 组合盘: the relationship's own chart, with its own wheel, positions and
  * aspects, and its own highlight (its planets are not the natal ones).
  */
 function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; partnerName: string; settings: StarSettings }) {
+  const t = useT()
+  const { language } = useSettings()
   const [focus, setFocus] = useState<Focus>(null)
   const hover = (f: NonNullable<Focus>) => ({
     tabIndex: 0,
@@ -346,24 +373,39 @@ function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; par
   const davison = settings.composite === 'davison'
   const sign = (k: string) => {
     const p = chart.points.find((x) => x.key === k)!
-    return `${SIGNS[p.sign]}座 · 第${p.house}宫`
+    return `${signName(t, p.sign)} · ${houseName(t, p.house)}`
   }
   return (
     <section className="card overlay-card is-composite" id="star-composite">
       <h3 className="section-title">
         <TitleMark />
-        组合盘 · 我 + {partnerName}
+        {t('组合盘 · 我 + {name}', { name: partnerName })}
       </h3>
       <p className="muted row-note">
         {davison
-          ? `时空中点盘：两人出生时刻的中点 ${new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }).format(chart.utc)}（世界时），两地中点 ${formatCoords(chart.place.latitude, chart.place.longitude)} 上空的真实天象。`
-          : `中点组合盘：每颗行星取两人位置的较近中点；天顶取两人天顶的中点，上升与宫位由它在两地平均纬度 ${chart.place.latitude.toFixed(2)}° 推出。`}
-        组合盘看的是「这段关系本身」的性格：太阳是关系的核心，月亮是相处的感受，上升是这对组合给外人的样子。可在流派设置中切换做法。
+          ? t('时空中点盘：两人出生时刻的中点 {date}（世界时），两地中点 {coords} 上空的真实天象。', {
+              date: new Intl.DateTimeFormat(language === 'en' ? 'en' : 'zh-CN', {
+                timeZone: 'UTC',
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }).format(chart.utc),
+              coords: formatCoords(chart.place.latitude, chart.place.longitude),
+            })
+          : t('中点组合盘：每颗行星取两人位置的较近中点；天顶取两人天顶的中点，上升与宫位由它在两地平均纬度 {lat}° 推出。', {
+              lat: chart.place.latitude.toFixed(2),
+            })}
+        {t('组合盘看的是「这段关系本身」的性格：太阳是关系的核心，月亮是相处的感受，上升是这对组合给外人的样子。可在流派设置中切换做法。')}
       </p>
       <div className="big-three small">
-        <span>太阳 {sign('sun')}</span>
-        <span>月亮 {sign('moon')}</span>
-        <span>上升 {SIGNS[Math.floor(chart.asc / 30)]}座</span>
+        <span>
+          {t('太阳')} {sign('sun')}
+        </span>
+        <span>
+          {t('月亮')} {sign('moon')}
+        </span>
+        <span>
+          {t('上升')} {signName(t, Math.floor(chart.asc / 30))}
+        </span>
       </div>
       <div className="star-layout">
         <StarWheel chart={chart} overlay={null} hl={hl} hover={hover} />
@@ -373,7 +415,7 @@ function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; par
       </div>
       <h4 className="overlay-subtitle reverse-title">
         <TitleMark />
-        组合盘相位
+        {t('组合盘相位')}
       </h4>
       <AspectList aspects={chart.aspects} hl={hl} hover={hover} active={!!focus} />
     </section>
@@ -441,6 +483,7 @@ function PartnerPicker({
   onChange: (p: Partner) => void
   input: BaziInput
 }) {
+  const t = useT()
   const charts = useMemo(loadCharts, [])
   const pad = (n: number) => String(n).padStart(2, '0')
   const w = partner.wall
@@ -458,7 +501,7 @@ function PartnerPicker({
   return (
     <div className="bazi-form partner-form">
       <label>
-        对方
+        {t('对方')}
         <select
           value={savedMatch?.id ?? ''}
           onChange={(e) => {
@@ -466,18 +509,18 @@ function PartnerPicker({
             if (c) onChange(partnerFrom(c.name, c.input))
           }}
         >
-          <option value="">{charts.length ? '手动输入' : '手动输入（没有已保存的命盘）'}</option>
+          <option value="">{charts.length ? t('手动输入') : t('手动输入（没有已保存的命盘）')}</option>
           {charts.map((c) => (
             <option key={c.id} value={c.id} disabled={sameInput(c.input, input)}>
               {c.name}
-              {sameInput(c.input, input) ? '（当前）' : ''}
+              {sameInput(c.input, input) ? t('（当前）') : ''}
             </option>
           ))}
         </select>
       </label>
-      <DateParts label="对方出生日期" value={w} onChange={(d) => edit(d)} />
+      <DateParts label={t('对方出生日期')} value={w} onChange={(d) => edit(d)} />
       <label>
-        出生时间
+        {t('出生时间')}
         <input
           type="time"
           value={`${pad(w.hour)}:${pad(w.minute)}`}
@@ -487,7 +530,7 @@ function PartnerPicker({
           }}
         />
       </label>
-      <PlacePicker label="对方出生地" place={partner.place} onChange={(place) => onChange({ ...partner, place })} />
+      <PlacePicker label={t('对方出生地')} place={partner.place} onChange={(place) => onChange({ ...partner, place })} />
     </div>
   )
 }
@@ -519,6 +562,7 @@ function StarWheel({
   hl: Highlight
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
 }) {
+  const t = useT()
   const at = (lon: number, r: number) => {
     const d = ((lon - chart.asc) * Math.PI) / 180
     return [C - r * Math.cos(d), C + r * Math.sin(d)] as const
@@ -553,7 +597,7 @@ function StarWheel({
       className={`star-wheel${overlay ? ` with-${overlay.kind}` : ''}${hl.active ? ' has-focus' : ''}`}
       viewBox={`${-pad} ${-pad} ${400 + pad * 2} ${400 + pad * 2}`}
       role="img"
-      aria-label="星盘"
+      aria-label={t('星盘')}
     >
       {overlay && <circle cx={C} cy={C} r={R_OUTER} className="outer-band" />}
       {SIGNS.map((name, i) => {
@@ -562,7 +606,7 @@ function StarWheel({
         return (
           <g key={name} className={`sign el-${el}`}>
             <path d={arc(i * 30, i * 30 + 30, R_OUT, R_SIGN)} className={`sign-band band-${el}`}>
-              <title>{name}座</title>
+              <title>{signName(t, i)}</title>
             </path>
             <text x={gx} y={gy} className="sign-glyph" textAnchor="middle" dominantBaseline="central">
               {SIGN_GLYPHS[i]}
@@ -583,7 +627,7 @@ function StarWheel({
           key={`sector-${i}`}
           d={arc(c, chart.cusps[(i + 1) % 12], R_SIGN, R_ASPECT)}
           className={`house-sector${hl.house === i + 1 ? ' on' : ''}`}
-          aria-label={`第${i + 1}宫`}
+          aria-label={houseName(t, i + 1)}
           {...hover({ house: i + 1 })}
         />
       ))}
@@ -634,11 +678,12 @@ function StarWheel({
             />
             <line x1={x1} y1={y1} x2={x2} y2={y2} className="aspect-hit">
               <title>
-                {overlay ? OVERLAY_LABEL[overlay.kind] : ''}
-                {a.a.name}
-                {a.type.name}
-                {overlay ? (overlay.kind === 'synastry' ? '我的' : '本命') : ''}
-                {a.b.name}（{a.orb.toFixed(1)}°）
+                {t('{a}{aspect}{b}（{orb}°）', {
+                  a: overlay ? overlayName(t, overlay.kind, t(a.a.name)) : t(a.a.name),
+                  aspect: t(a.type.name),
+                  b: overlay ? natalName(t, overlay.kind, t(a.b.name)) : t(a.b.name),
+                  orb: a.orb.toFixed(1),
+                })}
               </title>
             </line>
           </g>
@@ -656,8 +701,7 @@ function StarWheel({
             {...hover({ planet: p.key, layer: 'natal' })}
           >
             <title>
-              {p.name} {formatLon(p.lon)}
-              {p.retrograde ? ' 逆行' : ''} · 第{p.house}宫
+              {t(p.name)} {retroLon(t, p)} · {houseName(t, p.house)}
             </title>
             <line x1={tx} y1={ty} x2={lx} y2={ly} className="planet-tick" />
             <text x={px} y={py} className="planet-glyph-svg" textAnchor="middle" dominantBaseline="central">
@@ -681,9 +725,10 @@ function StarWheel({
             {...hover({ planet: p.key, layer: 'overlay' })}
           >
             <title>
-              {OVERLAY_LABEL[overlay!.kind]}
-              {p.name} {formatLon(p.lon)}
-              {p.retrograde ? ' 逆行' : ''} · {overlay!.kind === 'synastry' ? '落我的' : '本命'}第{p.house}宫
+              {overlayName(t, overlay!.kind, t(p.name))} {retroLon(t, p)} ·{' '}
+              {overlay!.kind === 'synastry'
+                ? t('落我的{house}', { house: houseName(t, p.house) })
+                : t('本命{house}', { house: houseName(t, p.house) })}
             </title>
             <line x1={tx} y1={ty} x2={lx} y2={ly} className="planet-tick" />
             <text
@@ -701,6 +746,9 @@ function StarWheel({
     </svg>
   )
 }
+
+/** 白羊 12°34′, with 逆行 after it when retrograde */
+const retroLon = (t: T, p: ChartPoint) => (p.retrograde ? t('{lon} 逆行', { lon: formatLon(p.lon, t) }) : formatLon(p.lon, t))
 
 /** Push crowded longitudes apart (circularly) so glyphs don't overlap; returns display longitudes in input order. */
 function spread(lons: number[], gap: number): number[] {
@@ -751,33 +799,39 @@ function OverlayCard({
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
   active: boolean
 }) {
-  const label = OVERLAY_LABEL[o.kind]
+  const t = useT()
+  const { language } = useSettings()
   const syn = o.kind === 'synastry'
-  const mine = syn ? '我的' : '本命'
   const fmt = (d: Date, tz = timeZone) =>
-    new Intl.DateTimeFormat('zh-CN', { timeZone: tz, dateStyle: 'medium', timeStyle: 'short' }).format(d)
-  const tones = (t: string) => o.aspects.filter((a) => a.type.tone === t).length
+    new Intl.DateTimeFormat(language === 'en' ? 'en' : 'zh-CN', { timeZone: tz, dateStyle: 'medium', timeStyle: 'short' }).format(d)
+  const tones = (tone: string) => o.aspects.filter((a) => a.type.tone === tone).length
   return (
     <section className={`card overlay-card is-${o.kind}`} id="star-overlay">
       <h3 className="section-title">
         <TitleMark />
-        {syn ? `合盘 · ${partnerName ?? '对方'}` : `${label} · ${fmt(o.target)}`}
+        {syn ? t('合盘 · {name}', { name: partnerName ?? t('对方') }) : `${overlayTitle(t, o.kind)} · ${fmt(o.target)}`}
       </h3>
       <p className="muted row-note">
         {syn
-          ? `对方生于 ${fmt(o.target, o.partner!.place.timeZone)}（${o.partner!.place.name}）。外圈是对方的星体，看它们落在你的哪一宫、与你的星体形成什么相位；下方也列出你的星体落在对方的哪一宫。容许度：合、冲 6°，刑、拱 5°，六合 3°；天王、海王、冥王彼此之间的相位是同一代人共有的，不列出。`
+          ? t('对方生于 {date}（{place}）。外圈是对方的星体，看它们落在你的哪一宫、与你的星体形成什么相位；下方也列出你的星体落在对方的哪一宫。容许度：合、冲 6°，刑、拱 5°，六合 3°；天王、海王、冥王彼此之间的相位是同一代人共有的，不列出。', {
+              date: fmt(o.target, o.partner!.place.timeZone),
+              place: t(o.partner!.place.name),
+            })
           : o.kind === 'transit'
-          ? `此刻行星在天上的位置（${o.age.toFixed(1)} 岁），对照本命盘看它们落在哪一宫、与本命星体形成什么相位。`
-          : `二次推运：出生后一天对应人生一年。${o.age.toFixed(1)} 岁对应 ${fmt(o.progressedUtc!)} 的天象，上升、天顶按流派设置推进。`}
-        {!syn && `容许度 ${o.kind === 'transit' ? '2°' : '1°'}。`}
+            ? t('此刻行星在天上的位置（{age} 岁），对照本命盘看它们落在哪一宫、与本命星体形成什么相位。', { age: o.age.toFixed(1) })
+            : t('二次推运：出生后一天对应人生一年。{age} 岁对应 {date} 的天象，上升、天顶按流派设置推进。', {
+                age: o.age.toFixed(1),
+                date: fmt(o.progressedUtc!),
+              })}
+        {!syn && t('容许度 {orb}。', { orb: o.kind === 'transit' ? '2°' : '1°' })}
       </p>
       <div className="star-layout">
         <table className="star-table">
           <thead>
             <tr>
-              <th>{label}</th>
-              <th>位置</th>
-              <th>{syn ? '落我宫' : '本命宫'}</th>
+              <th>{overlayLabel(t, o.kind)}</th>
+              <th>{t('位置')}</th>
+              <th>{syn ? t('落我宫') : t('本命宫')}</th>
             </tr>
           </thead>
           <tbody>
@@ -789,14 +843,14 @@ function OverlayCard({
               >
                 <td>
                   <span className="planet-glyph">{p.key === 'asc' || p.key === 'mc' ? '' : p.glyph}</span>
-                  <InfoTip label={p.name} title={p.name}>
+                  <InfoTip label={t(p.name)} title={t(p.name)}>
                     <span>{PLANET_INFO[p.key]}</span>
                   </InfoTip>
                   {p.retrograde && <span className="retro">℞</span>}
                 </td>
-                <td className={`el-${SIGN_ELEMENT[p.sign]}`}>{formatLon(p.lon)}</td>
+                <td className={`el-${SIGN_ELEMENT[p.sign]}`}>{formatLon(p.lon, t)}</td>
                 <td>
-                  <InfoTip label={String(p.house)} title={`第${p.house}宫`}>
+                  <InfoTip label={String(p.house)} title={houseName(t, p.house)}>
                     <span>{HOUSE_INFO[p.house - 1]}</span>
                   </InfoTip>
                 </td>
@@ -807,16 +861,17 @@ function OverlayCard({
         <div>
           <h4 className="overlay-subtitle">
             <TitleMark />
-            {syn ? '双方相位' : '与本命的相位'}
+            {syn ? t('双方相位') : t('与本命的相位')}
           </h4>
           {syn && o.aspects.length > 0 && (
             <p className="muted synastry-tally">
-              <span className="tone-soft">和谐 {tones('soft')}</span> · <span className="tone-hard">紧张 {tones('hard')}</span>{' '}
-              · <span>合相 {tones('major')}</span>
+              <span className="tone-soft">{t('和谐 {n}', { n: tones('soft') })}</span> ·{' '}
+              <span className="tone-hard">{t('紧张 {n}', { n: tones('hard') })}</span> ·{' '}
+              <span>{t('合相 {n}', { n: tones('major') })}</span>
             </p>
           )}
           {o.aspects.length === 0 ? (
-            <p className="muted">容许度内没有相位。</p>
+            <p className="muted">{t('容许度内没有相位。')}</p>
           ) : (
             <div className={`aspect-list${active ? ' has-focus' : ''}`}>
               {o.aspects.map((a) => (
@@ -825,13 +880,11 @@ function OverlayCard({
                   className={`aspect-chip tone-${a.type.tone}${hl.cross(a) ? ' on' : ''}`}
                   {...hover({ aspect: a, cross: true })}
                 >
-                  {label}
-                  {a.a.name}
-                  <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
+                  {overlayName(t, o.kind, t(a.a.name))}
+                  <InfoTip className="plain" label={aspectChip(t, a)} title={t(`${a.type.name}相`)}>
                     <span>{ASPECT_INFO[a.type.key]}</span>
                   </InfoTip>
-                  {mine}
-                  {a.b.name}
+                  {natalName(t, o.kind, t(a.b.name))}
                   <small>{a.orb.toFixed(syn ? 1 : 2)}°</small>
                 </span>
               ))}
@@ -841,7 +894,7 @@ function OverlayCard({
             <>
               <h4 className="overlay-subtitle reverse-title">
                 <TitleMark />
-                我的星体落在对方的宫位
+                {t('我的星体落在对方的宫位')}
               </h4>
               <div className="house-overlay">
                 {o.inPartnerHouses!.map((p) => (
@@ -850,7 +903,7 @@ function OverlayCard({
                     className={`ho-item${hl.row(p) ? ' on' : ''}`}
                     {...hover({ planet: p.key, layer: 'natal' })}
                   >
-                    {p.name}
+                    {t(p.name)}
                     <b>{p.house}</b>
                   </span>
                 ))}

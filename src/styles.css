@@ -686,6 +686,12 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .section-nav-tabs { position: relative; display: flex; flex-direction: column; margin: 2px 0; }
 .section-nav-tabs button { height: var(--tab-h); }
 .section-nav-text { display: block; width: 1em; line-height: 1.15; word-break: break-all; }
+/* English labels run sideways down the tab instead of one letter per line
+   (Chinese characters stay upright); the tabs grow to fit them. */
+:root:lang(en) .section-nav { --tab-h: 74px; }
+:root:lang(en) .section-nav-text, :root:lang(en) .drawer-handle-text {
+  width: auto; writing-mode: vertical-rl; word-break: normal; white-space: nowrap; line-height: 1;
+}
 .section-nav-thumb {
   position: absolute; top: 0; left: 0; right: 0; height: var(--tab-h); border-radius: 8px;
   background: var(--accent-soft); transform: translateY(calc(var(--active, 0) * var(--tab-h)));
@@ -955,6 +961,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .overlay-bar .date-parts .year-input { width: 76px; }
 .overlay-bar .date-parts select { padding-right: 26px; }
 .overlay-bar .ghost { margin-left: 0; height: 32px; font-size: 13px; }
+.overlay-bar .seg button { white-space: nowrap; }
 .star-wheel.with-transit { --overlay: var(--ly-yearly); }
 .star-wheel.with-progressed { --overlay: var(--ly-decadal); }
 .star-wheel.with-synastry { --overlay: var(--ly-monthly); }

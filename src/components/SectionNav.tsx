@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { useT } from '../settingsContext'
 import { DRAWER_RAIL_SLOT } from './SavedCharts'
 
 const scrollToY = (top: number) => window.scrollTo({ top, behavior: 'smooth' })
@@ -10,6 +11,7 @@ const scrollToY = (top: number) => window.scrollTo({ top, behavior: 'smooth' })
  * marked by a thumb that slides between them.
  */
 export function SectionNav({ items }: { items: [id: string, label: string][] }) {
+  const t = useT()
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   // The drawer renders after the page, so look for its slot once mounted.
   useEffect(() => setSlot(document.getElementById(DRAWER_RAIL_SLOT)), [])
@@ -41,8 +43,8 @@ export function SectionNav({ items }: { items: [id: string, label: string][] }) 
 
   if (!slot) return null
   return createPortal(
-    <nav className="section-nav" aria-label="页面导航">
-      <button type="button" className="section-nav-end" title="回到顶端" aria-label="回到顶端" onClick={() => scrollToY(0)}>
+    <nav className="section-nav" aria-label={t('页面导航')}>
+      <button type="button" className="section-nav-end" title={t('回到顶端')} aria-label={t('回到顶端')} onClick={() => scrollToY(0)}>
         ↑
       </button>
       <div className="section-nav-tabs" style={{ '--active': active } as CSSProperties}>
@@ -62,8 +64,8 @@ export function SectionNav({ items }: { items: [id: string, label: string][] }) 
       <button
         type="button"
         className="section-nav-end"
-        title="到达底端"
-        aria-label="到达底端"
+        title={t('到达底端')}
+        aria-label={t('到达底端')}
         onClick={() => scrollToY(document.documentElement.scrollHeight)}
       >
         ↓

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { BaziInput } from '../lib/bazi'
-import { ELEMENTS } from '../lib/bazi'
+import { ELEMENTS, formatTime } from '../lib/bazi'
 import {
   BOARD,
   buildHoroscope,
@@ -20,7 +20,7 @@ import {
   type ZiweiStar,
 } from '../lib/ziwei'
 import { ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../lib/ziweiSchools'
-import { useSettings, useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm } from '../settingsContext'
 import { BirthForm } from './BirthForm'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
@@ -67,6 +67,27 @@ const LAYER_NAME: Record<LayerKind, string> = {
   hourly: '流时',
 }
 
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const pad = (n: number) => String(n).padStart(2, '0')
+type ClockTime = { year: number; month: number; day: number; hour: number; minute: number }
+/** A Gregorian date and time: 1990年5月15日 10:30, or 15 May 1990, 10:30 in English */
+const solarText = (time: ClockTime, english: boolean) =>
+  english
+    ? `${time.day} ${MONTHS_EN[time.month - 1]} ${time.year}, ${pad(time.hour)}:${pad(time.minute)}`
+    : formatTime(time)
+
+/** Translated text with one {slot} filled by a React node (a link or a tip) */
+function fill(text: string, slot: string, node: ReactNode) {
+  const [before, after = ''] = text.split(`{${slot}}`)
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  )
+}
+
 interface Props {
   input: BaziInput
   onChange: (input: BaziInput) => void
@@ -79,7 +100,9 @@ interface Props {
 export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) {
   const chart = useMemo(() => buildZiwei(input, schools), [input, schools])
   const term = useTerm()
-  const { ziweiColor } = useSettings()
+  const t = useT()
+  const { ziweiColor, language } = useSettings()
+  const english = language === 'en'
   // The palace whose 三方四正 is shown (hover with a mouse, tap or focus otherwise)
   const [active, setActive] = useState<string | null>(null)
   const [mode, setModeState] = useState<BoardMode>(loadMode)
@@ -219,13 +242,13 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       />
       <SectionNav
         items={[
-          ['ziwei-board', term('盘面')],
+          ['ziwei-board', t('盘面')],
           ['ziwei-fortune', term('运限')],
         ]}
       />
       <section className="card" id="ziwei-board">
         <div className="zw-toolbar">
-          <div className="seg small" role="group" aria-label="宫位显示">
+          <div className="seg small" role="group" aria-label={t('宫位显示')}>
             {(
               [
                 ['sanfang', '三方四正'],
@@ -262,12 +285,12 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 <span>{term(chart.fiveElementsClass)}</span>
               </div>
               <dl className="kv">
-                <dt className="zc-extra">阳历</dt>
-                <dd className="zc-extra">{chart.solarText}</dd>
+                <dt className="zc-extra">{t('阳历')}</dt>
+                <dd className="zc-extra">{solarText(input, english)}</dd>
                 {chart.trueSolar && (
                   <>
-                    <dt>真太阳时</dt>
-                    <dd>{chart.trueSolar.text}</dd>
+                    <dt>{t('真太阳时')}</dt>
+                    <dd>{solarText(chart.trueSolar.time, english)}</dd>
                   </>
                 )}
                 <dt>{term('农历')}</dt>
@@ -283,9 +306,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 {layers.map((l) => (
                   <LayerRow key={l.kind} layer={l} target={{ year, month, day, hour }} />
                 ))}
-                <dt className="zc-extra">生肖 · 星座</dt>
+                <dt className="zc-extra">{t('生肖 · 星座')}</dt>
                 <dd className="zc-extra">
-                  {term(chart.zodiac)} · {chart.sign}
+                  {term(chart.zodiac)} · {t(chart.sign)}
                 </dd>
               </dl>
               {mode === 'feihua' ? (
@@ -304,7 +327,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                   {LAYER_NAME[l.kind]}
                 </span>
               ))}
-              <span className="muted">运限四化、流耀与宫名</span>
+              <span className="muted">{t('运限四化、流耀与宫名')}</span>
             </div>
           )}
           <div className="zc-legend">
@@ -313,7 +336,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 {term(m)}
               </span>
             ))}
-            <span className="muted">生年四化</span>
+            <span className="muted">{t('生年四化')}</span>
           </div>
           <div className="zc-legend">
             {ziweiColor === 'element' ? (
@@ -324,34 +347,35 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
               ))
             ) : (
               <>
-                <span className="luck-major">主星</span>
-                <span className="luck-good">吉星</span>
-                <span className="luck-bad">煞星</span>
+                <span className="luck-major">{t('主星')}</span>
+                <span className="luck-good">{t('吉星')}</span>
+                <span className="luck-bad">{t('煞星')}</span>
               </>
             )}
-            <span className="muted">星曜配色（可在设置中切换）</span>
+            <span className="muted">{t('星曜配色（可在设置中切换）')}</span>
           </div>
           {mode === 'feihua' && (
             <div className="zc-legend">
               <span className="mutagen fly self m-禄">↑{term('禄')}</span>
-              <span className="muted">宫干自化（离心）</span>
+              <span className="muted">{t('宫干自化（离心）')}</span>
             </div>
           )}
           <div className="zc-legend muted">
             {mode === 'feihua' ? (
-              <span>悬停或点按宫位，看它的宫干把禄权科忌飞入哪一宫</span>
+              <span>{t('悬停或点按宫位，看它的宫干把禄权科忌飞入哪一宫')}</span>
             ) : (
-              <span>
-                悬停或点按宫位看
-                <SanFangTip />
-                ，悬停或点按星曜看解释
-              </span>
+              <span>{fill(t('悬停或点按宫位看{tip}，悬停或点按星曜看解释'), 'tip', <SanFangTip />)}</span>
             )}
           </div>
         </div>
         <p className="muted row-note ziwei-credit">
-          命盘由 <a href="https://github.com/SylarLong/iztro">iztro</a> 排出（
-          {schools.algorithm === 'zhongzhou' ? '中州派' : '通行版'}安星法）· 仅供参考
+          {fill(
+            schools.algorithm === 'zhongzhou'
+              ? t('命盘由 {iztro} 排出（中州派安星法）· 仅供参考')
+              : t('命盘由 {iztro} 排出（通行版安星法）· 仅供参考'),
+            'iztro',
+            <a href="https://github.com/SylarLong/iztro">iztro</a>,
+          )}
         </p>
       </section>
 
@@ -361,7 +385,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
             <TitleMark />
             {term('运限')}
           </h3>
-          <div className="seg small" role="group" aria-label="叠加到">
+          <div className="seg small" role="group" aria-label={t('叠加到')}>
             {DEPTHS.map((d) => (
               <button key={d.value} className={depth === d.value ? 'on' : undefined} onClick={() => smoothUpdate('ziwei', () => setDepth(d.value))}>
                 {term(d.label)}
@@ -371,7 +395,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         </div>
         <FortuneRow
           title={term('大限')}
-          summary={`${decade.range[0]}–${decade.range[1]}岁 · ${decade.stem}${decade.branch} · ${term(decade.palace)}`}
+          summary={`${t('{from}–{to}岁', { from: decade.range[0], to: decade.range[1] })} · ${decade.stem}${decade.branch} · ${term(decade.palace)}`}
           open={open.decade}
           onToggle={() => toggle('decade')}
         >
@@ -403,7 +427,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         </FortuneRow>
         <FortuneRow
           title={term('流年')}
-          summary={`${year} ${yearGanzhi(year)} · ${year - chart.birthYear + 1}岁`}
+          summary={`${year} ${yearGanzhi(year)} · ${t('{age}岁', { age: year - chart.birthYear + 1 })}`}
           open={open.year}
           onToggle={() => toggle('year')}
         >
@@ -417,7 +441,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 onClick={() => pickYear(y)}
               >
                 <small>{y}</small>
-                <small className="muted">{y - chart.birthYear + 1}岁</small>
+                <small className="muted">{t('{age}岁', { age: y - chart.birthYear + 1 })}</small>
                 <strong>{yearGanzhi(y)}</strong>
               </button>
             ))}
@@ -508,8 +532,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           </div>
         </FortuneRow>
         <p className="muted row-note">
-          流年按{schools.horoscopeDivide === 'exact' ? '立春' : '正月初一'}换年（可在流派设置中切换）；流月按 iztro
-          的斗君起月；流日、流时以农历日和时辰为准（子时取当日早子时）。
+          {t('流年按{start}换年（可在流派设置中切换）；流月按 iztro 的斗君起月；流日、流时以农历日和时辰为准（子时取当日早子时）。', {
+            start: term(schools.horoscopeDivide === 'exact' ? '立春' : '正月初一'),
+          })}
         </p>
       </section>
     </div>
@@ -589,13 +614,14 @@ function Palace({
   const flyClass = fly === 'src' ? ' fx-src' : incoming.length ? ' fx-to' : ''
   const flowStars = layers.flatMap((l) => l.stars[p.branch].map((s) => ({ kind: l.kind, star: s })))
   const term = useTerm()
+  const t = useT()
   const [row, col] = BOARD[p.branch]
   return (
     <div
       className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}`}
       style={{ gridRow: row, gridColumn: col }}
       tabIndex={0}
-      aria-label={`${term(p.name)}，${p.stem}${p.branch}`}
+      aria-label={t('{palace}，{ganzhi}', { palace: term(p.name), ganzhi: p.stem + p.branch })}
       // Same pattern as the 八字 highlight: mouse hover, or focus for touch and keyboard.
       onPointerEnter={(e) => e.pointerType === 'mouse' && onActive(p.branch)}
       onPointerLeave={(e) => e.pointerType === 'mouse' && onActive(null)}
@@ -603,11 +629,9 @@ function Palace({
       onBlur={() => onActive(null)}
     >
       {role && <span className="sf-tag">{ROLE_LABEL[role]}</span>}
-      {fly === 'src' && <span className="sf-tag fx-tag">{p.stem}干飞出</span>}
+      {fly === 'src' && <span className="sf-tag fx-tag">{t('{stem}干飞出', { stem: p.stem })}</span>}
       {incoming.length > 0 && (
-        <span className="sf-tag fx-tag">
-          {incoming.map((f) => term(f.mutagen)).join('')}入
-        </span>
+        <span className="sf-tag fx-tag">{t('{mutagens}入', { mutagens: incoming.map((f) => term(f.mutagen)).join('') })}</span>
       )}
       <div className="palace-stars">
         <div className="stars-major">
@@ -711,12 +735,13 @@ function StarItem({
 /** Centre-panel summary of the selected palace's 三方四正, or a hint when none is selected. */
 function SanFangSummary({ chart, active }: { chart: ReturnType<typeof buildZiwei>; active: string | null }) {
   const term = useTerm()
+  const t = useT()
   // Hint and summary share one fixed-height slot: if the centre grew on hover, the
   // whole board would reflow under the pointer and the hover would flicker.
   if (!active)
     return (
       <div className="zc-sf-area">
-        <p className="zc-hint muted">悬停或点按宫位，这里会列出它的{term('三方四正')}</p>
+        <p className="zc-hint muted">{t('悬停或点按宫位，这里会列出它的{sanfang}', { sanfang: term('三方四正') })}</p>
       </div>
     )
   const { opposite, trines } = sanFangSiZheng(active)
@@ -739,7 +764,9 @@ function SanFangSummary({ chart, active }: { chart: ReturnType<typeof buildZiwei
               <span className="muted">
                 {p.major.length
                   ? p.major.map((s) => term(s.name)).join(' ')
-                  : `空宫，借对宫 ${chart.palaces[sanFangSiZheng(b).opposite].major.map((s) => term(s.name)).join(' ')}`}
+                  : t('空宫，借对宫 {stars}', {
+                      stars: chart.palaces[sanFangSiZheng(b).opposite].major.map((s) => term(s.name)).join(' '),
+                    })}
               </span>
             </div>
           )
@@ -809,26 +836,25 @@ function FeiHuaLines({ from, flies, size: [w, h] }: { from: string; flies: Ziwei
 /** Centre-panel list of the hovered palace's 宫干四化, or a hint when none is hovered. */
 function FeiHuaSummary({ chart, active }: { chart: ReturnType<typeof buildZiwei>; active: string | null }) {
   const term = useTerm()
+  const t = useT()
   if (!active)
     return (
       <div className="zc-sf-area">
-        <p className="zc-hint muted">悬停或点按宫位，这里会列出它的宫干四化飞入哪一宫</p>
+        <p className="zc-hint muted">{t('悬停或点按宫位，这里会列出它的宫干四化飞入哪一宫')}</p>
       </div>
     )
   const p = chart.palaces[active]
   return (
     <div className="zc-sf-area">
       <div className="zc-sanfang" key={active}>
-        <strong>
-          {term(p.name)} {p.stem}干{term('四化')}
-        </strong>
+        <strong>{t('{palace} {stem}干{sihua}', { palace: term(p.name), stem: p.stem, sihua: term('四化') })}</strong>
         {p.flies.map((f) => (
           <div key={f.mutagen} className="zc-sf-row">
             <span className={`mutagen m-${f.mutagen}`}>{term(f.mutagen)}</span>
             <b>{term(f.star)}</b>
             <span className="muted">
-              {f.to === active ? '自化' : `入${term(chart.palaces[f.to].name)}`}
-              {f.mutagen === '忌' && ` · 冲${term(chart.palaces[sanFangSiZheng(f.to).opposite].name)}`}
+              {f.to === active ? '自化' : t('入{palace}', { palace: term(chart.palaces[f.to].name) })}
+              {f.mutagen === '忌' && ` · ${t('冲{palace}', { palace: term(chart.palaces[sanFangSiZheng(f.to).opposite].name) })}`}
             </span>
           </div>
         ))}

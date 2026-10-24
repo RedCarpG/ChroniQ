@@ -6,6 +6,7 @@ import { LunarDay, LunarHour, LunarMonth, LunarYear, SolarDay } from 'tyme4ts'
 import { effectiveTime, formatTime, type BaziInput, type ElementName } from './bazi'
 import { mutagenTable, type ZiweiSchoolSettings } from './ziweiSchools'
 import { STAR_ELEMENT, starLuck, type StarLuck } from './ziweiStars'
+import type { WallTime } from './solarTime'
 
 export interface ZiweiStar {
   name: string
@@ -48,7 +49,8 @@ export interface ZiweiFly {
 export interface ZiweiChart {
   gender: '男' | '女'
   solarText: string
-  trueSolar?: { text: string; offsetMinutes: number }
+  /** Set when 真太阳时 is applied; time is the numbers behind text, for other languages */
+  trueSolar?: { text: string; offsetMinutes: number; time: WallTime }
   lunarText: string
   /** 四柱, e.g. 庚午 辛巳 庚辰 辛巳 */
   chineseDate: string
@@ -187,7 +189,7 @@ export function buildZiwei(input: BaziInput, schools: ZiweiSchoolSettings): Ziwe
   return {
     gender: input.gender === 1 ? '男' : '女',
     solarText: formatTime(input),
-    trueSolar: corrected && { text: formatTime(corrected.time), offsetMinutes: corrected.offsetMinutes },
+    trueSolar: corrected && { text: formatTime(corrected.time), offsetMinutes: corrected.offsetMinutes, time: corrected.time },
     lunarText: chart.lunarDate,
     chineseDate: chart.chineseDate,
     time: chart.time,

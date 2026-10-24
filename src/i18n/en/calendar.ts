@@ -1,3 +1,48 @@
 // English for the 日历 page.
 export const CALENDAR: Record<string, string> = {
+  // Header and navigation
+  年份: 'Year',
+  月份: 'Month',
+  '{y}年': '{y}',
+  '{ganzhi}年 · {zodiac}年': '{ganzhi} year · Year of the {zodiac}',
+  视图: 'View',
+  年: 'Year',
+  月: 'Month',
+  周: 'Week',
+  日: 'Day',
+  上一年: 'Previous year',
+  上个月: 'Previous month',
+  下个月: 'Next month',
+  下一年: 'Next year',
+  前四周: 'Back four weeks',
+  上一周: 'Previous week',
+  下一周: 'Next week',
+  后四周: 'Forward four weeks',
+  今天: 'Today',
+  选择年月: 'Pick a month',
+  前十二年: 'Previous 12 years',
+  后十二年: 'Next 12 years',
+  跳到日期: 'Go to date',
+
+  // Grid: statutory holiday marks (休 a day off, 班 a make-up workday)
+  休: 'Off',
+  班: 'Work',
+  '{day}日': '{day}',
+
+  // Day detail
+  白羊座: 'Aries',
+  金牛座: 'Taurus',
+  双子座: 'Gemini',
+  巨蟹座: 'Cancer',
+  狮子座: 'Leo',
+  处女座: 'Virgo',
+  天秤座: 'Libra',
+  天蝎座: 'Scorpio',
+  射手座: 'Sagittarius',
+  摩羯座: 'Capricorn',
+  水瓶座: 'Aquarius',
+  双鱼座: 'Pisces',
+  '属{zodiac}': 'Year of the {zodiac}',
+  '{term}第{n}天': '{term}, day {n}',
+  '以此日排八字 →': 'Cast a 八字 chart for this day →',
 }

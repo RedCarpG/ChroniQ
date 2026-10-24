@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SharedChart } from '../lib/shareLink'
+import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 /** The card each chart page saves as its image */
@@ -29,6 +30,7 @@ function controlsHeight(card: HTMLElement) {
  * The image library loads only when an image is first saved.
  */
 export function ExportButton({ chart }: { chart: SharedChart }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -37,8 +39,8 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
   useDismiss(ref, open, close)
   useEffect(() => {
     if (!note) return
-    const t = setTimeout(() => setNote(null), 2200)
-    return () => clearTimeout(t)
+    const id = setTimeout(() => setNote(null), 2200)
+    return () => clearTimeout(id)
   }, [note])
 
   const saveImage = async () => {
@@ -73,9 +75,9 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
       link.href = url
       link.download = `星曆-${PAGE_NAME[chart.tab]}-${year}-${pad(month)}-${pad(day)}.png`
       link.click()
-      setNote('图片已保存')
+      setNote(t('图片已保存'))
     } catch {
-      setNote('图片保存失败，请改用打印')
+      setNote(t('图片保存失败，请改用打印'))
     } finally {
       setBusy(false)
     }
@@ -92,8 +94,8 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
       <button
         type="button"
         className="icon-btn"
-        aria-label="导出命盘"
-        title="导出命盘：保存为图片或打印"
+        aria-label={t('导出命盘')}
+        title={t('导出命盘：保存为图片或打印')}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-busy={busy}
@@ -113,10 +115,10 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
       {open && (
         <div className="export-menu" role="menu">
           <button type="button" role="menuitem" onClick={saveImage}>
-            保存为图片
+            {t('保存为图片')}
           </button>
           <button type="button" role="menuitem" onClick={print}>
-            打印
+            {t('打印')}
           </button>
         </div>
       )}
