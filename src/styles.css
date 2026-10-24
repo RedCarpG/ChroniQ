@@ -200,6 +200,12 @@ a { color: var(--accent); }
    Page switches: the old page slides out and fades while the new one slides in
    from the side of the new tab (data-page-dir says which way). */
 main { view-transition-name: page; }
+/* The 命盘 / 显示 drawer is lifted out with its own name, so while a transition runs (ticking an
+   option in 显示 crossfades the calendar) it stays on top as it is, not under the page's layers. */
+.drawer { view-transition-name: drawer; }
+::view-transition-group(drawer) { animation: none; z-index: 1; }
+::view-transition-old(drawer) { display: none; }
+::view-transition-new(drawer) { animation: none; }
 :root { --page-shift: 48px; --vt-ease: cubic-bezier(0.33, 1, 0.68, 1); }
 :root[data-page-dir='back'] { --page-shift: -48px; }
 :root[data-vt='page']::view-transition-group(page) { animation-duration: 0.4s; animation-timing-function: var(--vt-ease); }
