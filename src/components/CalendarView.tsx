@@ -1,9 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
 import { MonthOutline } from './MonthOutline'
+import { SmoothHeight } from './SmoothHeight'
+import { useDismiss } from './useDismiss'
 import {
   WEEKDAYS_EN,
   buildDayDetail,
@@ -262,6 +264,46 @@ export function CalendarView({ onPickBazi }: Props) {
 
           </div>
           <div className="cal-tools">
+            <DisplayMenu>
+              <fieldset className="holiday-choice">
+                <legend>{t('节假日')}</legend>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={holidays.china}
+                    onChange={() => updateHolidays({ ...holidays, china: !holidays.china })}
+                  />
+                  {t('中国')}
+                </label>
+                {(Object.keys(REGIONS) as RegionCode[]).map((code) => (
+                  <label key={code}>
+                    <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => toggleRegion(code)} />
+                    {t(REGIONS[code].name)}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset className="holiday-choice">
+                <legend>{t('命盘')}</legend>
+                {(
+                  [
+                    ['birthday', t('生日')],
+                    ['clash', t('冲合')],
+                    ['fortune', t('交运与太岁')],
+                    ['western', t('星盘')],
+                  ] as const
+                ).map(([item, label]) => (
+                  <label key={item}>
+                    <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => chartDays.toggleItem(item)} />
+                    {label}
+                  </label>
+                ))}
+                <small className="muted holiday-hint">
+                  {chartDays.charts.length === 0
+                    ? t('在左侧「命盘」里保存命盘后，它们的生日、冲合、交运等日子会显示在日历上。')
+                    : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
+                </small>
+              </fieldset>
+            </DisplayMenu>
             <div className="seg small" role="group" aria-label={t('视图')}>
               {VIEW_MODES.map((value) => (
                 <button
@@ -453,135 +495,99 @@ export function CalendarView({ onPickBazi }: Props) {
       </section>
 
       <aside className="card detail">
-        <div className="detail-hero">
-          <div className="big">{selected.getDay()}</div>
-          <div>
+        <SmoothHeight className="detail-body">
+          <div className="detail-hero">
+            <div className="big">{selected.getDay()}</div>
             <div>
-              {en
-                ? enDate(selected.getYear(), selected.getMonth(), selected.getDay(), { day: 'numeric', month: 'long', year: 'numeric' })
-                : detail.solarText}
-            </div>
-            <div className="muted">
-              {en
-                ? enDate(selected.getYear(), selected.getMonth(), selected.getDay(), { weekday: 'long' })
-                : detail.weekText}{' '}
-              · {t(detail.constellation)}
+              <div>
+                {en
+                  ? enDate(selected.getYear(), selected.getMonth(), selected.getDay(), { day: 'numeric', month: 'long', year: 'numeric' })
+                  : detail.solarText}
+              </div>
+              <div className="muted">
+                {en
+                  ? enDate(selected.getYear(), selected.getMonth(), selected.getDay(), { weekday: 'long' })
+                  : detail.weekText}{' '}
+                · {t(detail.constellation)}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="lunar-line">
-          {term('农历')}
-          {term(detail.lunarText)}
-          <span className="muted"> · {t('属{zodiac}', { zodiac: term(detail.zodiac) })}</span>
-        </div>
-        <div className="day-pillars" aria-label={detail.ganzhi}>
-          {detail.pillars.map((p) => (
-            <div key={p.label} className="day-pillar">
-              <span className="muted">{t(p.label)}</span>
-              <Char g={p.stem} />
-              <Char g={p.branch} />
-            </div>
-          ))}
-        </div>
-        {holidays.china && detail.festivals.length > 0 && (
-          <div className="tags">
-            {detail.festivals.map((f) => (
-              <span key={f} className="tag festival">
-                {term(f)}
-              </span>
+          <div className="lunar-line">
+            {term('农历')}
+            {term(detail.lunarText)}
+            <span className="muted"> · {t('属{zodiac}', { zodiac: term(detail.zodiac) })}</span>
+          </div>
+          <div className="day-pillars" aria-label={detail.ganzhi}>
+            {detail.pillars.map((p) => (
+              <div key={p.label} className="day-pillar">
+                <span className="muted">{t(p.label)}</span>
+                <Char g={p.stem} />
+                <Char g={p.branch} />
+              </div>
             ))}
           </div>
-        )}
-        {regionPicked.length > 0 && (
-          <div className="region-days">
-            <ul>
-              {regionPicked.map((d) => (
-                <li key={d.code + d.local}>
-                  <span className="tag-title neutral">{t(REGIONS[d.code].name)}</span>
-                  <span className={`tag region ${d.kind}`}>{dayName(d)}</span>
-                  <span className="muted">
-                    {d.local}
-                    {' · '}
-                    {d.kind === 'public' ? t('公众假日') : d.kind === 'regional' ? t('地区假日') : t('纪念日')}
-                    {d.note && ` · ${en ? d.noteEn : d.note}`}
-                  </span>
-                </li>
+          {holidays.china && detail.festivals.length > 0 && (
+            <div className="tags">
+              {detail.festivals.map((f) => (
+                <span key={f} className="tag festival">
+                  {term(f)}
+                </span>
               ))}
-            </ul>
-          </div>
-        )}
-        {(pickedChartDays.length > 0 || pickedTaiSui.length > 0) && (
-          <div className="mine-days">
-            <span className="tag-title neutral">{t('命盘')}</span>
-            <ul>
-              {pickedChartDays.map((d, i) => (
-                <li key={i} className={`mine-${d.kind}`}>
-                  {chartText(d)}
-                </li>
-              ))}
-              {pickedTaiSui.map((x) => (
-                <li key={x.name + x.which} className="mine-taisui">
-                  {x.which === '本命年' ? t('{name}本命年', { name: x.name }) : t('{name}冲太岁', { name: x.name })}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <dl className="kv">
-          <dt>{term('节气')}</dt>
-          <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
-          <dt>{term('建除')}</dt>
-          <dd>{term(detail.duty)}日</dd>
-          <dt>{term('值神')}</dt>
-          <dd>{term(detail.twelveStar)}</dd>
-          <dt>{term('星宿')}</dt>
-          <dd>{term(detail.twentyEightStar)}宿</dd>
-        </dl>
-        <TagBlock title={term('宜')} kind="good" items={detail.recommends.map(term)} />
-        <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
-        <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
-        <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
-        <button className="primary block" onClick={() => onPickBazi(selected)}>
-          {t('以此日排八字 →')}
-        </button>
-        <fieldset className="holiday-choice">
-          <legend>{t('节假日')}</legend>
-          <label>
-            <input
-              type="checkbox"
-              checked={holidays.china}
-              onChange={() => updateHolidays({ ...holidays, china: !holidays.china })}
-            />
-            {t('中国')}
-          </label>
-          {(Object.keys(REGIONS) as RegionCode[]).map((code) => (
-            <label key={code}>
-              <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => toggleRegion(code)} />
-              {t(REGIONS[code].name)}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset className="holiday-choice">
-          <legend>{t('命盘')}</legend>
-          {(
-            [
-              ['birthday', t('生日')],
-              ['clash', t('冲合')],
-              ['fortune', t('交运与太岁')],
-              ['western', t('星盘')],
-            ] as const
-          ).map(([item, label]) => (
-            <label key={item}>
-              <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => chartDays.toggleItem(item)} />
-              {label}
-            </label>
-          ))}
-          <small className="muted holiday-hint">
-            {chartDays.charts.length === 0
-              ? t('在左侧「命盘」里保存命盘后，它们的生日、冲合、交运等日子会显示在日历上。')
-              : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
-          </small>
-        </fieldset>
+            </div>
+          )}
+          {regionPicked.length > 0 && (
+            <div className="region-days">
+              <ul>
+                {regionPicked.map((d) => (
+                  <li key={d.code + d.local}>
+                    <span className="tag-title neutral">{t(REGIONS[d.code].name)}</span>
+                    <span className={`tag region ${d.kind}`}>{dayName(d)}</span>
+                    <span className="muted">
+                      {d.local}
+                      {' · '}
+                      {d.kind === 'public' ? t('公众假日') : d.kind === 'regional' ? t('地区假日') : t('纪念日')}
+                      {d.note && ` · ${en ? d.noteEn : d.note}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(pickedChartDays.length > 0 || pickedTaiSui.length > 0) && (
+            <div className="mine-days">
+              <span className="tag-title neutral">{t('命盘')}</span>
+              <ul>
+                {pickedChartDays.map((d, i) => (
+                  <li key={i} className={`mine-${d.kind}`}>
+                    {chartText(d)}
+                  </li>
+                ))}
+                {pickedTaiSui.map((x) => (
+                  <li key={x.name + x.which} className="mine-taisui">
+                    {x.which === '本命年' ? t('{name}本命年', { name: x.name }) : t('{name}冲太岁', { name: x.name })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <dl className="kv">
+            <dt>{term('节气')}</dt>
+            <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
+            <dt>{term('建除')}</dt>
+            <dd>{term(detail.duty)}日</dd>
+            <dt>{term('值神')}</dt>
+            <dd>{term(detail.twelveStar)}</dd>
+            <dt>{term('星宿')}</dt>
+            <dd>{term(detail.twentyEightStar)}宿</dd>
+          </dl>
+          <TagBlock title={term('宜')} kind="good" items={detail.recommends.map(term)} />
+          <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
+          <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
+          <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
+          <button className="primary block" onClick={() => onPickBazi(selected)}>
+            {t('以此日排八字 →')}
+          </button>
+        </SmoothHeight>
       </aside>
     </div>
   )
@@ -592,6 +598,48 @@ const zoomOf = (el: HTMLElement) => (el.offsetWidth ? el.getBoundingClientRect()
 
 /** The branch of the 干支 year that most of a Gregorian year falls in (from 立春) */
 const yearBranch = (year: number) => SolarDay.fromYmd(year, 6, 1).getSixtyCycleDay().getYear().getEarthBranch().getName()
+
+/**
+ * 显示: what the calendar marks — China's and other countries' holidays, and
+ * the saved charts' days — in a menu by the view switch, out of the day panel.
+ */
+function DisplayMenu({ children }: { children: ReactNode }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useDismiss(ref, open, close)
+  return (
+    <div className="cal-display" ref={ref}>
+      <button
+        type="button"
+        className="cal-display-btn"
+        aria-expanded={open}
+        aria-controls="cal-display-panel"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"
+          />
+          <circle cx="16" cy="6" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="10" cy="12" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="18" cy="18" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
+        </svg>
+        {t('显示')}
+      </button>
+      {open && (
+        <div id="cal-display-panel" className="cal-display-panel" role="dialog" aria-label={t('日历上显示')}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function TagBlock({ title, kind, items }: { title: string; kind: string; items: string[] }) {
   if (items.length === 0) return null

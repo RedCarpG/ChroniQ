@@ -48,6 +48,7 @@ export const CALENDAR: Record<string, string> = {
   // Other countries' days
   公众假日: 'Public holiday',
   节假日: 'Holidays',
+  日历上显示: 'Shown on the calendar',
   中国: 'China',
   // Legend
   图例: 'Key',
