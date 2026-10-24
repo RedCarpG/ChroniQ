@@ -1,12 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
 import { MonthOutline } from './MonthOutline'
-import { TitleMark } from './Logo'
-import { useDismiss } from './useDismiss'
+import { DrawerPageTab } from './SavedCharts'
+import { smoothUpdate } from './smoothUpdate'
 import {
   WEEKDAYS_EN,
   buildDayDetail,
@@ -46,9 +45,11 @@ const VIEW_MODES: ViewMode[] = ['month', 'week', 'year']
 
 interface Props {
   onPickBazi: (day: SolarDay) => void
+  /** 日历显示日干支, which is chosen in the calendar's own 显示 tab rather than the settings */
+  onDayGanzhi: (show: boolean) => void
 }
 
-export function CalendarView({ onPickBazi }: Props) {
+export function CalendarView({ onPickBazi, onDayGanzhi }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
@@ -548,21 +549,33 @@ export function CalendarView({ onPickBazi }: Props) {
           {t('以此日排八字 →')}
         </button>
       </aside>
-      {/* What the calendar shows: in a drawer on the right edge, the 命盘 drawer's twin */}
-      <DisplayDrawer count={(holidays.china ? 1 : 0) + holidays.regions.length + chartDays.items.length}>
+      {/* What the calendar shows: a 显示 tab in the left drawer, under 命盘. A change fades the
+          calendar from what it showed to what it shows (styles.css [data-vt='display']). */}
+      <DrawerPageTab
+        label={t('显示')}
+        title={t('日历显示')}
+        count={(dayGanzhi === 'show' ? 1 : 0) + (holidays.china ? 1 : 0) + holidays.regions.length + chartDays.items.length}
+      >
+        <fieldset className="holiday-choice">
+          <legend>{t('日历')}</legend>
+          <label>
+            <input type="checkbox" checked={dayGanzhi === 'show'} onChange={() => smoothUpdate('display', () => onDayGanzhi(dayGanzhi !== 'show'))} />
+            {term('日干支')}
+          </label>
+        </fieldset>
         <fieldset className="holiday-choice">
           <legend>{t('节假日')}</legend>
           <label>
             <input
               type="checkbox"
               checked={holidays.china}
-              onChange={() => updateHolidays({ ...holidays, china: !holidays.china })}
+              onChange={() => smoothUpdate('display', () => updateHolidays({ ...holidays, china: !holidays.china }))}
             />
             {t('中国')}
           </label>
           {(Object.keys(REGIONS) as RegionCode[]).map((code) => (
             <label key={code}>
-              <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => toggleRegion(code)} />
+              <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => smoothUpdate('display', () => toggleRegion(code))} />
               {t(REGIONS[code].name)}
             </label>
           ))}
@@ -578,7 +591,7 @@ export function CalendarView({ onPickBazi }: Props) {
             ] as const
           ).map(([item, label]) => (
             <label key={item}>
-              <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => chartDays.toggleItem(item)} />
+              <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => smoothUpdate('display', () => chartDays.toggleItem(item))} />
               {label}
             </label>
           ))}
@@ -588,54 +601,11 @@ export function CalendarView({ onPickBazi }: Props) {
               : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
           </small>
         </fieldset>
-      </DisplayDrawer>
+      </DrawerPageTab>
     </div>
   )
 }
 
-/**
- * The calendar's 显示 choices (holidays, saved charts' dates) in a drawer on the right edge of the
- * screen, as the 命盘 drawer is on the left: closed, a slim 显示 tab with how many are on; open,
- * the panel slides over the page. Rendered into <body>, beside the 命盘 drawer, so it takes the
- * page zoom (显示大小) the same way.
- */
-function DisplayDrawer({ count, children }: { count: number; children: ReactNode }) {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const close = useCallback(() => setOpen(false), [])
-  useDismiss(ref, open, close)
-  return createPortal(
-    <div className={`drawer right display-drawer${open ? ' open' : ''}`} ref={ref}>
-      <aside id="calendar-display" className="drawer-panel" aria-label={t('日历显示')} inert={!open}>
-        <div className="drawer-head">
-          <h3>
-            <TitleMark />
-            {t('日历显示')}
-          </h3>
-          <button type="button" className="chip-x" aria-label={t('收起')} onClick={close}>
-            ×
-          </button>
-        </div>
-        {children}
-      </aside>
-      <div className="drawer-rail">
-        <button
-          type="button"
-          className="drawer-handle"
-          aria-expanded={open}
-          aria-controls="calendar-display"
-          title={t('日历显示')}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span className="drawer-handle-text">{t('显示')}</span>
-          {count > 0 && <span className="drawer-count">{count}</span>}
-        </button>
-      </div>
-    </div>,
-    document.body,
-  )
-}
 
 /** How much the page's CSS zoom (显示大小) scales what getBoundingClientRect measures */
 const zoomOf = (el: HTMLElement) => (el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth : 1)

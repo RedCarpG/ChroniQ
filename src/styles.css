@@ -732,7 +732,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   border: 1px solid var(--border); border-left: 0; border-radius: 0 12px 12px 0;
   background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: 13px;
 }
-.drawer-handle:hover, .drawer.open .drawer-handle { color: var(--accent); }
+.drawer-handle:hover { color: var(--accent); }
 .drawer-handle-text { width: 1em; line-height: 1.15; word-break: break-all; }
 .drawer-count {
   min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; box-sizing: border-box;
@@ -761,16 +761,19 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .chip-x { border: 0; background: none; padding: 0 10px 0 6px; height: 30px; color: var(--muted); font-size: 15px; }
 .chip-x:hover { color: var(--bad); }
 @media (prefers-reduced-motion: reduce) { .drawer, .drawer-panel { transition: none; } }
-/* Its twin on the right edge: the calendar's 显示 choices */
-.drawer.right { left: auto; right: 0; flex-direction: row-reverse; transform: translateX(var(--drawer-w)); }
-.drawer.right.open { transform: none; }
-.drawer.right .drawer-panel { border-right: 0; border-left: 1px solid var(--border); }
-.drawer.right.open .drawer-panel { box-shadow: -8px 0 32px rgb(0 0 0 / 0.18); }
-.drawer.right .drawer-rail { align-items: flex-end; }
-.drawer.right .drawer-handle { border: 1px solid var(--border); border-right: 0; border-radius: 12px 0 0 12px; }
-.display-drawer .holiday-choice { margin: 0; padding: 14px 0 0; }
-.display-drawer .holiday-choice legend { float: none; width: auto; margin: 0 0 8px; color: var(--text); font-weight: 600; font-size: 14px; }
-@media print { .display-drawer { display: none; } }
+/* The drawer's panel shows one tab at a time: 命盘, or the page's own (the calendar's 显示) */
+.drawer-section { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.drawer-section[hidden] { display: none; }
+.drawer-rail-slot { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.drawer-handle[aria-expanded='true'] { color: var(--accent); }
+#drawer-page-panel .holiday-choice { margin: 0; padding: 14px 0 0; }
+#drawer-page-panel .holiday-choice legend { float: none; width: auto; margin: 0 0 8px; color: var(--text); font-weight: 600; font-size: 14px; }
+/* Changing what the calendar shows fades the grid and the day panel from before to after */
+:root[data-vt='display'] .calendar { view-transition-name: cal-main; }
+:root[data-vt='display'] .detail { view-transition-name: cal-detail; }
+:root[data-vt='display']::view-transition-group(*) { animation-duration: 0.35s; animation-timing-function: ease; }
+:root[data-vt='display']::view-transition-old(page) { display: none; }
+:root[data-vt='display']::view-transition-new(page) { animation: none; }
 
 /* ---------- 月 / 周 / 年视图 ---------- */
 .cal-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
