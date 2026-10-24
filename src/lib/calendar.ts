@@ -11,6 +11,9 @@ export interface DayCell {
   /** Text under the day number: festival > solar term > lunar day */
   sub: string
   subKind: 'festival' | 'term' | 'lunar' | 'month'
+  /** The same line without festivals (节气 > lunar day), for when Chinese festivals are hidden */
+  plainSub: string
+  plainKind: 'term' | 'lunar' | 'month'
   /** 日干支, e.g. 庚午 */
   ganzhi: string
   /** 节气 starting this day, if any */
@@ -66,13 +69,14 @@ function makeCell(solar: SolarDay, month: number, today: SolarDay): DayCell {
   const termName = termDay.getDayIndex() === 0 ? termDay.getSolarTerm().getName() : undefined
   const festival = solar.getFestival() ?? lunar.getFestival()
   const holiday = solar.getLegalHoliday()
+  const plain: Pick<DayCell, 'plainSub' | 'plainKind'> = termName
+    ? { plainSub: termName, plainKind: 'term' }
+    : lunar.getDay() === 1
+      ? { plainSub: lunar.getLunarMonth().getName(), plainKind: 'month' }
+      : { plainSub: lunar.getName(), plainKind: 'lunar' }
   const sub: Pick<DayCell, 'sub' | 'subKind'> = festival
     ? { sub: festival.getName(), subKind: 'festival' }
-    : termName
-      ? { sub: termName, subKind: 'term' }
-      : lunar.getDay() === 1
-        ? { sub: lunar.getLunarMonth().getName(), subKind: 'month' }
-        : { sub: lunar.getName(), subKind: 'lunar' }
+    : { sub: plain.plainSub, subKind: plain.plainKind }
   return {
     key: solar.toString(),
     solar,
@@ -85,6 +89,7 @@ function makeCell(solar: SolarDay, month: number, today: SolarDay): DayCell {
     termName,
     festival: festival?.getName(),
     ...sub,
+    ...plain,
   }
 }
 

@@ -194,7 +194,7 @@ export function App() {
         </footer>
       </div>
       {/* Outside .app: the drawer is fixed to the screen edge and takes the zoom itself */}
-      {tab !== 'calendar' && tab !== 'sky' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} />}
+      {tab !== 'sky' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} />}
       <SplashOverlay />
     </SettingsContext.Provider>
   )

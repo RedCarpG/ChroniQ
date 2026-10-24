@@ -14,7 +14,7 @@
   --earth: #a9772a;
   --metal: #c09a2a;
   --water: #2d6cb5;
-  --weekend: #fcf5f2;
+  --weekend: #f5e3dc;
   --logo-line: #B48A4C;
   --logo-star: #D7A765;
   /* 紫微运限 layers: 大限, 流年, 流月 */
@@ -47,7 +47,7 @@
     --earth: #d5a55a;
     --metal: #e3c25c;
     --water: #6aa5ea;
-    --weekend: #2a201d;
+    --weekend: #3a2721;
     --logo-line: #D7A765;
     --logo-star: #F4D9A2;
     --ly-decadal: #5cc2c7;
@@ -75,7 +75,7 @@
   --earth: #d5a55a;
   --metal: #e3c25c;
   --water: #6aa5ea;
-  --weekend: #2a201d;
+  --weekend: #3a2721;
   --logo-line: #D7A765;
   --logo-star: #F4D9A2;
   --ly-decadal: #5cc2c7;
@@ -278,8 +278,57 @@ footer {
 .day.weekend:not(.selected) { background: var(--weekend); }
 .day.weekend:not(.selected):hover { background: var(--surface-2); }
 .day.weekend .num { color: var(--accent); }
-.day.out { opacity: 0.35; }
-.day.today { border-color: var(--accent); }
+.day.out { opacity: 0.3; }
+.day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Kinds of day: one background each, strongest first (CalendarViews dayTone) */
+:root {
+  --tone-off: color-mix(in srgb, var(--good) 20%, transparent);
+  --tone-region: color-mix(in srgb, #3f6fbf 22%, transparent);
+  --tone-work: color-mix(in srgb, var(--muted) 24%, transparent);
+  --tone-festival: color-mix(in srgb, var(--accent) 13%, transparent);
+  --tone-mine: color-mix(in srgb, #8a5cc8 16%, transparent);
+}
+.day:not(.selected).tone-mine, .week-day:not(.selected).tone-mine { background: var(--tone-mine); }
+.day:not(.selected).tone-festival, .week-day:not(.selected).tone-festival { background: var(--tone-festival); }
+.day:not(.selected).tone-work, .week-day:not(.selected).tone-work { background: var(--tone-work); }
+.day:not(.selected).tone-region, .week-day:not(.selected).tone-region { background: var(--tone-region); }
+.day:not(.selected).tone-off, .week-day:not(.selected).tone-off { background: var(--tone-off); }
+.day.tone-off:not(.selected) .num { color: var(--good); }
+.day:not(.selected)[class*='tone-']:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
+.day.today:not(.selected)[class*='tone-']:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* The current month's days: one outline round the whole block, on a faint plate (MonthOutline) */
+.grid.days { position: relative; }
+.grid.days .day { z-index: 1; }
+.month-outline { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; }
+.month-outline path {
+  fill: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--border)); stroke-width: 1.5;
+}
+
+/* Changing month / week / year: the new one slides in from its side; changing view fades (CalendarView) */
+.cal-slide.next { animation: cal-in-next 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
+.cal-slide.back { animation: cal-in-back 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
+.cal-slide.fade { animation: cal-fade 0.25s ease both; }
+@keyframes cal-in-next { from { opacity: 0; transform: translateX(32px); } }
+@keyframes cal-in-back { from { opacity: 0; transform: translateX(-32px); } }
+@keyframes cal-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cal-slide.next, .cal-slide.back, .cal-slide.fade { animation: none; } }
+/* Clip the sideways slide only, so the year / month picker can still drop below the card */
+.calendar { overflow-x: clip; }
+
+/* Legend under the month and week views */
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 2px 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.cal-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border); }
+.cal-legend .tone-off { background: var(--tone-off); }
+.cal-legend .tone-region { background: var(--tone-region); }
+.cal-legend .tone-work { background: var(--tone-work); }
+.cal-legend .tone-festival { background: var(--tone-festival); }
+.cal-legend .tone-mine { background: var(--tone-mine); }
+.cal-legend .tone-weekend { background: var(--weekend); }
+.cal-legend .tone-today { border: 2px solid var(--accent); }
 .day.selected { background: var(--accent); }
 .day.selected .num, .day.selected .sub, .day.selected .gz { color: #fff; }
 .badge {
@@ -295,9 +344,36 @@ footer {
 .mini-day.region-off { box-shadow: inset 0 -2px 0 #3f6fbf; }
 .mini-marks .region { color: #3f6fbf; }
 .region-days { margin: 10px 0; display: grid; gap: 6px; }
-.cal-region { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; }
-.cal-title .cal-region .muted { display: inline; margin: 0; font-size: 12px; }
-.cal-region select { height: 26px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 12px; }
+/* 节假日 choice at the bottom of the day panel */
+/* The 节假日 and 命盘 choices: toggle chips (the checkbox stays, for keyboards and screen readers) */
+.holiday-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--border); font-size: 13px; }
+.holiday-choice legend { float: left; width: 3.2em; padding: 0; margin-right: 4px; color: var(--muted); }
+.holiday-choice label {
+  position: relative; display: inline-flex; align-items: center; height: 28px; padding: 0 11px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.holiday-choice label:hover { border-color: var(--accent); }
+.holiday-choice label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.holiday-choice label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.holiday-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.region-days li .tag-title { margin-right: 2px; }
+.holiday-hint { flex-basis: 100%; font-size: 11px; }
+/* 命盘: the saved charts' dates, in purple */
+.day .mine-line, .week-day .mine-line {
+  display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 10px; color: #8a5cc8;
+}
+.day.mine::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #8a5cc8; }
+.day.selected .mine-line { color: #fff; }
+.mini-day.mine { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #8a5cc8 70%, transparent); }
+.mini-marks .mine { color: #8a5cc8; }
+.year-taisui { margin: 0 0 8px; color: #8a5cc8; }
+.mine-days { margin: 10px 0; display: grid; gap: 6px; }
+.mine-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 13px; color: #8a5cc8; }
+.mine-days .mine-pillar { color: var(--muted); }
+.saved-calendar { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 11px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.saved-calendar input { accent-color: var(--accent); }
 .region-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .region-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }
@@ -616,7 +692,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .mini-day:hover { background: var(--surface-2); }
 .mini-day.weekend { background: var(--weekend); }
-.mini-day.off { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.mini-day.off { background: var(--tone-off); }
+.mini-day.work { background: var(--tone-work); }
 .mini-day.term { color: var(--good); font-weight: 700; }
 .mini-day.festival { color: var(--accent); font-weight: 700; }
 .mini-day.today { border-color: var(--accent); }
@@ -1211,7 +1288,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   html:root:root {
     --bg: #ffffff; --surface: #ffffff; --surface-2: #f1ece4; --text: #2b2724; --muted: #6f665f;
     --border: #ddd5ca; --accent: #b23a2e; --accent-soft: #f6e3df; --good: #2f7d4f; --bad: #b23a2e;
-    --wood: #3f8f4f; --fire: #d1452f; --earth: #a9772a; --metal: #b08a1a; --water: #2d6cb5; --weekend: #fcf5f2;
+    --wood: #3f8f4f; --fire: #d1452f; --earth: #a9772a; --metal: #b08a1a; --water: #2d6cb5; --weekend: #f5e3dc;
     --logo-line: #b48a4c; --logo-star: #d7a765; --shadow: none; --ui-zoom: 1;
     --ly-decadal: #23838a; --ly-yearly: #c0661a; --ly-monthly: #5a62c2; --ly-daily: #b0407a; --ly-hourly: #5d7a1e;
     color-scheme: light;
