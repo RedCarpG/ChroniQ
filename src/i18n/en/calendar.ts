@@ -47,6 +47,8 @@ export const CALENDAR: Record<string, string> = {
   '以此日排八字 →': 'Cast a 八字 chart for this day →',
   // Other countries' days
   公众假日: 'Public holiday',
+  节假日: 'Holidays',
+  中国: 'China',
   地区假日: 'Regional holiday',
   纪念日: 'Notable day',
 }

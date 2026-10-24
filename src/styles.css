@@ -295,9 +295,12 @@ footer {
 .mini-day.region-off { box-shadow: inset 0 -2px 0 #3f6fbf; }
 .mini-marks .region { color: #3f6fbf; }
 .region-days { margin: 10px 0; display: grid; gap: 6px; }
-.cal-region { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; }
-.cal-title .cal-region .muted { display: inline; margin: 0; font-size: 12px; }
-.cal-region select { height: 26px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 12px; }
+/* 节假日 choice at the bottom of the day panel */
+.holiday-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 14px 0 0; padding: 10px 0 0; border: 0; border-top: 1px solid var(--border); font-size: 13px; }
+.holiday-choice legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
+.holiday-choice label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.holiday-choice input { accent-color: var(--accent); }
+.region-days li .tag-title { margin-right: 2px; }
 .region-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .region-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }

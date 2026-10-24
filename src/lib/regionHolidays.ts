@@ -137,27 +137,59 @@ export const REGIONS: Record<RegionCode, { name: string; en: string; tag: string
   fr: { name: '法国', en: 'France', tag: 'FR', rules: FRANCE },
 }
 
-const REGION_KEY = 'chroniq-calendar-region'
-const isRegion = (v: unknown): v is Region => v === 'none' || (typeof v === 'string' && v in REGIONS)
+/** Which holidays the calendar shows: China's (festivals and 休 / 班) and any other countries' */
+export interface HolidayChoice {
+  china: boolean
+  regions: RegionCode[]
+}
 
-/** The calendar's chosen region, kept in this browser (it used to live in the app settings) */
-export function loadRegion(): Region {
+const CHOICE_KEY = 'chroniq-calendar-holidays'
+const isCode = (v: unknown): v is RegionCode => typeof v === 'string' && v in REGIONS
+
+/**
+ * The calendar's holiday choice, kept in this browser. Earlier versions kept a
+ * single other country, on the calendar page or in the app settings; that
+ * carries over.
+ */
+export function loadHolidayChoice(): HolidayChoice {
   try {
-    const saved = localStorage.getItem(REGION_KEY)
-    if (isRegion(saved)) return saved
-    const legacy = (JSON.parse(localStorage.getItem('chroniq-settings') ?? '{}') as { region?: unknown }).region
-    return isRegion(legacy) ? legacy : 'none'
+    const saved = JSON.parse(localStorage.getItem(CHOICE_KEY) ?? 'null') as Partial<HolidayChoice> | null
+    if (saved) return { china: saved.china !== false, regions: (saved.regions ?? []).filter(isCode) }
+    const legacy =
+      localStorage.getItem('chroniq-calendar-region') ??
+      (JSON.parse(localStorage.getItem('chroniq-settings') ?? '{}') as { region?: unknown }).region
+    return { china: true, regions: isCode(legacy) ? [legacy] : [] }
   } catch {
-    return 'none'
+    return { china: true, regions: [] }
   }
 }
 
-export function saveRegion(region: Region): void {
+export function saveHolidayChoice(choice: HolidayChoice): void {
   try {
-    localStorage.setItem(REGION_KEY, region)
+    localStorage.setItem(CHOICE_KEY, JSON.stringify(choice))
   } catch {
     // storage unavailable: lasts for this visit
   }
+}
+
+/** A country's day with that country's tag (e.g. FR), for the calendar */
+export interface TaggedRegionDay extends RegionDay {
+  code: RegionCode
+  tag: string
+}
+
+/** The chosen countries' days on a date */
+export function chosenDays(regions: RegionCode[], year: number, month: number, day: number): TaggedRegionDay[] {
+  return regions.flatMap((code) => regionDays(code, year, month, day).map((d) => ({ ...d, code, tag: REGIONS[code].tag })))
+}
+
+/** The tags to show on a date: countries with a day off (all of it, or only part) */
+export function offTags(days: TaggedRegionDay[]): { tag: string; partial: boolean }[] {
+  const codes = [...new Set(days.filter((d) => d.kind !== 'observance').map((d) => d.code))]
+  return codes.map((code) => ({
+    tag: REGIONS[code].tag,
+    partial: !days.some((d) => d.code === code && d.kind === 'public'),
+  }))
 }
 
 const cache = new Map<string, Map<string, RegionDay[]>>()

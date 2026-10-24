@@ -1,6 +1,6 @@
 import type { SolarDay } from 'tyme4ts'
 import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
-import type { RegionDay } from '../lib/regionHolidays'
+import { offTags, type RegionDay, type TaggedRegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] // tyme4ts index: 0 = Sunday
@@ -13,16 +13,13 @@ export function WeekView({
   onSelect,
   showGanzhi,
   regionOf,
-  regionTag,
 }: {
   days: WeekDay[]
   selected: SolarDay
   onSelect: (day: SolarDay) => void
   showGanzhi: boolean
-  /** The chosen country's days on a date (其他地区节日) */
-  regionOf: (day: SolarDay) => RegionDay[]
-  /** Its tag on days off, e.g. FR */
-  regionTag: string
+  /** The chosen countries' days on a date */
+  regionOf: (day: SolarDay) => TaggedRegionDay[]
 }) {
   const term = useTerm()
   const t = useT()
@@ -50,8 +47,10 @@ export function WeekView({
               {en ? WEEKDAYS_EN[d.solar.getWeek().getIndex()] : `周${WEEKDAYS[d.solar.getWeek().getIndex()]}`}
             </span>
             {d.holiday && <span className={`badge ${d.holiday === '休' ? 'off' : 'work'}`}>{t(d.holiday)}</span>}
-            {rd.some((x) => x.kind !== 'observance') && (
-              <span className={`badge region${rd.some((x) => x.kind === 'public') ? '' : ' partial'}`}>{regionTag}</span>
+            {offTags(rd).length > 0 && (
+              <span className={`badge region${offTags(rd).every((x) => x.partial) ? ' partial' : ''}`}>
+                {offTags(rd).map((x) => x.tag).join(' ')}
+              </span>
             )}
           </span>
           <span className="num">{d.day}</span>
@@ -87,7 +86,7 @@ export function YearView({
   weekStart: WeekStart
   selected: SolarDay
   onSelect: (day: SolarDay) => void
-  regionOf: (day: SolarDay) => RegionDay[]
+  regionOf: (day: SolarDay) => TaggedRegionDay[]
   onOpenMonth: (month: number) => void
 }) {
   const term = useTerm()
