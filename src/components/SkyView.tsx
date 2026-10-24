@@ -382,7 +382,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     if (!pathTimes || dragging) return null
     const tracks = tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
     return PATH_BODIES.map((key) => pathOf(key, tracks[key]))
-  }, [pathTimes, place.latitude, place.longitude])
+    // dragging too: letting go must bring them back, though the time has not moved since the last step
+  }, [pathTimes, dragging, place.latitude, place.longitude])
   const clipId = useId()
   const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
   // A constellation or 星官 can be chosen too (its key is fig + its id)

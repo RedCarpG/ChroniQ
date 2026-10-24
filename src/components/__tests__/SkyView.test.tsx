@@ -194,6 +194,12 @@ describe('SkyView dragged through time', () => {
     // Mid-drag: only Saturn's path, still picked out
     expect(map.querySelectorAll('.sky-path')).toHaveLength(1)
     expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+    // Let go: all the paths come back, at the time the drag left
+    fireEvent.pointerUp(map, { pointerId: 3, pointerType: 'mouse', clientX: 160, clientY: 200 })
+    flush()
+    flush()
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(7)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
   })
 
   it('does not draw a chosen figure in again as the time moves on', () => {
