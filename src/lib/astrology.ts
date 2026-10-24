@@ -147,7 +147,7 @@ export function formatLon(lon: number, signName: (sign: string) => string = (s) 
 /* ---------- Computation ---------- */
 
 /** Geocentric apparent longitude on the true ecliptic of date. */
-function bodyLon(body: A.Body, t: A.AstroTime): number {
+export function bodyLon(body: A.Body, t: A.AstroTime): number {
   return A.Ecliptic(A.GeoVector(body, t, true)).elon
 }
 

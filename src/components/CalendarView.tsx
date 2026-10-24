@@ -26,6 +26,8 @@ import {
   type RegionDay,
 } from '../lib/regionHolidays'
 import type { DayCell } from '../lib/calendar'
+import { onGrid, type ChartDay } from '../lib/chartDays'
+import { useChartDayText, useChartDays } from './useChartDays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
@@ -67,6 +69,12 @@ export function CalendarView({ onPickBazi }: Props) {
   /** With China's holidays hidden, a day shows its 节气 or lunar date instead, and no 休 / 班 */
   const withChina = <T extends DayCell>(c: T): T =>
     holidays.china ? c : { ...c, festival: undefined, holiday: undefined, sub: c.plainSub, subKind: c.plainKind }
+  // 命盘: the saved charts' dates (birthdays, 冲 / 合, 交运, 星盘), chosen in the day panel
+  const chartDays = useChartDays()
+  const chartText = useChartDayText()
+  /** A chart's dates worth a line in the grid, on a day */
+  const gridDays = (solar: SolarDay, ganzhi: string) => chartDays.daysOf(solar, ganzhi).filter(onGrid)
+  const chartLine = (days: ChartDay[]) => (days.length > 1 ? `${chartText(days[0])} +${days.length - 1}` : chartText(days[0]))
   const modeLabel: Record<ViewMode, string> = { month: t('月'), week: t('周'), year: t('年') }
   // aria-labels for « ‹ › » in each mode
   const navLabels: Record<ViewMode, [string, string, string, string]> = {
@@ -87,6 +95,9 @@ export function CalendarView({ onPickBazi }: Props) {
     en ? enDate(d.getYear(), d.getMonth(), d.getDay(), { day: 'numeric', month: 'short' }) : `${d.getMonth()}月${d.getDay()}日`
   const weekRange = weekDays.length > 0 ? `${monthDay(weekDays[0].solar)} – ${monthDay(weekDays[6].solar)}` : ''
   const detail = useMemo(() => buildDayDetail(selected), [selected])
+  // The selected day's chart dates (all of them, not only those on the grid) and 太岁 by its 干支 year
+  const pickedChartDays = chartDays.daysOf(selected, detail.pillars[2].stem.char + detail.pillars[2].branch.char)
+  const pickedTaiSui = chartDays.taiSuiOf(detail.pillars[0].branch.char)
 
   const shiftMonth = (delta: number) =>
     setView(({ year, month }) => {
@@ -213,6 +224,7 @@ export function CalendarView({ onPickBazi }: Props) {
                 const rd = regionOf(c.solar)
                 // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
                 const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
+                const mine = gridDays(c.solar, c.ganzhi)
                 return (
                 <button
                   key={c.key}
@@ -222,9 +234,11 @@ export function CalendarView({ onPickBazi }: Props) {
                     c.isToday && 'today',
                     c.isWeekend && 'weekend',
                     sameDay(c.solar, selected) && 'selected',
+                    mine.length > 0 && 'mine',
                   ]
                     .filter(Boolean)
                     .join(' ')}
+                  title={mine.map(chartText).join('\n') || undefined}
                   onClick={() => select(c.solar)}
                 >
                   {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
@@ -240,6 +254,7 @@ export function CalendarView({ onPickBazi }: Props) {
                     <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
                   )}
                   {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
+                  {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
                 </button>
                 )
               })}
@@ -254,9 +269,19 @@ export function CalendarView({ onPickBazi }: Props) {
             onSelect={select}
             showGanzhi={dayGanzhi === 'show'}
             regionOf={regionOf}
+            chartDaysOf={gridDays}
+            chartText={chartText}
           />
         )}
 
+        {mode === 'year' && chartDays.taiSuiOf(yearBranch(view.year)).length > 0 && (
+          <p className="muted row-note year-taisui">
+            {chartDays
+              .taiSuiOf(yearBranch(view.year))
+              .map((x) => (x.which === '本命年' ? t('{name}本命年', { name: x.name }) : t('{name}冲太岁', { name: x.name })))
+              .join(' · ')}
+          </p>
+        )}
         {mode === 'year' && (
           <YearView
             months={yearMonths}
@@ -264,6 +289,8 @@ export function CalendarView({ onPickBazi }: Props) {
             selected={selected}
             onSelect={select}
             regionOf={regionOf}
+            chartDaysOf={gridDays}
+            chartText={chartText}
             onOpenMonth={(month) => {
               setView((v) => ({ ...v, month }))
               setMode('month')
@@ -330,6 +357,23 @@ export function CalendarView({ onPickBazi }: Props) {
             </ul>
           </div>
         )}
+        {(pickedChartDays.length > 0 || pickedTaiSui.length > 0) && (
+          <div className="mine-days">
+            <span className="tag-title neutral">{t('命盘')}</span>
+            <ul>
+              {pickedChartDays.map((d, i) => (
+                <li key={i} className={`mine-${d.kind}`}>
+                  {chartText(d)}
+                </li>
+              ))}
+              {pickedTaiSui.map((x) => (
+                <li key={x.name + x.which} className="mine-taisui">
+                  {x.which === '本命年' ? t('{name}本命年', { name: x.name }) : t('{name}冲太岁', { name: x.name })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <dl className="kv">
           <dt>{term('节气')}</dt>
           <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
@@ -364,10 +408,34 @@ export function CalendarView({ onPickBazi }: Props) {
             </label>
           ))}
         </fieldset>
+        <fieldset className="holiday-choice">
+          <legend>{t('命盘')}</legend>
+          {(
+            [
+              ['birthday', t('生日')],
+              ['clash', t('冲合')],
+              ['fortune', t('交运与太岁')],
+              ['western', t('星盘')],
+            ] as const
+          ).map(([item, label]) => (
+            <label key={item}>
+              <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => chartDays.toggleItem(item)} />
+              {label}
+            </label>
+          ))}
+          <small className="muted holiday-hint">
+            {chartDays.charts.length === 0
+              ? t('在左侧「命盘」里保存命盘后，它们的生日、冲合、交运等日子会显示在日历上。')
+              : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
+          </small>
+        </fieldset>
       </aside>
     </div>
   )
 }
+
+/** The branch of the 干支 year that most of a Gregorian year falls in (from 立春) */
+const yearBranch = (year: number) => SolarDay.fromYmd(year, 6, 1).getSixtyCycleDay().getYear().getEarthBranch().getName()
 
 function TagBlock({ title, kind, items }: { title: string; kind: string; items: string[] }) {
   if (items.length === 0) return null

@@ -301,6 +301,22 @@ footer {
 .holiday-choice label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .holiday-choice input { accent-color: var(--accent); }
 .region-days li .tag-title { margin-right: 2px; }
+.holiday-hint { flex-basis: 100%; font-size: 11px; }
+/* 命盘: the saved charts' dates, in purple */
+.day .mine-line, .week-day .mine-line {
+  display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 10px; color: #8a5cc8;
+}
+.day.mine::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #8a5cc8; }
+.day.selected .mine-line { color: #fff; }
+.mini-day.mine { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #8a5cc8 70%, transparent); }
+.mini-marks .mine { color: #8a5cc8; }
+.year-taisui { margin: 0 0 8px; color: #8a5cc8; }
+.mine-days { margin: 10px 0; display: grid; gap: 6px; }
+.mine-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 13px; color: #8a5cc8; }
+.mine-days .mine-pillar { color: var(--muted); }
+.saved-calendar { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 11px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.saved-calendar input { accent-color: var(--accent); }
 .region-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .region-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }

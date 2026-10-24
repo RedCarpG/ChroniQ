@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
+import { useCalendarHidden, useSavedCharts } from './chartStore'
 import type { BaziInput } from '../lib/bazi'
-import { loadCharts, sameInput, saveCharts, upsertChart, type SavedChart } from '../lib/savedCharts'
+import { sameInput, upsertChart } from '../lib/savedCharts'
 import { translate, type Lang } from '../i18n'
 import { useSettings, useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
@@ -12,12 +13,23 @@ export const DRAWER_RAIL_SLOT = 'drawer-rail-slot'
 /**
  * Saved charts in a drawer on the left edge of the screen. Closed, only a
  * slim 命盘 tab shows; open, the panel slides over the page (nothing below
- * moves). Loading a chart closes it again.
+ * moves). Loading a chart closes it again. On the calendar page each chart
+ * also gets a 日历 tick: whether its dates show on the calendar.
  */
-export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad: (input: BaziInput) => void }) {
+export function SavedChartsDrawer({
+  input,
+  onLoad,
+  calendar = false,
+}: {
+  input: BaziInput
+  onLoad: (input: BaziInput) => void
+  /** On the calendar page: show the 日历 ticks */
+  calendar?: boolean
+}) {
   const t = useT()
   const { language } = useSettings()
-  const [charts, setCharts] = useState<SavedChart[]>(loadCharts)
+  const [charts, update] = useSavedCharts()
+  const [hidden, toggleHidden] = useCalendarHidden()
   const active = charts.find((c) => sameInput(c.input, input))
   const [name, setName] = useState('')
   const [open, setOpen] = useState(false)
@@ -25,10 +37,6 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
 
-  const update = (next: SavedChart[]) => {
-    setCharts(next)
-    saveCharts(next)
-  }
   const save = () => {
     const finalName = name.trim() || active?.name || t('命盘{n}', { n: charts.length + 1 })
     update(upsertChart(charts, finalName, input))
@@ -80,6 +88,12 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
                   <span className="saved-name">{c.name}</span>
                   <small className="muted">{describe(c.input, language)}</small>
                 </button>
+                {calendar && (
+                  <label className="saved-calendar" title={t('在日历上显示这张命盘的日子')}>
+                    <input type="checkbox" checked={!hidden.includes(c.id)} onChange={() => toggleHidden(c.id)} />
+                    {t('日历')}
+                  </label>
+                )}
                 <button
                   type="button"
                   className="chip-x"

@@ -20,16 +20,16 @@ export interface Relation {
 
 const STEM_COMBINE: [string, string][] = [['甲己', '土'], ['乙庚', '金'], ['丙辛', '水'], ['丁壬', '木'], ['戊癸', '火']]
 const STEM_CLASH = ['甲庚', '乙辛', '丙壬', '丁癸']
-const SIX_COMBINE: [string, string][] = [['子丑', '土'], ['寅亥', '木'], ['卯戌', '火'], ['辰酉', '金'], ['巳申', '水']]
+export const SIX_COMBINE: [string, string][] = [['子丑', '土'], ['寅亥', '木'], ['卯戌', '火'], ['辰酉', '金'], ['巳申', '水']]
 const THREE_COMBINE: [string, string][] = [['申子辰', '水'], ['亥卯未', '木'], ['寅午戌', '火'], ['巳酉丑', '金']]
 const THREE_MEET: [string, string][] = [['寅卯辰', '木'], ['巳午未', '火'], ['申酉戌', '金'], ['亥子丑', '水']]
-const SIX_CLASH = ['子午', '丑未', '寅申', '卯酉', '辰戌', '巳亥']
+export const SIX_CLASH = ['子午', '丑未', '寅申', '卯酉', '辰戌', '巳亥']
 const SIX_HARM = ['子未', '丑午', '寅巳', '卯辰', '申亥', '酉戌']
 const BREAK = ['子酉', '卯午', '辰丑', '未戌', '寅亥', '巳申']
-const PUNISH: [string, string][] = [['寅巳', '无恩之刑'], ['巳申', '无恩之刑'], ['寅申', '无恩之刑'], ['丑戌', '恃势之刑'], ['戌未', '恃势之刑'], ['丑未', '恃势之刑'], ['子卯', '无礼之刑']]
-const SELF_PUNISH = '辰午酉亥'
+export const PUNISH: [string, string][] = [['寅巳', '无恩之刑'], ['巳申', '无恩之刑'], ['寅申', '无恩之刑'], ['丑戌', '恃势之刑'], ['戌未', '恃势之刑'], ['丑未', '恃势之刑'], ['子卯', '无礼之刑']]
+export const SELF_PUNISH = '辰午酉亥'
 
-const isPair = (pair: string, a: string, b: string) => (pair[0] === a && pair[1] === b) || (pair[0] === b && pair[1] === a)
+export const isPair = (pair: string, a: string, b: string) => (pair[0] === a && pair[1] === b) || (pair[0] === b && pair[1] === a)
 
 /**
  * All relations among the given pillars. When `focus` is given, only relations
