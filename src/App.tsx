@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { CalendarView } from './components/CalendarView'
 import { BaziView } from './components/BaziView'
 import { AboutBadges } from './components/AboutBadges'
@@ -120,11 +120,24 @@ export function App() {
     document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
   }, [settings.language])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
+  // The top bar's height, for pages laid out to fill the window under it (the calendar)
+  const appRef = useRef<HTMLDivElement>(null)
+  const topbarRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const app = appRef.current
+    const bar = topbarRef.current
+    if (!app || !bar) return
+    const set = () => app.style.setProperty('--topbar-h', `${bar.offsetHeight}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [])
 
   return (
     <SettingsContext.Provider value={settings}>
-      <div className="app">
-        <header className="topbar">
+      <div className={`app page-${tab}`} ref={appRef}>
+        <header className="topbar" ref={topbarRef}>
           <h1>
             <Logo />
             星曆

@@ -137,6 +137,8 @@ export function CalendarView({ onPickBazi }: Props) {
   // moves or flashes at the swap.
   const windowRef = useRef<HTMLDivElement>(null)
   const gridHeight = useRef(0)
+  // The plain grid's row height: the strip keeps it, also where the grid is stretched to fill the window
+  const rowHeight = useRef(0)
   const running = useRef<{ id: number; anim: Animation } | null>(null)
   useLayoutEffect(() => {
     const win = windowRef.current
@@ -151,6 +153,8 @@ export function CalendarView({ onPickBazi }: Props) {
         win.classList.remove('scrolling')
       }
       gridHeight.current = grid.getBoundingClientRect().height / zoomOf(grid)
+      const firstDay = grid.querySelector<HTMLElement>('.day')
+      if (firstDay) rowHeight.current = firstDay.getBoundingClientRect().height / zoomOf(grid)
       return
     }
     if (running.current?.id === s.id) return
@@ -306,7 +310,14 @@ export function CalendarView({ onPickBazi }: Props) {
             </div>
             <div key={viewKey.current} className={`cal-slide ${slide.current}`}>
               <div className="month-window" ref={windowRef}>
-              <div className="grid days">
+              <div
+                className="grid days"
+                style={
+                  scroll.current && rowHeight.current
+                    ? { gridTemplateRows: `repeat(${scroll.current.cells.length / 7}, ${rowHeight.current}px)`, height: 'auto' }
+                    : undefined
+                }
+              >
                 <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}-${scroll.current ? 'strip' : 'grid'}`} />
                 {monthCells.map((c) => {
                   const rd = regionOf(c.solar)
