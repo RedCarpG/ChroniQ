@@ -168,6 +168,36 @@ describe('SkyView hovered while one is chosen', () => {
 })
 
 describe('SkyView dragged through time', () => {
+  it('keeps the chosen one’s path while the others wait for the drag to end', () => {
+    const { map, row } = setUp()
+    fireEvent.click(row('土星'))
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+    fireEvent.pointerDown(map, { pointerId: 3, pointerType: 'mouse', button: 0, clientX: 100, clientY: 200 })
+    fireEvent.pointerMove(map, { pointerId: 3, pointerType: 'mouse', clientX: 160, clientY: 200 })
+    flush()
+    // Mid-drag: only Saturn's path, still picked out
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(1)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+  })
+
+  it('does not draw a chosen figure in again as the time moves on', () => {
+    const { map, container } = setUp()
+    // One near the pole, up all night, late in the list: figures before it rise and set, and its place shifts
+    const ursaMinor = [...map.querySelectorAll('.sky-figure')].find((g) => g.getAttribute('data-tip') === '小熊座')!
+    fireEvent.click(ursaMinor)
+    const chosen = map.querySelector('.sky-figure.on')
+    expect(chosen).toBe(ursaMinor)
+    const input = container.querySelector<HTMLInputElement>('.sky-controls input[type=time]')!
+    for (const time of ['06:00', '09:00', '12:00']) {
+      fireEvent.change(input, { target: { value: time } })
+      // The same element: its draw-in animation does not start over
+      expect(map.querySelector('.sky-figure.on')).toBe(chosen)
+    }
+  })
+
   it('turns the time with the middle button also when zoomed in, where the left button moves the map', () => {
     const { map, time } = setUp()
     fireEvent.click(document.querySelector('.sky-zoom-buttons [aria-label="放大"]')!)
