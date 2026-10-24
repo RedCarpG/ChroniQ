@@ -1,4 +1,5 @@
 // App-wide display settings, kept per viewer in localStorage.
+import type { Region } from './regionHolidays'
 
 export interface Settings {
   /** 界面语言 (proper nouns stay Chinese) */
@@ -7,6 +8,8 @@ export interface Settings {
   /** 专有名词字形 */
   script: 'trad' | 'simp'
   weekStart: 'mon' | 'sun'
+  /** 其他地区节日: another country's holidays and notable days in the calendar */
+  region: Region
   /** 日历格子里显示日干支 */
   dayGanzhi: 'show' | 'hide'
   /** 紫微星曜配色 */
@@ -15,7 +18,7 @@ export interface Settings {
   uiScale: 'auto' | '100' | '115' | '130'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', region: 'none', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -45,6 +48,13 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
     options: [
       { value: 'mon', label: '周一' },
       { value: 'sun', label: '周日' },
+    ],
+  },
+  region: {
+    title: '其他地区节日',
+    options: [
+      { value: 'none', label: '不显示' },
+      { value: 'fr', label: '法国' },
     ],
   },
   dayGanzhi: {

@@ -287,6 +287,18 @@ footer {
 }
 .badge.off { background: var(--good); }
 .badge.work { background: var(--muted); }
+/* 其他地区节日: the country's tag sits top-left; paler for a day off only in part of it */
+.badge.region { right: auto; left: 4px; background: #2f5fa7; letter-spacing: 0.04em; }
+.badge.region.partial { background: color-mix(in srgb, #2f5fa7 55%, transparent); }
+.day .sub.region, .week-day .sub.region { color: #3f6fbf; }
+.day .sub.region.observance { color: color-mix(in srgb, #3f6fbf 75%, var(--muted)); }
+.mini-day.region-off { box-shadow: inset 0 -2px 0 #3f6fbf; }
+.mini-marks .region { color: #3f6fbf; }
+.region-days { margin: 10px 0; display: grid; gap: 6px; }
+.region-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.region-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }
+.tag.region.observance { background: var(--surface-2); color: var(--text); }
 
 .detail { display: flex; flex-direction: column; gap: 12px; }
 .detail-hero { display: flex; align-items: center; gap: 12px; }
