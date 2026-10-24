@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toUtc, type StarPlace } from '../lib/astrology'
 import { formatAzimuth, skyAt, type SkyBody, type SkyStar } from '../lib/sky'
+import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 
 // The map: the horizon is the rim, the zenith the centre, altitude falling off
@@ -18,7 +19,9 @@ const starColour = (bv: number) =>
   bv < 0 ? '#a9bfff' : bv < 0.3 ? '#d4dfff' : bv < 0.6 ? '#f8f7ff' : bv < 1 ? '#fff1dc' : bv < 1.4 ? '#ffd6a8' : '#ffb98a'
 const starRadius = (mag: number) => Math.max(0.6, 3.2 - 0.55 * mag)
 
-const BODY_COLOUR: Record<string, string> = {
+export const BODY_COLOUR: Record<string, string> = {
+  earth: '#5b9bf0',
+  pluto: '#c8b6a6',
   sun: '#ffcf4a',
   moon: '#ece6d6',
   mercury: '#c9bfb1',
@@ -77,6 +80,12 @@ const LIGHT_NOTE = {
   night: '',
 }
 
+const pad = (n: number) => String(n).padStart(2, '0')
+const ymd = (date: string) => {
+  const [year, month, day] = date.split('-').map(Number)
+  return { year, month, day }
+}
+
 /** Wall-clock date and time of an instant in a time zone, as the inputs want them */
 function wallTime(d: Date, timeZone: string) {
   const parts = Object.fromEntries(
@@ -96,7 +105,7 @@ function wallTime(d: Date, timeZone: string) {
 }
 
 /**
- * 此刻天空: the real sky above the 星盘's place — the Sun, Moon, planets and
+ * 此刻天空: the real sky above the 天象 page's place — the Sun, Moon, planets and
  * stars to magnitude 5 that are above the horizon. It follows the present
  * moment until a date or time is picked (read in the place's time zone).
  */
@@ -139,20 +148,17 @@ export function SkyView({ place }: { place: StarPlace }) {
   )
 
   return (
-    <section className="card" id="star-sky">
+    <section className="card" id="sky-now">
       <div className="fortunes-head sky-head">
         <h3 className="section-title">
           <TitleMark />
           此刻天空
         </h3>
         <div className="overlay-bar sky-controls">
-          <input
-            type="date"
-            aria-label="日期"
-            value={wall.date}
-            min="1900-01-01"
-            max="2100-12-31"
-            onChange={(e) => e.target.value && setPicked({ ...wall, date: e.target.value })}
+          <DateParts
+            label="日期"
+            value={ymd(wall.date)}
+            onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
           />
           <input
             type="time"
@@ -175,7 +181,7 @@ export function SkyView({ place }: { place: StarPlace }) {
       </div>
       <p className="muted row-note">
         {place.name}上空 · 当地时间 {wall.date} {wall.time}
-        {picked ? '' : '（随时间更新）'} · 上为北、左为东，如仰望天空。这是天体在天上的实际位置，与上方以黄道十二宫计的星座不同。
+        {picked ? '' : '（随时间更新）'} · 上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。
       </p>
 
       <div className="sky-layout">

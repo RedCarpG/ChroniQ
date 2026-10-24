@@ -104,10 +104,10 @@ export const cityPlace = (c: City): StarPlace => ({
 
 const PLACE_KEY = 'chroniq-star-place'
 
-/** Saved birthplace, else the 八字 真太阳时 city if one is set, else 北京. */
-export function loadStarPlace(longitude?: number): StarPlace {
+/** A stored place, if it is well-formed. */
+function readPlace(key: string): StarPlace | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(PLACE_KEY) ?? 'null') as StarPlace | null
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null') as StarPlace | null
     if (
       saved &&
       typeof saved.name === 'string' &&
@@ -120,13 +120,24 @@ export function loadStarPlace(longitude?: number): StarPlace {
   } catch {
     // fall through to the default
   }
-  return cityPlace(CITIES.find((c) => c.longitude === longitude) ?? CITIES[0])
+  return null
 }
 
-export function saveStarPlace(place: StarPlace): void {
+function writePlace(key: string, place: StarPlace): void {
   try {
-    localStorage.setItem(PLACE_KEY, JSON.stringify(place))
+    localStorage.setItem(key, JSON.stringify(place))
   } catch {
     // Storage unavailable: the place lasts for this visit only.
   }
 }
+
+/** Saved birthplace, else the 八字 真太阳时 city if one is set, else 北京. */
+export const loadStarPlace = (longitude?: number): StarPlace =>
+  readPlace(PLACE_KEY) ?? cityPlace(CITIES.find((c) => c.longitude === longitude) ?? CITIES[0])
+export const saveStarPlace = (place: StarPlace): void => writePlace(PLACE_KEY, place)
+
+const SKY_PLACE_KEY = 'chroniq-sky-place'
+
+/** Where 天象 looks up from: its own saved place, else the 星盘 birthplace. */
+export const loadSkyPlace = (fallback: StarPlace): StarPlace => readPlace(SKY_PLACE_KEY) ?? fallback
+export const saveSkyPlace = (place: StarPlace): void => writePlace(SKY_PLACE_KEY, place)

@@ -3,6 +3,7 @@ import { CalendarView } from './components/CalendarView'
 import { BaziView } from './components/BaziView'
 import { AboutBadges } from './components/AboutBadges'
 import { Logo } from './components/Logo'
+import { PageMenu, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
 import { ShareButton } from './components/ShareButton'
@@ -22,12 +23,11 @@ import {
   type StarSettings,
 } from './lib/starPrefs'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
-import { toTrad } from './lib/trad'
 import { SettingsContext } from './settingsContext'
 
-type Tab = 'calendar' | 'bazi' | 'ziwei' | 'star'
-/** Left-to-right order of the tabs, which sets the way a page switch slides. */
-const TAB_ORDER: Tab[] = ['calendar', 'bazi', 'ziwei', 'star']
+type Tab = Page
+/** Order of the pages, which sets the way a page switch slides. */
+const TAB_ORDER: Tab[] = ['calendar', 'sky', 'bazi', 'ziwei', 'star']
 
 // 紫微斗数 pulls in iztro (~150 KB gzip); load it only when the tab is opened.
 const loadZiwei = () => import('./components/ZiweiView')
@@ -36,7 +36,10 @@ const ZiweiView = lazy(() => loadZiwei().then((m) => ({ default: m.ZiweiView }))
 const loadStar = () => import('./components/StarChartView')
 const StarChartView = lazy(() => loadStar().then((m) => ({ default: m.StarChartView })))
 /** The tabs whose code loads on first visit, and which of them have loaded */
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei, star: loadStar }
+// 天象 too (astronomy-engine and the star catalogue)
+const loadSky = () => import('./components/SkyPage')
+const SkyPage = lazy(() => loadSky().then((m) => ({ default: m.SkyPage })))
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei, star: loadStar, sky: loadSky }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -119,7 +122,6 @@ export function App() {
   }
   useEffect(() => applyTheme(settings.theme), [settings.theme])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
-  const term = settings.script === 'trad' ? toTrad : (s: string) => s
 
   return (
     <SettingsContext.Provider value={settings}>
@@ -131,21 +133,8 @@ export function App() {
             <span className="brand-en">ChroniQ</span>
           </h1>
           <div className="topbar-right">
-            <nav className="tabs">
-              <button className={tab === 'calendar' ? 'on' : undefined} onClick={() => goTab('calendar')}>
-                {term('日历')}
-              </button>
-              <button className={tab === 'bazi' ? 'on' : undefined} onClick={() => goTab('bazi')}>
-                {term('八字排盘')}
-              </button>
-              <button className={tab === 'ziwei' ? 'on' : undefined} onClick={() => goTab('ziwei')}>
-                {term('紫微斗数')}
-              </button>
-              <button className={tab === 'star' ? 'on' : undefined} onClick={() => goTab('star')}>
-                {term('星盘')}
-              </button>
-            </nav>
-            {tab !== 'calendar' && (
+            <PageMenu page={tab} onPick={goTab} />
+            {tab !== 'calendar' && tab !== 'sky' && (
               <ShareButton chart={{ tab, input: baziInput, place: tab === 'star' ? starPlace : undefined }} />
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
@@ -167,6 +156,10 @@ export function App() {
               schools={schools}
               onSchoolsChange={changeSchools}
             />
+          ) : tab === 'sky' ? (
+            <Suspense fallback={<SplashSignal />}>
+              <SkyPage fallbackPlace={starPlace} />
+            </Suspense>
           ) : tab === 'star' ? (
             <Suspense fallback={<SplashSignal />}>
               <StarChartView
@@ -199,7 +192,7 @@ export function App() {
         </footer>
       </div>
       {/* Outside .app: the drawer is fixed to the screen edge and takes the zoom itself */}
-      {tab !== 'calendar' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} />}
+      {tab !== 'calendar' && tab !== 'sky' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} />}
       <SplashOverlay />
     </SettingsContext.Provider>
   )
