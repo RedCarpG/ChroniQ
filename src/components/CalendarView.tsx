@@ -134,7 +134,9 @@ export function CalendarView({ onPickBazi }: Props) {
   // new month's, then show the plain grid again. The strip keeps its last frame (fill) until
   // the plain grid has rendered, and only then is the animation dropped, in the same layout
   // pass, before anything is painted: the plain grid lines up with that frame, so nothing
-  // moves or flashes at the swap.
+  // moves or flashes at the swap. The window's height and scrolling class are rendered, not
+  // set here, so the plain grid already has its own layout when the month outline (a child,
+  // whose layout effect runs first) measures it.
   const windowRef = useRef<HTMLDivElement>(null)
   const gridHeight = useRef(0)
   // The plain grid's row height: the strip keeps it, also where the grid is stretched to fill the window
@@ -149,8 +151,6 @@ export function CalendarView({ onPickBazi }: Props) {
       if (running.current) {
         running.current.anim.cancel()
         running.current = null
-        win.style.height = ''
-        win.classList.remove('scrolling')
       }
       gridHeight.current = grid.getBoundingClientRect().height / zoomOf(grid)
       const firstDay = grid.querySelector<HTMLElement>('.day')
@@ -164,8 +164,6 @@ export function CalendarView({ onPickBazi }: Props) {
     const days = grid.querySelectorAll<HTMLElement>('.day')
     const zoom = zoomOf(grid)
     const top = (rowIndex: number) => (days[rowIndex * 7].getBoundingClientRect().top - days[0].getBoundingClientRect().top) / zoom
-    win.style.height = `${gridHeight.current || top(6)}px`
-    win.classList.add('scrolling')
     const anim = grid.animate(
       [{ transform: `translateY(${-top(s.fromRow)}px)` }, { transform: `translateY(${-top(s.toRow)}px)` }],
       { duration: 420, easing: 'cubic-bezier(0.33, 1, 0.68, 1)', fill: 'forwards' },
@@ -309,7 +307,11 @@ export function CalendarView({ onPickBazi }: Props) {
               ))}
             </div>
             <div key={viewKey.current} className={`cal-slide ${slide.current}`}>
-              <div className="month-window" ref={windowRef}>
+              <div
+                className={`month-window${scroll.current ? ' scrolling' : ''}`}
+                ref={windowRef}
+                style={scroll.current && gridHeight.current ? { height: gridHeight.current } : undefined}
+              >
               <div
                 className="grid days"
                 style={
@@ -318,7 +320,11 @@ export function CalendarView({ onPickBazi }: Props) {
                     : undefined
                 }
               >
-                <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}-${scroll.current ? 'strip' : 'grid'}`} />
+                {/* A new month's outline fades in (keyed by month); from the strip to the plain grid it stays */}
+                <MonthOutline
+                  key={`${view.year}-${view.month}`}
+                  layoutKey={`${view.year}-${view.month}-${weekStart}-${scroll.current ? 'strip' : 'grid'}`}
+                />
                 {monthCells.map((c) => {
                   const rd = regionOf(c.solar)
                   // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
