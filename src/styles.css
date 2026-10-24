@@ -1378,6 +1378,30 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-figure-name { font-size: calc(11.5px * var(--k, 1)); letter-spacing: 0.05em; }
 .sky-figure-name-west { fill: rgb(170 195 245 / 0.7); }
 .sky-figure-name-china { fill: rgb(240 205 140 / 0.75); }
+/* A figure lights up under the pointer (a wide invisible line is what the pointer finds); the
+   chosen one draws itself in gold, line by line, over the faded rest, with its name on top */
+.sky-figure { cursor: pointer; }
+.sky-figures .sky-figure .hit { stroke: transparent; stroke-width: calc(9px * var(--k, 1)); pointer-events: stroke; }
+.sky-figures .line { pointer-events: none; transition: stroke 0.2s, stroke-width 0.2s, opacity 0.3s; }
+.sky-figures-west .sky-figure:hover .line { stroke: rgb(170 200 255 / 0.85); stroke-width: 1.1; }
+.sky-figures-china .sky-figure:hover .line { stroke: rgb(245 210 145 / 0.9); stroke-width: 1.1; }
+.sky-figures .sky-figure.on .line {
+  stroke: #f0d59b; stroke-width: 1.4; stroke-dasharray: 1; animation: sky-draw 0.9s ease-out both;
+  filter: drop-shadow(0 0 2px rgb(240 213 155 / 0.6));
+}
+@keyframes sky-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.sky-figures.has-chosen .sky-figure:not(.on) .line { opacity: 0.35; }
+.sky-map:has(.sky-figures.has-chosen) .sky-labels .sky-figure-name { opacity: 0.4; }
+.sky-labels .sky-figure-name { cursor: pointer; }
+.sky-figure-name.chosen {
+  fill: #f6e2b5; font-size: calc(13px * var(--k, 1)); font-weight: 700; paint-order: stroke;
+  stroke: rgb(10 14 28 / 0.75); stroke-width: calc(2.5px * var(--k, 1)); pointer-events: none; animation: cal-fade 0.4s ease both;
+}
+.sky-figure-mark { flex: none; width: 8px; height: 8px; margin: 0 1px; transform: rotate(45deg); border: 1.5px solid #c9a768; }
+.sky-figure-mark-west { border-color: #7f9be0; }
 /* One body's way among the stars over the past days */
 .sky-history path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.9; }
 .sky-history .tick { fill: currentColor; }
@@ -1433,7 +1457,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 @media (prefers-reduced-motion: reduce) {
   .sky-disc, .sky-stars { transition: none; }
-  .sky-chosen .pulse, .sky-chosen-info, .sky-chosen circle, .sky-body.on circle, .sky-star.on circle, .sky-backdrop { animation: none; }
+  .sky-chosen .pulse, .sky-chosen-info, .sky-chosen circle, .sky-body.on circle, .sky-star.on circle, .sky-backdrop,
+  .sky-figure.on .line, .sky-figure-name.chosen { animation: none; }
 }
 
 /* ---------- 紫微 四化飞星 ---------- */

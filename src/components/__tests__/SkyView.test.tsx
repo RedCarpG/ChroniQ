@@ -100,6 +100,35 @@ describe('SkyView choosing a body or star', () => {
   })
 })
 
+describe('SkyView constellations and paths', () => {
+  it('picks out a constellation: its lines drawn in, the rest faded, its name and set in the panel', () => {
+    const { map, info } = setUp()
+    const figure = map.querySelector<SVGGElement>('.sky-figure')!
+    const name = figure.getAttribute('data-tip')!
+    fireEvent.click(figure)
+    expect(figure.classList.contains('on')).toBe(true)
+    expect(map.querySelector('.sky-figures')!.classList.contains('has-chosen')).toBe(true)
+    expect(map.querySelector('.sky-figure-name.chosen')!.textContent).toBe(name)
+    expect(info()).toContain(name)
+    expect(info()).toContain('西方星座')
+    // A figure has no ring and dims no stars
+    expect(map.querySelector('.sky-chosen')).toBeNull()
+    expect(map.classList.contains('has-chosen')).toBe(false)
+    fireEvent.click(figure)
+    expect(info()).toBeNull()
+  })
+
+  it('draws the path of a chosen star alongside the usual ones, picked out with its hours', () => {
+    const { map } = setUp()
+    const usual = map.querySelectorAll('.sky-path').length
+    fireEvent.click([...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('天狼星'))!)
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(usual + 1)
+    expect(map.querySelector('.sky-paths')!.classList.contains('has-focus')).toBe(true)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+    expect(map.querySelectorAll('.sky-hour-labels text').length).toBeGreaterThan(0)
+  })
+})
+
 describe('SkyView dragged through time', () => {
   it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
     const { map, row, info, time } = setUp()

@@ -130,8 +130,8 @@ export const SKY: Record<string, string> = {
   '高 {altitude}°': 'altitude {altitude}°',
   '星等 {mag}': 'magnitude {mag}',
   取消选中: 'Clear selection',
-  '点一下天体、有名字的亮星或表格里的一行可把它圈出，再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
-    'Click a body, a named star or a row of the table to ring it; click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
+  '点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
+    'Click a body, a named star, a constellation’s lines or a row of the table to pick it out (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
   // The sky as the page's backdrop: pointing, dragging through time
   '指向 {direction} · 高 {altitude}°': 'Pointing {direction} · altitude {altitude}°',
   '⟷ 左右拖动星空，转动时间': '⟷ Drag the sky sideways to turn time',

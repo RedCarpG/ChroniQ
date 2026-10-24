@@ -2,13 +2,11 @@ import { useState } from 'react'
 import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useT } from '../settingsContext'
 import { PlacePicker } from './PlacePicker'
-import { SectionNav } from './SectionNav'
 import { SkyView } from './SkyView'
-import { SolarSystemView } from './SolarSystemView'
 
 /**
  * 天象 page: the sky over a place right now (此刻天空), drawn as the page's
- * backdrop, and the planets on their orbits (太阳系). The place is the page's own, starting from the 星盘
+ * backdrop. (The planets on their orbits, 太阳系, have a page of their own.) The place is the page's own, starting from the 星盘
  * birthplace; 定位 asks the browser where the viewer is.
  */
 export function SkyPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
@@ -39,12 +37,6 @@ export function SkyPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
 
   return (
     <div className="bazi-layout sky-page">
-      <SectionNav
-        items={[
-          ['sky-now', t('此刻天空')],
-          ['sky-solar', t('太阳系')],
-        ]}
-      />
       <SkyView
         place={place}
         placeControls={
@@ -57,7 +49,6 @@ export function SkyPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
           </>
         }
       />
-      <SolarSystemView />
     </div>
   )
 }

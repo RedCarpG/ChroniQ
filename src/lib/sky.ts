@@ -223,6 +223,29 @@ export function tracksAt(times: Date[], latitude: number, longitude: number): Re
   return out
 }
 
+/**
+ * The way any one body on the map, or a bright star by its Hipparcos number, goes across the
+ * sky over the given moments (for the one picked out on the map; tracksAt does the usual bodies).
+ */
+export function trackOf(what: { body: BodyKey } | { hip: number }, times: Date[], latitude: number, longitude: number) {
+  const observer = new A.Observer(latitude, longitude, 0)
+  if ('body' in what) {
+    const body = SKY_BODIES.find(([k]) => k === what.body)?.[1]
+    if (body === undefined) return []
+    return times.map((utc) => {
+      const time = A.MakeTime(utc)
+      const eq = A.Equator(body, time, observer, true, true)
+      const hor = A.Horizon(time, observer, eq.ra, eq.dec, 'normal')
+      return { az: hor.azimuth, alt: hor.altitude }
+    })
+  }
+  let i = 0
+  while (i < BRIGHT_STARS.length && BRIGHT_STARS[i] !== what.hip) i += STAR_FIELDS
+  if (i >= BRIGHT_STARS.length) return []
+  const [ra, dec] = [BRIGHT_STARS[i + 1], BRIGHT_STARS[i + 2]]
+  return times.map((utc) => horizonOf(utc, latitude, longitude)(ra, dec))
+}
+
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
 const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 

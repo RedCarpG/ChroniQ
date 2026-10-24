@@ -8,6 +8,7 @@ import {
   formatAzimuth,
   historyTrack,
   skyAt,
+  trackOf,
   tracksAt,
   type SkyBody,
   type SkyStar,
@@ -280,6 +281,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // 星官 names stay Chinese in English, as proper nouns; both sets follow the 繁體 / 简体 setting
   const figureName = (c: { name: string; trad: string; en: string }) =>
     figures === 'west' && en ? c.en : script === 'trad' ? c.trad : c.name
+  // A 星官's English gloss goes with its name in English
+  const figureTip = (c: { name: string; trad: string; en: string }) => (figures === 'china' && en ? `${figureName(c)} · ${c.en}` : figureName(c))
 
   // One body's way among the stars over the past days, drawn on tonight's sky
   const [history, setHistory] = useState<{ body: SkyBody['key'] | null; days: number }>({ body: null, days: 90 })
@@ -303,50 +306,67 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const dateLabel = (m: number, d: number) =>
     en ? new Date(Date.UTC(2000, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : `${m}/${d}`
 
-  const paths = useMemo(() => {
+  // The moments a path is drawn through: every 10 minutes from 12 hours before to 12 after, and
+  // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
+  const pathTimes = useMemo(() => {
     if (!showPaths || dragging) return null
     const now = utc.getTime()
     const times: Date[] = []
     for (let ms = now - PATH_SPAN; ms <= now + PATH_SPAN; ms += PATH_STEP) times.push(new Date(ms))
-    // Whole local hours in the window (from the wall-clock minute, so odd offsets like +5:45 work)
     const start = now - PATH_SPAN
     const minute = Number(wallTime(new Date(start), place.timeZone).time.slice(3))
     const hours: Date[] = []
     for (let ms = start - (start % 60_000) + ((60 - minute) % 60) * 60_000; ms <= now + PATH_SPAN; ms += HOUR) {
       hours.push(new Date(ms))
     }
-    const tracks = tracksAt([...times, ...hours], place.latitude, place.longitude)
+    return { times, hours, hourOf: hours.map((h) => Number(wallTime(h, place.timeZone).time.slice(0, 2))) }
+  }, [showPaths, dragging, utc, place.timeZone])
+  /** A path from its positions at pathTimes' moments followed by its hours */
+  const pathOf = (key: string, track: { az: number; alt: number }[]) => {
+    const { times, hourOf } = pathTimes!
     const nowAt = PATH_SPAN / PATH_STEP
-    return PATH_BODIES.map((key) => {
-      const track = tracks[key]
-      const line = track.slice(0, times.length)
-      return {
-        key,
-        past: pathData(line.slice(0, nowAt + 1), at),
-        future: pathData(line.slice(nowAt), at),
-        hours: track
-          .slice(times.length)
-          .map((p, i) => ({ ...p, hour: Number(wallTime(hours[i], place.timeZone).time.slice(0, 2)) }))
-          .filter((p) => shown(p.alt)),
-      }
-    })
-  }, [showPaths, dragging, utc, place.latitude, place.longitude, place.timeZone])
+    const line = track.slice(0, times.length)
+    return {
+      key,
+      past: pathData(line.slice(0, nowAt + 1), at),
+      future: pathData(line.slice(nowAt), at),
+      hours: track
+        .slice(times.length)
+        .map((p, i) => ({ ...p, hour: hourOf[i] }))
+        .filter((p) => shown(p.alt)),
+    }
+  }
+  const paths = useMemo(() => {
+    if (!pathTimes) return null
+    const tracks = tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
+    return PATH_BODIES.map((key) => pathOf(key, tracks[key]))
+  }, [pathTimes, place.latitude, place.longitude])
   const clipId = useId()
   const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
-  // A star that has set, or is on the other half of the sky now, lets go
+  // A constellation or 星官 can be chosen too (its key is fig + its id)
+  const pickFigure = chosen?.startsWith('fig') ? figureViews.find((c) => `fig${c.id}` === chosen) : undefined
+  // A star that has set, or is on the other half of the sky now, lets go; so does a figure gone from view
   useEffect(() => {
-    if (chosen && !pick) setChosen(null)
-  }, [chosen, pick])
+    if (chosen && !pick && !pickFigure) setChosen(null)
+  }, [chosen, pick, pickFigure])
   const pickName = pick && ('key' in pick ? t(pick.name) : t(pick.name!))
   const pickColour = pick && ('key' in pick ? BODY_COLOUR[pick.key] : starColour(pick.bv))
   const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
   // Where the chosen one is on the map, if it is on this half of the sky
   const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
-  // The path picked out: the one hovered, else the chosen body's
-  const pathFocus = focus ?? (chosen && PATH_BODIES.includes(chosen as SkyBody['key']) ? chosen : null)
-  const focused = paths?.find((p) => p.key === pathFocus)
+  // The chosen star's path, or that of a chosen body without one of its own (Uranus, Neptune),
+  // drawn like the others while the paths are on
+  const chosenPath = useMemo(() => {
+    if (!pathTimes || !chosen || PATH_BODIES.includes(chosen as SkyBody['key']) || chosen.startsWith('fig')) return null
+    const what = chosen.startsWith('hip') ? { hip: Number(chosen.slice(3)) } : { body: chosen as SkyBody['key'] }
+    const track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
+    return track.length ? pathOf(chosen, track) : null
+  }, [pathTimes, chosen, place.latitude, place.longitude])
+  // The path picked out: the one hovered, else the chosen one's
+  const pathFocus = focus ?? (chosen && (PATH_BODIES.includes(chosen as SkyBody['key']) || chosenPath) ? chosen : null)
+  const focused = chosenPath?.key === pathFocus ? chosenPath : paths?.find((p) => p.key === pathFocus)
   const focusedBody = focused && sky.bodies.find((b) => b.key === focused.key)
-  const focusedAt = focusedBody && shown(focusedBody.alt) ? at(focusedBody.az, focusedBody.alt) : null
+  const focusedAt = focused && focused === chosenPath ? spot : focusedBody && shown(focusedBody.alt) ? at(focusedBody.az, focusedBody.alt) : null
   const up = sky.bodies.filter((b) => shown(b.alt))
   // The stars without a name, which are only looked at, as one path of dots per colour rather than
   // hundreds of elements: far less to redraw as the sky is dragged through time
@@ -386,14 +406,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           }),
         // The best-known figures (rank 1–2) are named, where there is room
         ...figureViews
-          .filter((c) => c.rank <= 2 && (below ? c.label.alt < -3 : c.label.alt > 3))
+          .filter((c) => c.rank <= 2 && `fig${c.id}` !== chosen && (below ? c.label.alt < -3 : c.label.alt > 3))
           .map((c) => {
             const [x, y] = at(c.label.az, c.label.alt)
             return { key: `fig${c.id}`, text: figureName(c), x, y, r: 0, kind: 'figure' as const }
           }),
       ], k),
     // t is new each render but changes only with the settings
-    [sky, figureViews, language, script, below, k],
+    [sky, figureViews, language, script, below, k, pickFigure?.id],
   )
 
 
@@ -551,11 +571,27 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <line x1={C} y1={C} />
         </g>
         {figureViews.length > 0 && (
-          <g className={`sky-figures sky-figures-${figures}`} aria-hidden="true">
-            {figureViews.map((c, i) => (
-              // Serpens comes in two parts with the same id
-              <path key={`${c.id}-${i}`} d={c.lines.map((l) => pathData(l, at)).join('')} />
-            ))}
+          <g className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
+            {figureViews.map((c, i) => {
+              const d = c.lines.map((l) => pathData(l, at)).join('')
+              const on = chosen === `fig${c.id}`
+              return (
+                // Serpens comes in two parts with the same id
+                <g
+                  key={`${c.id}-${i}`}
+                  className={`sky-figure${on ? ' on' : ''}`}
+                  data-tip={figureTip(c)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    choose(`fig${c.id}`)
+                  }}
+                >
+                  <path className="hit" d={d} />
+                  {/* The chosen one's lines draw themselves in: one length unit for the whole figure */}
+                  <path className="line" d={d} pathLength={on ? 1 : undefined} />
+                </g>
+              )
+            })}
           </g>
         )}
         <g className="sky-stars">
@@ -575,8 +611,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         </g>
         {paths && (
           <g className={`sky-paths${pathFocus ? ' has-focus' : ''}`} aria-hidden="true">
-            {paths.map((p) => (
-              <g key={p.key} className={`sky-path${pathFocus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] }}>
+            {(chosenPath ? [...paths, chosenPath] : paths).map((p) => (
+              <g key={p.key} className={`sky-path${pathFocus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] ?? pickColour }}>
                 <path className="past" d={p.past} />
                 <path className="future" d={p.future} />
                 {p.hours.map((h, i) => {
@@ -660,14 +696,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 y={l.anchor !== 'middle' || !spot ? l.y : l.y < spot[1] ? l.y - push : l.y + push}
                 textAnchor={l.anchor}
                 dominantBaseline="central"
-                onClick={
-                  l.kind === 'figure'
-                    ? undefined
-                    : (e) => {
-                        e.stopPropagation()
-                        choose(l.key)
-                      }
-                }
+                onClick={(e) => {
+                  e.stopPropagation()
+                  choose(l.key)
+                }}
               >
                 {l.text}
               </text>
@@ -675,6 +707,19 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           })}
         </g>
       </g>
+      {pickFigure && (
+        <text
+          key={chosen}
+          className={`sky-figure-name sky-figure-name-${figures} chosen`}
+          x={at(pickFigure.label.az, pickFigure.label.alt)[0]}
+          y={at(pickFigure.label.az, pickFigure.label.alt)[1]}
+          textAnchor="middle"
+          dominantBaseline="central"
+          aria-hidden="true"
+        >
+          {figureName(pickFigure)}
+        </text>
+      )}
       {/* The ring round the chosen one: it closes in on it (keyed, so it does again for the next) and pulses */}
       {spot && (
         <g key={chosen} className="sky-chosen" style={{ color: pickColour }} aria-hidden="true">
@@ -791,6 +836,21 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           </div>
         </div>
 
+        {pickFigure && (
+          <div className="sky-chosen-info">
+            <span className={`sky-figure-mark sky-figure-mark-${figures}`} aria-hidden="true" />
+            <strong>{figureName(pickFigure)}</strong>
+            <span className="muted">
+              {figures === 'west' ? t('西方星座') : t('中国星官')}
+              {!(figures === 'west' && en) && ` · ${pickFigure.en}`}
+              {' · '}
+              {azimuth(pickFigure.label.az)} · {t('高 {altitude}°', { altitude: pickFigure.label.alt.toFixed(1) })}
+            </span>
+            <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+              ✕
+            </button>
+          </div>
+        )}
         {pick && (
           <div className="sky-chosen-info">
             <span className="sky-dot" style={{ background: pickColour }} />
@@ -843,7 +903,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
             : t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
           {en && ' '}
-          {t('点一下天体、有名字的亮星或表格里的一行可把它圈出，再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
+          {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
           {paths && en && ' '}
           {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
           {historyLine && en && ' '}

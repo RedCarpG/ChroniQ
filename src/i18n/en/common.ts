@@ -41,7 +41,8 @@ export const COMMON: Record<string, string> = {
   紫微斗数: '紫微斗数',
   星盘: 'Astrology',
   '公历、农历、节气、干支': 'Gregorian and lunar dates, 节气, 干支',
-  '此刻天空、太阳系行星': 'The sky now, and the planets on their orbits',
+  '此刻天空、星座与星官': 'The sky now, with its constellations and 星官',
+  '行星的轨道、距离与顺逆行': 'The planets on their orbits: distances, retrograde motion',
   '四柱、十神、神煞、大运流年': 'Four Pillars: 四柱, 十神, 神煞, 大运 and 流年',
   '十二宫、四化飞星、运限': 'Purple Star: 十二宫, 四化 flying stars, 运限',
   '本命、行运推运、合盘、组合盘': 'Natal, transits and progressions, synastry, composite',
@@ -90,7 +91,8 @@ export const COMMON: Record<string, string> = {
   '中国传统历法与命理排盘的网页工具，打开即用，不需要注册。':
     'A web tool for the traditional Chinese calendar and destiny charts. Just open it and go: no sign-up.',
   '：公历、农历、节气、干支，月 / 周 / 年视图': ': Gregorian and lunar dates, 节气 and 干支, in month, week and year views',
-  '：此刻天空的星图，太阳系行星的位置与运行': ': a map of the sky right now, and the planets moving on their orbits',
+  '：此刻天空的星图，星座与星官，可拖动转动时间': ': a map of the sky right now, with its constellations and 星官; drag it to turn time',
+  '：行星在轨道上的位置与运行': ': the planets moving on their orbits',
   '：四柱、十神、神煞、刑冲合会、{dayun}流年流月流日': ': 四柱, 十神, 神煞, 刑冲合会, and {dayun}, 流年, 流月 and 流日',
   '：十二宫命盘、{sanfang}、星曜解释、大限至流时': ': the 十二宫 chart, {sanfang}, star meanings, and 大限 down to 流时',
   '：西洋占星本命盘，行星、宫位与相位，行运、推运、合盘与组合盘':
