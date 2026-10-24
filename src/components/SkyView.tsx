@@ -350,7 +350,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // The moments a path is drawn through: every 10 minutes from 12 hours before to 12 after, and
   // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
   const pathTimes = useMemo(() => {
-    if (!showPaths || dragging) return null
+    if (!showPaths) return null
     const now = utc.getTime()
     const times: Date[] = []
     for (let ms = now - PATH_SPAN; ms <= now + PATH_SPAN; ms += PATH_STEP) times.push(new Date(ms))
@@ -361,7 +361,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       hours.push(new Date(ms))
     }
     return { times, hours, hourOf: hours.map((h) => Number(wallTime(h, place.timeZone).time.slice(0, 2))) }
-  }, [showPaths, dragging, utc, place.timeZone])
+  }, [showPaths, utc, place.timeZone])
   /** A path from its positions at pathTimes' moments followed by its hours */
   const pathOf = (key: string, track: { az: number; alt: number }[]) => {
     const { times, hourOf } = pathTimes!
@@ -378,10 +378,12 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     }
   }
   const paths = useMemo(() => {
-    if (!pathTimes) return null
+    // Left out while the sky is dragged through time (the chosen one's path stays: extraPath)
+    if (!pathTimes || dragging) return null
     const tracks = tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
     return PATH_BODIES.map((key) => pathOf(key, tracks[key]))
-  }, [pathTimes, place.latitude, place.longitude])
+    // dragging too: letting go must bring them back, though the time has not moved since the last step
+  }, [pathTimes, dragging, place.latitude, place.longitude])
   const clipId = useId()
   const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
   // A constellation or 星官 can be chosen too (its key is fig + its id)
@@ -396,16 +398,20 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // Where the chosen one is on the map, if it is on this half of the sky
   const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
   // The path of a star, or of a body without one among the usual (Uranus, Neptune), when it is
-  // chosen or hovered, drawn like the others while the paths are on
+  // chosen or hovered, drawn like the others while the paths are on. While the sky is dragged
+  // through time the usual paths wait, but the chosen one's is still drawn, whichever it is.
   const extraPath = (key: string | null) => {
-    if (!pathTimes || !key || PATH_BODIES.includes(key as SkyBody['key']) || key.startsWith('fig')) return null
+    if (!pathTimes || !key || key.startsWith('fig') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
     const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
     const track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
     return track.length ? pathOf(key, track) : null
   }
-  const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, chosen, place.latitude, place.longitude])
-  const hoverPath = useMemo(() => (focus === chosen ? null : extraPath(focus)), [pathTimes, focus, chosen, place.latitude, place.longitude])
-  const allPaths = paths && [...paths, ...(chosenPath ? [chosenPath] : []), ...(hoverPath ? [hoverPath] : [])]
+  const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, dragging, chosen, place.latitude, place.longitude])
+  const hoverPath = useMemo(
+    () => (focus === chosen || dragging ? null : extraPath(focus)),
+    [pathTimes, dragging, focus, chosen, place.latitude, place.longitude],
+  )
+  const allPaths = pathTimes && [...(paths ?? []), ...(chosenPath ? [chosenPath] : []), ...(hoverPath ? [hoverPath] : [])]
   // The paths picked out: the chosen one's, and the hovered one's
   const litPaths = allPaths?.filter((p) => p.key === chosen || p.key === focus) ?? []
   const colourOf = (key: string) => {
@@ -527,7 +533,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: [(a.x + b.x) / 2, (a.y + b.y) / 2] as [number, number] }
   }
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
+    // The middle button turns the time at any zoom (and is kept from starting the browser's autoscroll)
+    const middle = e.pointerType === 'mouse' && e.button === 1
+    if (middle) e.preventDefault()
+    else if (e.pointerType === 'mouse' && e.button !== 0) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (pointers.current.size === 2) {
       // A second finger: the drag becomes a pinch
@@ -536,7 +545,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       pinch.current = { ...pinchOf(), view: viewRef.current }
       return
     }
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: viewRef.current.z <= Z_MIN, moved: false }
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: middle || viewRef.current.z <= Z_MIN, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -689,10 +698,13 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             {figureViews.map((c, i) => {
               const d = c.lines.map((l) => pathData(l, at)).join('')
               const on = chosen === `fig${c.id}`
+              // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by
+              // its place in the list, which shifts as figures rise and set: a remount would draw the
+              // chosen one in again
+              const part = figureViews.slice(0, i).filter((o) => o.id === c.id).length
               return (
-                // Serpens comes in two parts with the same id
                 <g
-                  key={`${c.id}-${i}`}
+                  key={`${c.id}-${part}`}
                   className={`sky-figure${on ? ' on' : ''}`}
                   data-tip={figureTip(c)}
                   onClick={(e) => {
@@ -980,6 +992,12 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             <span className="muted">
               {azimuth(pick.az)} · {t('高 {altitude}°', { altitude: pick.alt.toFixed(1) })} · {t('星等 {mag}', { mag: pick.mag.toFixed(1) })}
             </span>
+            {/* With the paths off, the chosen one's is a click away */}
+            {!showPaths && (
+              <button type="button" className="ghost sky-show-path" onClick={togglePaths}>
+                {t('显示轨迹')}
+              </button>
+            )}
             <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
               ✕
             </button>
@@ -1055,7 +1073,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <>
                   <div className="sky-readout" ref={readoutRef} aria-hidden="true" />
                   <div className="sky-drag-hint" aria-hidden="true">
-                    {view.z > Z_MIN ? t('拖动移动星图 · 缩回原大小后左右拖动可转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
+                    {view.z > Z_MIN ? t('拖动移动星图 · 中键左右拖动转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
                   </div>
                 </>
               )}

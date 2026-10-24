@@ -385,7 +385,8 @@ export function startStarfield(): () => void {
   }
 
   const onMove = (e: PointerEvent) => {
-    if (e.pointerType !== 'mouse') return
+    // Set aside (the 天象 page, which has the real sky): nothing to draw
+    if (e.pointerType !== 'mouse' || root.classList.contains('aside')) return
     pointer = { x: e.clientX, y: e.clientY }
     if (!reduceMotion.matches) {
       far.style.transform = `translate(${(-(e.clientX / w - 0.5) * 2 * DRIFT).toFixed(1)}px, ${(-(e.clientY / h - 0.5) * 2 * DRIFT).toFixed(1)}px)`

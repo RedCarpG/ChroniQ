@@ -129,6 +129,19 @@ describe('SkyView constellations and paths', () => {
   })
 })
 
+describe('SkyView with the paths off', () => {
+  it('offers the chosen one’s path in its line in the panel', () => {
+    localStorage.setItem('chroniq-sky-paths', 'off')
+    const { map, row, container } = setUp()
+    fireEvent.click(row('月亮'))
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(0)
+    fireEvent.click(container.querySelector('.sky-show-path')!)
+    expect(map.querySelector('.sky-path.on')).not.toBeNull()
+    expect(container.querySelector('.sky-show-path')).toBeNull()
+    localStorage.removeItem('chroniq-sky-paths')
+  })
+})
+
 describe('SkyView zoomed', () => {
   it('zooms the map alone with its buttons, within limits, and comes back to full size', () => {
     const { map } = setUp()
@@ -168,6 +181,60 @@ describe('SkyView hovered while one is chosen', () => {
 })
 
 describe('SkyView dragged through time', () => {
+  it('keeps the chosen one’s path while the others wait for the drag to end', () => {
+    const { map, row } = setUp()
+    fireEvent.click(row('土星'))
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+    fireEvent.pointerDown(map, { pointerId: 3, pointerType: 'mouse', button: 0, clientX: 100, clientY: 200 })
+    fireEvent.pointerMove(map, { pointerId: 3, pointerType: 'mouse', clientX: 160, clientY: 200 })
+    flush()
+    // Mid-drag: only Saturn's path, still picked out
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(1)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+    // Let go: all the paths come back, at the time the drag left
+    fireEvent.pointerUp(map, { pointerId: 3, pointerType: 'mouse', clientX: 160, clientY: 200 })
+    flush()
+    flush()
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(7)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+  })
+
+  it('does not draw a chosen figure in again as the time moves on', () => {
+    const { map, container } = setUp()
+    // One near the pole, up all night, late in the list: figures before it rise and set, and its place shifts
+    const ursaMinor = [...map.querySelectorAll('.sky-figure')].find((g) => g.getAttribute('data-tip') === '小熊座')!
+    fireEvent.click(ursaMinor)
+    const chosen = map.querySelector('.sky-figure.on')
+    expect(chosen).toBe(ursaMinor)
+    const input = container.querySelector<HTMLInputElement>('.sky-controls input[type=time]')!
+    for (const time of ['06:00', '09:00', '12:00']) {
+      fireEvent.change(input, { target: { value: time } })
+      // The same element: its draw-in animation does not start over
+      expect(map.querySelector('.sky-figure.on')).toBe(chosen)
+    }
+  })
+
+  it('turns the time with the middle button also when zoomed in, where the left button moves the map', () => {
+    const { map, time } = setUp()
+    fireEvent.click(document.querySelector('.sky-zoom-buttons [aria-label="放大"]')!)
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+    const transform = () => map.querySelector('g')!.getAttribute('transform')
+    const before = transform()
+    fireEvent.pointerDown(map, { pointerId: 2, pointerType: 'mouse', button: 1, clientX: 100, clientY: 200 })
+    fireEvent.pointerMove(map, { pointerId: 2, pointerType: 'mouse', clientX: 372, clientY: 200 })
+    flush()
+    // 272 px at 1.6 times is 170 map units: three hours, and the map has not moved
+    expect(time()).toBe('05:57')
+    expect(transform()).toBe(before)
+    fireEvent.pointerUp(map, { pointerId: 2, pointerType: 'mouse', clientX: 372, clientY: 200 })
+  })
+
   it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
     const { map, row, info, time } = setUp()
     fireEvent.click(row('木星'))

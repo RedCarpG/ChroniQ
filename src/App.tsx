@@ -123,6 +123,10 @@ export function App() {
     document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
   }, [settings.language])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
+  // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky
+  useEffect(() => {
+    document.querySelector('.starfield')?.classList.toggle('aside', tab === 'sky')
+  }, [tab])
   // The top bar's height, for pages laid out to fill the window under it (the calendar)
   const appRef = useRef<HTMLDivElement>(null)
   const topbarRef = useRef<HTMLElement>(null)

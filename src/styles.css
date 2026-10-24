@@ -169,6 +169,8 @@
   .starfield-twinkles { display: none; }
 }
 @media print { .starfield { display: none; } }
+/* Set aside on the 天象 page, where the real sky is the backdrop: only the night colours stay */
+.starfield.aside canvas, .starfield.aside .starfield-twinkles { display: none; }
 
 body {
   margin: 0;
@@ -904,7 +906,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (prefers-reduced-motion: reduce) { .section-nav-thumb, .section-nav button { transition: none; } }
 #bazi-natal, #bazi-fortune, #bazi-combined,
 #ziwei-board, #ziwei-fortune, #star-natal, #star-overlay, #star-houses, #star-sky { scroll-margin-top: 16px; }
-.ghost.toggle.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* A switch that is on is filled, so it can't be taken for one that is off and only hovered */
+.ghost.toggle.on, .ghost.toggle.on:hover { border-color: var(--accent); color: var(--on-accent); background: var(--accent); }
+.ghost.toggle.on:hover { filter: brightness(1.08); }
 /* Horizontal scrollers fade out on the side that has more (useScrollHints sets the classes). */
 .fortune-row { position: relative; }
 .can-right { mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
@@ -1456,6 +1460,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-chosen-info { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft); font-size: 13px; animation: sky-info-in 0.25s ease; }
 .sky-chosen-info strong { white-space: nowrap; }
 .sky-chosen-info .muted { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.sky-show-path { height: 26px; padding: 0 10px; margin-left: auto; font-size: 12px; white-space: nowrap; }
+.sky-show-path + .sky-unchoose { margin-left: 0; }
 .sky-unchoose { margin-left: auto; width: 26px; height: 26px; padding: 0; border-radius: 50%; line-height: 1; }
 @keyframes sky-info-in {
   from { opacity: 0; transform: translateY(-4px); }
