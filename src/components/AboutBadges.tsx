@@ -3,7 +3,7 @@ import { useT, useTerm } from '../settingsContext'
 import { install, useInstallState } from '../pwa'
 import { useDismiss } from './useDismiss'
 
-const REPO = 'https://github.com/RedCarpG/web-paipan-ChroniQ'
+const REPO = 'https://github.com/RedCarpG/ChroniQ'
 const CREDIT_LINKS: Record<string, [string, string]> = {
   author: ['RedCarpG', 'https://github.com/RedCarpG'],
   tyme: ['tyme4ts', 'https://github.com/6tail/tyme4ts'],

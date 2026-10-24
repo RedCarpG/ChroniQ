@@ -62,7 +62,7 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
         // Sign the copy, not the page
         onCloneNode: (clone) => {
           const footer = document.createElement('div')
-          footer.textContent = '星曆 ChroniQ · redcarpg.github.io/web-paipan-ChroniQ'
+          footer.textContent = '星曆 ChroniQ · redcarpg.github.io/ChroniQ'
           footer.setAttribute(
             'style',
             `height:${FOOTER_HEIGHT}px;line-height:${FOOTER_HEIGHT}px;font-size:11px;text-align:right;color:${muted}`,

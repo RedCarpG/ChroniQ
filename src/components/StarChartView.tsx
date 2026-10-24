@@ -252,7 +252,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           {t('容许度：合、冲 8°，刑、拱 7°，六合 5°，涉及日月再加 2°。')}
           {t('星体位置由')} <a href="https://github.com/cosinekitty/astronomy">astronomy-engine</a>{' '}
           {t('计算（误差约 1′）·')}{' '}
-          <a href="https://github.com/RedCarpG/web-paipan-ChroniQ/blob/main/docs/schools.md#星盘">{t('宫位制说明')}</a> ·{' '}
+          <a href="https://github.com/RedCarpG/ChroniQ/blob/main/docs/schools.md#星盘">{t('宫位制说明')}</a> ·{' '}
           {t('仅供参考')}
         </p>
       </section>
