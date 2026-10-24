@@ -14,7 +14,7 @@
   --earth: #a9772a;
   --metal: #c09a2a;
   --water: #2d6cb5;
-  --weekend: #fcf5f2;
+  --weekend: #f5e3dc;
   --logo-line: #B48A4C;
   --logo-star: #D7A765;
   /* 紫微运限 layers: 大限, 流年, 流月 */
@@ -47,7 +47,7 @@
     --earth: #d5a55a;
     --metal: #e3c25c;
     --water: #6aa5ea;
-    --weekend: #2a201d;
+    --weekend: #3a2721;
     --logo-line: #D7A765;
     --logo-star: #F4D9A2;
     --ly-decadal: #5cc2c7;
@@ -75,7 +75,7 @@
   --earth: #d5a55a;
   --metal: #e3c25c;
   --water: #6aa5ea;
-  --weekend: #2a201d;
+  --weekend: #3a2721;
   --logo-line: #D7A765;
   --logo-star: #F4D9A2;
   --ly-decadal: #5cc2c7;
@@ -306,6 +306,17 @@ footer {
   fill: color-mix(in srgb, var(--surface-2) 45%, transparent);
   stroke: color-mix(in srgb, var(--accent) 55%, var(--border)); stroke-width: 1.5;
 }
+
+/* Changing month / week / year: the new one slides in from its side; changing view fades (CalendarView) */
+.cal-slide.next { animation: cal-in-next 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
+.cal-slide.back { animation: cal-in-back 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
+.cal-slide.fade { animation: cal-fade 0.25s ease both; }
+@keyframes cal-in-next { from { opacity: 0; transform: translateX(32px); } }
+@keyframes cal-in-back { from { opacity: 0; transform: translateX(-32px); } }
+@keyframes cal-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cal-slide.next, .cal-slide.back, .cal-slide.fade { animation: none; } }
+/* Clip the sideways slide only, so the year / month picker can still drop below the card */
+.calendar { overflow-x: clip; }
 
 /* Legend under the month and week views */
 .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 2px 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
@@ -1277,7 +1288,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   html:root:root {
     --bg: #ffffff; --surface: #ffffff; --surface-2: #f1ece4; --text: #2b2724; --muted: #6f665f;
     --border: #ddd5ca; --accent: #b23a2e; --accent-soft: #f6e3df; --good: #2f7d4f; --bad: #b23a2e;
-    --wood: #3f8f4f; --fire: #d1452f; --earth: #a9772a; --metal: #b08a1a; --water: #2d6cb5; --weekend: #fcf5f2;
+    --wood: #3f8f4f; --fire: #d1452f; --earth: #a9772a; --metal: #b08a1a; --water: #2d6cb5; --weekend: #f5e3dc;
     --logo-line: #b48a4c; --logo-star: #d7a765; --shadow: none; --ui-zoom: 1;
     --ly-decadal: #23838a; --ly-yearly: #c0661a; --ly-monthly: #5a62c2; --ly-daily: #b0407a; --ly-hourly: #5d7a1e;
     color-scheme: light;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
@@ -92,6 +92,22 @@ export function CalendarView({ onPickBazi }: Props) {
   const yearMonths = useMemo(() => (mode === 'year' ? buildYear(view.year, weekStart) : []), [mode, view.year, weekStart]).map(
     (m) => ({ ...m, days: m.days.map(withChina) }),
   )
+  // Moving to another month, week or year slides the new one in from the side it lies on
+  // (styles.css .cal-slide); changing view fades. Worked out while rendering, from what was
+  // shown last; the key remounts the view so the animation plays.
+  const first = weekDays[0]?.solar
+  const order =
+    mode === 'week' && first
+      ? first.getYear() * 10000 + first.getMonth() * 100 + first.getDay()
+      : mode === 'year'
+        ? view.year
+        : view.year * 12 + view.month
+  const last = useRef({ mode, order })
+  const slide = useRef('')
+  if (last.current.mode !== mode) slide.current = 'fade'
+  else if (last.current.order !== order) slide.current = order > last.current.order ? 'next' : 'back'
+  last.current = { mode, order }
+  const slideKey = `${mode}-${order}`
   const monthDay = (d: SolarDay) =>
     en ? enDate(d.getYear(), d.getMonth(), d.getDay(), { day: 'numeric', month: 'short' }) : `${d.getMonth()}月${d.getDay()}日`
   const weekRange = weekDays.length > 0 ? `${monthDay(weekDays[0].solar)} – ${monthDay(weekDays[6].solar)}` : ''
@@ -220,61 +236,65 @@ export function CalendarView({ onPickBazi }: Props) {
                 </div>
               ))}
             </div>
-            <div className="grid days">
-              <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}`} />
-              {cells.map((c) => {
-                const rd = regionOf(c.solar)
-                // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
-                const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
-                const mine = gridDays(c.solar, c.ganzhi)
-                return (
-                <button
-                  key={c.key}
-                  className={[
-                    'day',
-                    !c.inMonth && 'out',
-                    dayTone(c, rd, mine),
-                    c.isToday && 'today',
-                    c.isWeekend && 'weekend',
-                    sameDay(c.solar, selected) && 'selected',
-                    mine.length > 0 && 'mine',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  title={mine.map(chartText).join('\n') || undefined}
-                  onClick={() => select(c.solar)}
-                >
-                  {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
-                  {offTags(rd).length > 0 && (
-                    <span className={`badge region${offTags(rd).every((x) => x.partial) ? ' partial' : ''}`}>
-                      {offTags(rd).map((x) => x.tag).join(' ')}
-                    </span>
-                  )}
-                  <span className="num">{c.day}</span>
-                  {regionSub ? (
-                    <span className={`sub region ${regionSub.kind}`}>{dayName(regionSub)}</span>
-                  ) : (
-                    <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
-                  )}
-                  {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
-                  {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
-                </button>
-                )
-              })}
+            <div key={slideKey} className={`cal-slide ${slide.current}`}>
+              <div className="grid days">
+                <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}`} />
+                {cells.map((c) => {
+                  const rd = regionOf(c.solar)
+                  // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
+                  const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
+                  const mine = gridDays(c.solar, c.ganzhi)
+                  return (
+                  <button
+                    key={c.key}
+                    className={[
+                      'day',
+                      !c.inMonth && 'out',
+                      dayTone(c, rd, mine),
+                      c.isToday && 'today',
+                      c.isWeekend && 'weekend',
+                      sameDay(c.solar, selected) && 'selected',
+                      mine.length > 0 && 'mine',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    title={mine.map(chartText).join('\n') || undefined}
+                    onClick={() => select(c.solar)}
+                  >
+                    {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
+                    {offTags(rd).length > 0 && (
+                      <span className={`badge region${offTags(rd).every((x) => x.partial) ? ' partial' : ''}`}>
+                        {offTags(rd).map((x) => x.tag).join(' ')}
+                      </span>
+                    )}
+                    <span className="num">{c.day}</span>
+                    {regionSub ? (
+                      <span className={`sub region ${regionSub.kind}`}>{dayName(regionSub)}</span>
+                    ) : (
+                      <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
+                    )}
+                    {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
+                    {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
+                  </button>
+                  )
+                })}
+              </div>
             </div>
           </>
         )}
 
         {mode === 'week' && (
-          <WeekView
-            days={weekDays}
-            selected={selected}
-            onSelect={select}
-            showGanzhi={dayGanzhi === 'show'}
-            regionOf={regionOf}
-            chartDaysOf={gridDays}
-            chartText={chartText}
-          />
+          <div key={slideKey} className={`cal-slide ${slide.current}`}>
+            <WeekView
+              days={weekDays}
+              selected={selected}
+              onSelect={select}
+              showGanzhi={dayGanzhi === 'show'}
+              regionOf={regionOf}
+              chartDaysOf={gridDays}
+              chartText={chartText}
+            />
+          </div>
         )}
 
         {mode !== 'year' && (
@@ -327,19 +347,21 @@ export function CalendarView({ onPickBazi }: Props) {
           </p>
         )}
         {mode === 'year' && (
-          <YearView
-            months={yearMonths}
-            weekStart={weekStart}
-            selected={selected}
-            onSelect={select}
-            regionOf={regionOf}
-            chartDaysOf={gridDays}
-            chartText={chartText}
-            onOpenMonth={(month) => {
-              setView((v) => ({ ...v, month }))
-              setMode('month')
-            }}
-          />
+          <div key={slideKey} className={`cal-slide ${slide.current}`}>
+            <YearView
+              months={yearMonths}
+              weekStart={weekStart}
+              selected={selected}
+              onSelect={select}
+              regionOf={regionOf}
+              chartDaysOf={gridDays}
+              chartText={chartText}
+              onOpenMonth={(month) => {
+                setView((v) => ({ ...v, month }))
+                setMode('month')
+              }}
+            />
+          </div>
         )}
       </section>
 
