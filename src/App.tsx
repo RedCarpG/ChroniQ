@@ -6,6 +6,7 @@ import { Logo } from './components/Logo'
 import { PageMenu, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
+import { useOnline } from './pwa'
 import { ShareButton } from './components/ShareButton'
 import { smoothUpdate } from './components/smoothUpdate'
 import { SPLASH_FADE_IN_MS, SplashOverlay, SplashSignal, holdSplash } from './components/Splash'
@@ -43,6 +44,7 @@ const shared = parseShareHash(location.hash)
 if (location.hash) history.replaceState(null, '', location.pathname + location.search)
 
 export function App() {
+  const online = useOnline()
   const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
   // side of the new tab (styles.css: [data-vt='page']).
@@ -171,6 +173,7 @@ export function App() {
           )}
         </main>
         <footer className="muted">
+          {!online && <span className="offline-badge">离线中 · 排盘与天象照常可用</span>}
           <span>
             历法数据由 <a href="https://github.com/6tail/tyme4ts">tyme4ts</a> 提供 · 仅供参考
           </span>

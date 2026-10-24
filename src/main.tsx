@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { SPLASH_FADE_MS, SPLASH_MIN_MS } from './components/Splash'
+import { setUpPwa } from './pwa'
 import './styles.css'
+
+setUpPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTerm } from '../settingsContext'
+import { install, useInstallState } from '../pwa'
 import { useDismiss } from './useDismiss'
 
 const REPO = 'https://github.com/RedCarpG/web-paipan-ChroniQ'
@@ -11,6 +12,7 @@ export function AboutBadges() {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
+  const installState = useInstallState()
 
   return (
     <div className="about-badges" ref={ref}>
@@ -52,6 +54,22 @@ export function AboutBadges() {
           <p className="muted">
             不同流派的取法可在「流派设置」中切换，并注明出处。命盘只保存在你自己的浏览器里，不会上传。结果仅供参考。
           </p>
+          <div className="about-install">
+            {installState === 'installed' ? (
+              <span className="muted">✓ 已作为应用安装，离线也能使用。</span>
+            ) : installState === 'available' ? (
+              <>
+                <button type="button" className="ghost" onClick={install}>
+                  安装到桌面 / 主屏幕
+                </button>
+                <span className="muted">像应用一样打开，离线也能使用。</span>
+              </>
+            ) : installState === 'ios' ? (
+              <span className="muted">安装到主屏幕：在 Safari 中点「分享」→「添加到主屏幕」。打开过一次后，离线也能使用。</span>
+            ) : (
+              <span className="muted">打开过一次后，离线也能使用；支持的浏览器可从地址栏安装为应用。</span>
+            )}
+          </div>
           <p className="about-links">
             <a href={REPO} target="_blank" rel="noreferrer">
               GitHub 源代码
