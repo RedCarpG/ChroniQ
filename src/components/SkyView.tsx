@@ -516,7 +516,48 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         const [x, y] = at(p.az, p.alt)
         return { x, y, r: ((p.size ?? 4) * R) / 90, a: p.weight }
       })
-    return { grain, glow: patches(galaxy.glow), dust: patches(galaxy.dust) }
+    // The band as short strokes along its centre line, each as wide as the band is there and as
+    // bright; drawn in three blurred layers (styles.css .mw-haze / .mw-body / .mw-core) they run
+    // together into one continuous, brighter-cored band. The Great Rift is a dark stroke over it.
+    const deg = R / 90
+    const line = (list: typeof galaxy.rift) =>
+      list
+        .map((p, i) => {
+          const [x, y] = at(p.az, p.alt)
+          return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
+        })
+        .join('')
+    const strokes = (list: typeof galaxy.spine, closed: boolean) => {
+      const out: { d: string; w: number; a: number }[] = []
+      const n = closed ? list.length : list.length - 1
+      for (let i = 0; i < n; i++) {
+        const p = list[i]
+        const q = list[(i + 1) % list.length]
+        // Leave out what is well below the horizon (and so far outside the disc)
+        if (below ? Math.min(p.alt, q.alt) > 30 : Math.max(p.alt, q.alt) < -30) continue
+        const [x1, y1] = at(p.az, p.alt)
+        const [x2, y2] = at(q.az, q.alt)
+        out.push({
+          d: `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`,
+          w: (((p.size ?? 4) + (q.size ?? 4)) / 2) * deg,
+          a: (p.weight + q.weight) / 2,
+        })
+      }
+      return out
+    }
+    return {
+      grain,
+      glow: patches(galaxy.glow),
+      // The rift's own patches would bead along the line drawn below: only the Coalsack stays a patch
+      dust: patches(galaxy.dust.filter((p) => p.l > 180)),
+      band: strokes(galaxy.spine, true),
+      // The rift as continuous lines (separate strokes would bead): a thin one along its whole
+      // length and a wider one where it is deepest, Aquila to Cygnus
+      rift: [
+        { d: line(galaxy.rift), w: 1.6 * deg, a: 0.6 },
+        { d: line(galaxy.rift.filter((p) => p.l >= 18 && p.l <= 72)), w: 2.8 * deg, a: 0.6 },
+      ],
+    }
     // at follows below
   }, [galaxy, below])
   // Sunlight low in the sky: at dusk and dawn a warm glow on the Sun's side of the horizon, by day a
@@ -848,6 +889,16 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <stop offset={0} stopColor="#e4ebff" stopOpacity={1} />
           <stop offset={1} stopColor="#e4ebff" stopOpacity={0} />
         </radialGradient>
+        {/* The Milky Way's blurs (in map units; one degree is R / 90 ≈ 1.9) */}
+        <filter id={`${clipId}-mw-blur-wide`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation={7} />
+        </filter>
+        <filter id={`${clipId}-mw-blur`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation={3.5} />
+        </filter>
+        <filter id={`${clipId}-mw-blur-fine`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation={1.6} />
+        </filter>
         <radialGradient id={`${clipId}-mw`}>
           <stop offset={0} stopColor="#cdd6ff" stopOpacity={1} />
           <stop offset={0.45} stopColor="#b7c4f5" stopOpacity={0.45} />
@@ -881,9 +932,31 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       </g>
       <g clipPath={`url(#${clipId})`}>
         <g className="sky-milkyway" aria-hidden="true">
+          {/* Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius) */}
+          <g className="mw-haze" filter={`url(#${clipId}-mw-blur-wide)`}>
+            {milkyWay.band.map((b, i) => (
+              <path key={i} d={b.d} strokeWidth={b.w * 3.4} opacity={Math.min(0.32, 0.09 + 0.14 * b.a)} />
+            ))}
+          </g>
+          <g className="mw-body" filter={`url(#${clipId}-mw-blur)`}>
+            {milkyWay.band.map((b, i) => (
+              <path key={i} d={b.d} strokeWidth={b.w * 1.7} opacity={Math.min(0.55, 0.1 + 0.28 * b.a)} />
+            ))}
+          </g>
+          <g className="mw-core" filter={`url(#${clipId}-mw-blur-fine)`}>
+            {milkyWay.band.map(
+              (b, i) =>
+                b.a > 0.55 && <path key={i} d={b.d} strokeWidth={b.w * 0.75} opacity={Math.min(0.6, 0.5 * (b.a - 0.55))} />,
+            )}
+          </g>
           {milkyWay.glow.map((g, i) => (
-            <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a} />
+            <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a * 0.6} />
           ))}
+          <g className="mw-rift" filter={`url(#${clipId}-mw-blur-fine)`}>
+            {milkyWay.rift.map((b, i) => (
+              <path key={i} d={b.d} strokeWidth={b.w} opacity={b.a} />
+            ))}
+          </g>
           {milkyWay.dust.map((g, i) => (
             <circle key={`dust-${i}`} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-dust)`} opacity={g.a} />
           ))}
