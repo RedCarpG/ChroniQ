@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
@@ -8,6 +8,7 @@ import {
   WEEKDAYS_EN,
   buildDayDetail,
   buildMonthGrid,
+  buildMonthStrip,
   buildWeek,
   buildYear,
   enDate,
@@ -92,9 +93,12 @@ export function CalendarView({ onPickBazi }: Props) {
   const yearMonths = useMemo(() => (mode === 'year' ? buildYear(view.year, weekStart) : []), [mode, view.year, weekStart]).map(
     (m) => ({ ...m, days: m.days.map(withChina) }),
   )
-  // Moving to another month, week or year slides the new one in from the side it lies on
-  // (styles.css .cal-slide); changing view fades. Worked out while rendering, from what was
-  // shown last; the key remounts the view so the animation plays.
+  // Moving between months, weeks or years. To the month just before or after, the grid
+  // becomes one run of weeks covering both and scrolls up or down to the new one, so the
+  // weeks they share stay put (scroll, animated below). Any other move slides the new view
+  // in from below (later) or above (earlier) and changing view fades (styles.css .cal-slide);
+  // the key remounts the view so that animation plays. Worked out while rendering, from what
+  // was shown last.
   const first = weekDays[0]?.solar
   const order =
     mode === 'week' && first
@@ -102,12 +106,68 @@ export function CalendarView({ onPickBazi }: Props) {
       : mode === 'year'
         ? view.year
         : view.year * 12 + view.month
+  const reduceMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   const last = useRef({ mode, order })
   const slide = useRef('')
-  if (last.current.mode !== mode) slide.current = 'fade'
-  else if (last.current.order !== order) slide.current = order > last.current.order ? 'next' : 'back'
+  const viewKey = useRef(`${mode}-${order}`)
+  const scroll = useRef<(ReturnType<typeof buildMonthStrip> & { id: number }) | null>(null)
+  const [, scrolled] = useState(0)
+  if (last.current.mode !== mode) {
+    slide.current = 'fade'
+    scroll.current = null
+    viewKey.current = `${mode}-${order}`
+  } else if (last.current.order !== order) {
+    if (mode === 'month' && Math.abs(order - last.current.order) === 1 && !reduceMotion) {
+      const from = { year: Math.floor((last.current.order - 1) / 12), month: ((last.current.order - 1) % 12) + 1 }
+      scroll.current = { ...buildMonthStrip(from, view, weekStart), id: order }
+      slide.current = ''
+    } else {
+      scroll.current = null
+      slide.current = order > last.current.order ? 'next' : 'back'
+      viewKey.current = `${mode}-${order}`
+    }
+  }
   last.current = { mode, order }
-  const slideKey = `${mode}-${order}`
+  const monthCells = scroll.current ? scroll.current.cells.map(withChina) : cells
+
+  // The scroll: hold the window at six rows, run the strip from the old month's rows to the
+  // new month's, then show the plain grid again (it lines up with the strip's last frame).
+  const windowRef = useRef<HTMLDivElement>(null)
+  const gridHeight = useRef(0)
+  const running = useRef<{ id: number; anim: Animation } | null>(null)
+  useLayoutEffect(() => {
+    const win = windowRef.current
+    const grid = win?.querySelector<HTMLElement>('.grid.days')
+    const s = scroll.current
+    if (!win || !grid) return
+    if (!s) {
+      gridHeight.current = grid.offsetHeight
+      return
+    }
+    if (running.current?.id === s.id) return
+    running.current?.anim.cancel()
+    const days = grid.querySelectorAll<HTMLElement>('.day')
+    const row = days[7].offsetTop - days[0].offsetTop
+    win.style.height = `${gridHeight.current || row * 6}px`
+    win.classList.add('scrolling')
+    const anim = grid.animate(
+      [{ transform: `translateY(${-s.fromRow * row}px)` }, { transform: `translateY(${-s.toRow * row}px)` }],
+      { duration: 420, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+    )
+    running.current = { id: s.id, anim }
+    const finish = () => {
+      if (scroll.current !== s) return
+      scroll.current = null
+      running.current = null
+      win.style.height = ''
+      win.classList.remove('scrolling')
+      anim.cancel()
+      scrolled((n) => n + 1)
+    }
+    anim.onfinish = finish
+    // Also if the page is not being drawn and the animation never runs
+    setTimeout(finish, 700)
+  })
   const monthDay = (d: SolarDay) =>
     en ? enDate(d.getYear(), d.getMonth(), d.getDay(), { day: 'numeric', month: 'short' }) : `${d.getMonth()}月${d.getDay()}日`
   const weekRange = weekDays.length > 0 ? `${monthDay(weekDays[0].solar)} – ${monthDay(weekDays[6].solar)}` : ''
@@ -236,10 +296,11 @@ export function CalendarView({ onPickBazi }: Props) {
                 </div>
               ))}
             </div>
-            <div key={slideKey} className={`cal-slide ${slide.current}`}>
+            <div key={viewKey.current} className={`cal-slide ${slide.current}`}>
+              <div className="month-window" ref={windowRef}>
               <div className="grid days">
-                <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}`} />
-                {cells.map((c) => {
+                <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}-${scroll.current ? 'strip' : 'grid'}`} />
+                {monthCells.map((c) => {
                   const rd = regionOf(c.solar)
                   // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
                   const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
@@ -279,12 +340,13 @@ export function CalendarView({ onPickBazi }: Props) {
                   )
                 })}
               </div>
+              </div>
             </div>
           </>
         )}
 
         {mode === 'week' && (
-          <div key={slideKey} className={`cal-slide ${slide.current}`}>
+          <div key={viewKey.current} className={`cal-slide ${slide.current}`}>
             <WeekView
               days={weekDays}
               selected={selected}
@@ -347,7 +409,7 @@ export function CalendarView({ onPickBazi }: Props) {
           </p>
         )}
         {mode === 'year' && (
-          <div key={slideKey} className={`cal-slide ${slide.current}`}>
+          <div key={viewKey.current} className={`cal-slide ${slide.current}`}>
             <YearView
               months={yearMonths}
               weekStart={weekStart}

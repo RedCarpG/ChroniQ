@@ -107,6 +107,31 @@ export function buildMonthGrid(year: number, month: number, weekStart: WeekStart
   return Array.from({ length: 42 }, (_, i) => makeCell(start.next(i), month, today))
 }
 
+/**
+ * The weeks covering two neighbouring months' grids, for scrolling from one to
+ * the other: the six weeks of each, merged into one run of weeks (they share
+ * some). `fromRow` and `toRow` are where each month's six-week grid starts in
+ * it. Days are marked in-month for the month scrolled to.
+ */
+export function buildMonthStrip(
+  from: { year: number; month: number },
+  to: { year: number; month: number },
+  weekStart: WeekStart = 'mon',
+): { cells: DayCell[]; fromRow: number; toRow: number } {
+  const gridStart = ({ year, month }: { year: number; month: number }) => {
+    const first = SolarDay.fromYmd(year, month, 1)
+    return first.next(-leadDays(first, weekStart))
+  }
+  const a = gridStart(from)
+  const b = gridStart(to)
+  const start = a.isBefore(b) ? a : b
+  const fromRow = a.subtract(start) / 7
+  const toRow = b.subtract(start) / 7
+  const today = todaySolar()
+  const rows = Math.max(fromRow, toRow) + 6
+  return { cells: Array.from({ length: rows * 7 }, (_, i) => makeCell(start.next(i), to.month, today)), fromRow, toRow }
+}
+
 export interface WeekDay extends DayCell {
   duty: string
   recommends: string[]
