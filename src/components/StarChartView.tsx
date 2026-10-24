@@ -7,6 +7,7 @@ import {
   SIGN_GLYPHS,
   SIGNS,
   buildStarChart,
+  composite,
   progressions,
   synastry,
   toUtc,
@@ -53,7 +54,7 @@ interface Props {
 export function StarChartView({ input, onChange, place, onPlaceChange, settings, onSettingsChange }: Props) {
   const chart = useMemo(() => buildStarChart(input, place, settings), [input, place, settings])
   // 行运 / 推运: a moment to compare with the natal chart, read in the birthplace's time zone.
-  const [mode, setMode] = useState<'natal' | OverlayKind>('natal')
+  const [mode, setMode] = useState<'natal' | OverlayKind | 'composite'>('natal')
   const [when, setWhen] = useState(nowLocal)
   // 合盘: the other person, remembered between visits
   const [partner, setPartnerState] = useState<Partner>(() => loadPartner(input, place))
@@ -71,7 +72,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
     onBlur: () => setFocus(null),
   })
   const overlay = useMemo<Overlay | null>(() => {
-    if (mode === 'natal') return null
+    if (mode === 'natal' || mode === 'composite') return null
     if (mode === 'synastry') return synastry(chart, buildStarChart(partner.wall, partner.place, settings))
     const [y, m, d] = when.date.split('-').map(Number)
     const [hh, mm] = when.time.split(':').map(Number)
@@ -81,6 +82,11 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
     return mode === 'transit' ? transits(chart, target, settings) : progressions(chart, target, settings)
   }, [mode, when, chart, place.timeZone, settings, partner])
   const hl = useMemo(() => highlight(chart, overlay, focus), [chart, overlay, focus])
+  const compositeChart = useMemo(
+    () =>
+      mode === 'composite' ? composite(chart, buildStarChart(partner.wall, partner.place, settings), settings) : null,
+    [mode, chart, partner, settings],
+  )
   const byKey = (k: ChartPoint['key']) => chart.points.find((p) => p.key === k)!
   const sun = byKey('sun')
   const moon = byKey('moon')
@@ -105,6 +111,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
         items={[
           ['star-natal', '本命'],
           ...(overlay ? [['star-overlay', OVERLAY_TITLE[overlay.kind]] as [string, string]] : []),
+          ...(compositeChart ? [['star-composite', '组合盘'] as [string, string]] : []),
           ['star-houses', '宫位'],
           ['star-sky', '天空'],
         ]}
@@ -142,6 +149,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
                 ['transit', '行运'],
                 ['progressed', '推运'],
                 ['synastry', '合盘'],
+                ['composite', '组合盘'],
               ] as const
             ).map(([v, label]) => (
               <button key={v} className={mode === v ? 'on' : undefined} onClick={() => mode !== v && smoothUpdate('star', () => setMode(v))}>
@@ -171,51 +179,14 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
             </>
           )}
         </div>
-        {mode === 'synastry' && <PartnerPicker partner={partner} onChange={setPartner} fallbackPlace={place} input={input} />}
-        {mode !== 'natal' && !overlay && <p className="muted row-note">请选择出生之后的日期。</p>}
+        {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} fallbackPlace={place} input={input} />}
+        {(mode === 'transit' || mode === 'progressed') && !overlay && (
+          <p className="muted row-note">请选择出生之后的日期。</p>
+        )}
         <div className="star-layout">
           <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
           <div className="star-tables">
-            <table className="star-table">
-              <thead>
-                <tr>
-                  <th>星体</th>
-                  <th>位置</th>
-                  <th>宫</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chart.points.map((p) => (
-                  <tr
-                    key={p.key}
-                    className={hl.row(p) ? 'on' : undefined}
-                    {...hover({ planet: p.key, layer: 'natal' })}
-                  >
-                    <td>
-                      <span className="planet-glyph">{p.key === 'asc' || p.key === 'mc' ? '' : p.glyph}</span>
-                      <InfoTip label={p.name} title={p.name}>
-                        <span>{PLANET_INFO[p.key]}</span>
-                      </InfoTip>
-                      {p.retrograde && (
-                        <InfoTip className="plain retro" label="℞" title="逆行">
-                          <span>从地球看，这颗行星正在黄道上倒退。传统上认为它的作用更内省、迟缓或需要回顾。</span>
-                        </InfoTip>
-                      )}
-                    </td>
-                    <td className={`el-${SIGN_ELEMENT[p.sign]}`}>
-                      <InfoTip label={formatLon(p.lon)} title={`${SIGNS[p.sign]}座 ${SIGN_GLYPHS[p.sign]}`}>
-                        <TipLine name={ELEMENT_NAME[SIGN_ELEMENT[p.sign]]}>{SIGN_INFO[p.sign]}</TipLine>
-                      </InfoTip>
-                    </td>
-                    <td>
-                      <InfoTip label={String(p.house)} title={`第${p.house}宫`}>
-                        <span>{HOUSE_INFO[p.house - 1]}</span>
-                      </InfoTip>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <PointTable chart={chart} hl={hl} hover={hover} />
             <div className="element-bars">
               {elements.map(({ e, n }) => (
                 <span key={e} className={`el-${e}`}>
@@ -238,6 +209,8 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
         />
       )}
 
+      {compositeChart && <CompositeCard chart={compositeChart} partnerName={partner.name} settings={settings} />}
+
       <section className="card" id="star-houses">
         <h3 className="section-title">
           <TitleMark />
@@ -258,22 +231,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
           <TitleMark />
           相位
         </h3>
-        {chart.aspects.length === 0 ? (
-          <p className="muted">没有主要相位。</p>
-        ) : (
-          <div className={`aspect-list${focus ? ' has-focus' : ''}`}>
-            {chart.aspects.map((a) => (
-              <span key={a.a.key + a.b.key} className={`aspect-chip tone-${a.type.tone}${hl.aspect(a) ? ' on' : ''}`}>
-                {a.a.name}
-                <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
-                  <span>{ASPECT_INFO[a.type.key]}</span>
-                </InfoTip>
-                {a.b.name}
-                <small>{a.orb.toFixed(1)}°</small>
-              </span>
-            ))}
-          </div>
-        )}
+        <AspectList aspects={chart.aspects} hl={hl} active={!!focus} />
         <p className="muted row-note">
           容许度：合、冲 8°，刑、拱 7°，六合 5°，涉及日月再加 2°。星体位置由{' '}
           <a href="https://github.com/cosinekitty/astronomy">astronomy-engine</a> 计算（误差约 1′）·{' '}
@@ -284,6 +242,131 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
 
       <SkyView place={place} />
     </div>
+  )
+}
+
+/** Planet, sign position and house of each point in a chart. */
+function PointTable({
+  chart,
+  hl,
+  hover,
+}: {
+  chart: StarChart
+  hl: Highlight
+  hover: (f: NonNullable<Focus>) => Record<string, unknown>
+}) {
+  return (
+    <table className="star-table">
+      <thead>
+        <tr>
+          <th>星体</th>
+          <th>位置</th>
+          <th>宫</th>
+        </tr>
+      </thead>
+      <tbody>
+        {chart.points.map((p) => (
+          <tr
+            key={p.key}
+            className={hl.row(p) ? 'on' : undefined}
+            {...hover({ planet: p.key, layer: 'natal' })}
+          >
+            <td>
+              <span className="planet-glyph">{p.key === 'asc' || p.key === 'mc' ? '' : p.glyph}</span>
+              <InfoTip label={p.name} title={p.name}>
+                <span>{PLANET_INFO[p.key]}</span>
+              </InfoTip>
+              {p.retrograde && (
+                <InfoTip className="plain retro" label="℞" title="逆行">
+                  <span>从地球看，这颗行星正在黄道上倒退。传统上认为它的作用更内省、迟缓或需要回顾。</span>
+                </InfoTip>
+              )}
+            </td>
+            <td className={`el-${SIGN_ELEMENT[p.sign]}`}>
+              <InfoTip label={formatLon(p.lon)} title={`${SIGNS[p.sign]}座 ${SIGN_GLYPHS[p.sign]}`}>
+                <TipLine name={ELEMENT_NAME[SIGN_ELEMENT[p.sign]]}>{SIGN_INFO[p.sign]}</TipLine>
+              </InfoTip>
+            </td>
+            <td>
+              <InfoTip label={String(p.house)} title={`第${p.house}宫`}>
+                <span>{HOUSE_INFO[p.house - 1]}</span>
+              </InfoTip>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Aspect chips within one chart. */
+function AspectList({ aspects, hl, active }: { aspects: Aspect[]; hl: Highlight; active: boolean }) {
+  return aspects.length === 0 ? (
+    <p className="muted">没有主要相位。</p>
+  ) : (
+    <div className={`aspect-list${active ? ' has-focus' : ''}`}>
+      {aspects.map((a) => (
+        <span key={a.a.key + a.b.key} className={`aspect-chip tone-${a.type.tone}${hl.aspect(a) ? ' on' : ''}`}>
+          {a.a.name}
+          <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
+            <span>{ASPECT_INFO[a.type.key]}</span>
+          </InfoTip>
+          {a.b.name}
+          <small>{a.orb.toFixed(1)}°</small>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * 组合盘: the relationship's own chart, with its own wheel, positions and
+ * aspects, and its own highlight (its planets are not the natal ones).
+ */
+function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; partnerName: string; settings: StarSettings }) {
+  const [focus, setFocus] = useState<Focus>(null)
+  const hover = (f: NonNullable<Focus>) => ({
+    tabIndex: 0,
+    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(f),
+    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
+    onFocus: () => setFocus(f),
+    onBlur: () => setFocus(null),
+  })
+  const hl = useMemo(() => highlight(chart, null, focus), [chart, focus])
+  const davison = settings.composite === 'davison'
+  const sign = (k: string) => {
+    const p = chart.points.find((x) => x.key === k)!
+    return `${SIGNS[p.sign]}座 · 第${p.house}宫`
+  }
+  return (
+    <section className="card overlay-card is-composite" id="star-composite">
+      <h3 className="section-title">
+        <TitleMark />
+        组合盘 · 我 + {partnerName}
+      </h3>
+      <p className="muted row-note">
+        {davison
+          ? `时空中点盘：两人出生时刻的中点 ${new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }).format(chart.utc)}（世界时），两地中点 ${formatCoords(chart.place.latitude, chart.place.longitude)} 上空的真实天象。`
+          : `中点组合盘：每颗行星取两人位置的较近中点；天顶取两人天顶的中点，上升与宫位由它在两地平均纬度 ${chart.place.latitude.toFixed(2)}° 推出。`}
+        组合盘看的是「这段关系本身」的性格：太阳是关系的核心，月亮是相处的感受，上升是这对组合给外人的样子。可在流派设置中切换做法。
+      </p>
+      <div className="big-three small">
+        <span>太阳 {sign('sun')}</span>
+        <span>月亮 {sign('moon')}</span>
+        <span>上升 {SIGNS[Math.floor(chart.asc / 30)]}座</span>
+      </div>
+      <div className="star-layout">
+        <StarWheel chart={chart} overlay={null} hl={hl} hover={hover} />
+        <div className="star-tables">
+          <PointTable chart={chart} hl={hl} hover={hover} />
+        </div>
+      </div>
+      <h4 className="overlay-subtitle reverse-title">
+        <TitleMark />
+        组合盘相位
+      </h4>
+      <AspectList aspects={chart.aspects} hl={hl} active={!!focus} />
+    </section>
   )
 }
 

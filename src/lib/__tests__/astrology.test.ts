@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildStarChart, computeChart, formatLon, houseOf, synastry, toUtc } from '../astrology'
+import { buildStarChart, composite, computeChart, formatLon, houseOf, midpoint, synastry, toUtc } from '../astrology'
 import { DEFAULT_STAR_SETTINGS } from '../starPrefs'
 
 // Einstein, 1879-03-14 11:30 LMT Ulm (48°24′N, 10°E) = 10:50 UT.
@@ -200,3 +200,51 @@ describe('合盘', () => {
     expect(synastry(b, a).aspects.length).toBe(s.aspects.length)
   })
 })
+
+describe('组合盘', () => {
+  const beijing = { name: '北京', latitude: 39.9, longitude: 116.4, timeZone: 'Asia/Shanghai' }
+  const ny = { name: '纽约', latitude: 40.71, longitude: -74.01, timeZone: 'America/New_York' }
+  const a = buildStarChart({ year: 1990, month: 5, day: 1, hour: 8, minute: 0 }, beijing, DEFAULT_STAR_SETTINGS)
+  const b = buildStarChart({ year: 1992, month: 9, day: 20, hour: 21, minute: 30 }, ny, DEFAULT_STAR_SETTINGS)
+  const lon = (c: ReturnType<typeof composite>, key: string) => c.points.find((p) => p.key === key)!.lon
+
+  it('takes the nearer midpoint, across 0° when shorter', () => {
+    expect(midpoint(10, 50)).toBeCloseTo(30)
+    expect(midpoint(350, 20)).toBeCloseTo(5)
+    expect(midpoint(20, 350)).toBeCloseTo(5)
+  })
+
+  for (const method of ['midpoint', 'davison'] as const) {
+    const settings = { ...DEFAULT_STAR_SETTINGS, composite: method }
+    it(`${method}: a chart with itself is that chart`, () => {
+      const c = composite(a, a, settings)
+      for (const p of a.points) expect(lon(c, p.key)).toBeCloseTo(p.lon, 4)
+      c.cusps.forEach((x, i) => expect(Math.abs(norm(x - a.cusps[i] + 180) - 180)).toBeLessThan(1e-4))
+    })
+    it(`${method}: the same either way round`, () => {
+      const ab = composite(a, b, settings)
+      const ba = composite(b, a, settings)
+      for (const p of ab.points) expect(lon(ba, p.key)).toBeCloseTo(p.lon, 6)
+      expect(ab.asc).toBeCloseTo(ba.asc, 6)
+    })
+  }
+
+  it('midpoint: planets at the midpoints, houses from the composite MC', () => {
+    const c = composite(a, b, DEFAULT_STAR_SETTINGS)
+    const at = (ch: typeof a, k: string) => ch.points.find((p) => p.key === k)!.lon
+    expect(lon(c, 'venus')).toBeCloseTo(midpoint(at(a, 'venus'), at(b, 'venus')), 6)
+    expect(c.mc).toBeCloseTo(midpoint(a.mc, b.mc), 6)
+    expect(c.cusps[9]).toBeCloseTo(c.mc, 6)
+    expect(Math.abs(norm(lon(c, 'southNode') - lon(c, 'node')) - 180)).toBeLessThan(1e-9)
+  })
+
+  it('davison: the sky at the midpoint in time and place', () => {
+    const c = composite(a, b, { ...DEFAULT_STAR_SETTINGS, composite: 'davison' })
+    expect(c.utc.getTime()).toBe((a.utc.getTime() + b.utc.getTime()) / 2)
+    // Beijing and New York: the shorter way round is over the Pacific
+    expect(c.place.longitude).toBeCloseTo(-158.8, 1)
+    expect(c.place.latitude).toBeCloseTo(40.3, 1)
+  })
+})
+
+const norm = (d: number) => ((d % 360) + 360) % 360
