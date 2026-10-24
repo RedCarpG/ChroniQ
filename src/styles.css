@@ -1097,6 +1097,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-body { cursor: default; }
 .sky-table td:first-child { display: flex; align-items: center; gap: 6px; }
 .sky-table tr.below td { color: var(--muted); opacity: 0.7; }
+/* Day paths: the stretch already gone is dashed and faint, the stretch to come
+   solid; dots mark whole hours. Hovering a body or its row picks out its path. */
+.sky-path { transition: opacity 0.25s; }
+.sky-path path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.sky-path .past { stroke-dasharray: 2 3; opacity: 0.35; }
+.sky-path .future { opacity: 0.6; }
+.sky-path .hour { fill: currentColor; opacity: 0.75; }
+.sky-paths.has-focus .sky-path:not(.on) { opacity: 0.15; }
+.sky-path.on path { stroke-width: 1.8; }
+.sky-path.on .past { opacity: 0.6; }
+.sky-path.on .future { opacity: 0.95; }
+.sky-hour-labels text { fill: rgb(255 255 255 / 0.85); font-size: 8.5px; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; }
+.sky-body[tabindex], .sky-table tr[tabindex] { outline: none; cursor: default; }
+.sky-table tr.on td { background: var(--accent-soft); }
 .sky-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15); }
 .sky-side .row-note { margin-top: 10px; }
 @media (max-width: 860px) {

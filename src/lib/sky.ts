@@ -116,6 +116,29 @@ export function skyAt(utc: Date, latitude: number, longitude: number): Sky {
   return { bodies, stars, sunAlt, light: sunAlt > -0.833 ? 'day' : sunAlt > -12 ? 'twilight' : 'night' }
 }
 
+/** The bodies whose path across the sky is drawn: the Sun, the Moon and the planets seen by eye */
+export const PATH_BODIES: BodyKey[] = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn']
+
+/**
+ * Where each of PATH_BODIES stands (azimuth / altitude) at each of the given
+ * moments, for drawing its path across the sky; altitudes below 0 are kept,
+ * so a path can be drawn to the horizon and clipped there.
+ */
+export function tracksAt(times: Date[], latitude: number, longitude: number): Record<string, { az: number; alt: number }[]> {
+  const observer = new A.Observer(latitude, longitude, 0)
+  const bodies = SKY_BODIES.filter(([key]) => PATH_BODIES.includes(key))
+  const out: Record<string, { az: number; alt: number }[]> = Object.fromEntries(bodies.map(([key]) => [key, []]))
+  for (const utc of times) {
+    const time = A.MakeTime(utc)
+    for (const [key, body] of bodies) {
+      const eq = A.Equator(body, time, observer, true, true)
+      const hor = A.Horizon(time, observer, eq.ra, eq.dec, 'normal')
+      out[key].push({ az: hor.azimuth, alt: hor.altitude })
+    }
+  }
+  return out
+}
+
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
 const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 

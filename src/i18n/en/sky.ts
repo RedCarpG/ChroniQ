@@ -101,4 +101,9 @@ export const SKY: Record<string, string> = {
   顺行: 'Direct',
   '距离以天文单位（AU，日地平均距离约 1.5 亿千米）计；光行时是行星的光到达地球所需的时间。「逆行」是从地球看行星在星座间倒退， 其实是地球在内圈超过外行星（或内行星从地球与太阳之间经过）造成的视觉效果：悬停行星可看地球到它的视线。行星位置由 astronomy-engine 计算。':
     'Distances are in astronomical units (AU; the mean Sun–Earth distance, about 150 million km). Light time is how long a planet’s light takes to reach Earth. Retrograde is a planet seeming to move backwards among the stars as seen from Earth: in fact Earth overtaking an outer planet on its inner track (or an inner planet passing between Earth and the Sun). Hover over a planet to see Earth’s line of sight to it. Positions computed by astronomy-engine.',
+  // Day paths
+  轨迹: 'Paths',
+  '{h}时': '{h}:00',
+  '彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。':
+    'The coloured arcs are the paths of the Sun, Moon and naked-eye planets across the sky over 12 hours either side: dashed where they have been, solid where they are going, with a dot on each hour. Hover a body or its row to see the hours.',
 }

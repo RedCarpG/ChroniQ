@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { toUtc, type StarPlace } from '../lib/astrology'
-import { formatAzimuth, skyAt, type SkyBody, type SkyStar } from '../lib/sky'
+import { PATH_BODIES, formatAzimuth, skyAt, tracksAt, type SkyBody, type SkyStar } from '../lib/sky'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
@@ -77,6 +77,17 @@ function placeLabels(points: { key: string; text: string; x: number; y: number; 
 }
 
 
+// Paths: where each body goes from 12 hours before the moment shown to 12
+// hours after, sampled every 10 minutes, with a dot on each whole local hour.
+const PATH_SPAN = 12 * 3600_000
+const PATH_STEP = 10 * 60_000
+const HOUR = 3600_000
+const PATHS_KEY = 'chroniq-sky-paths'
+
+/** SVG path data through the projected points */
+const pathData = (points: { az: number; alt: number }[]) =>
+  points.map((p, i) => `${i ? 'L' : 'M'}${project(p.az, p.alt).map((v) => v.toFixed(1)).join(' ')}`).join('')
+
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (date: string) => {
   const [year, month, day] = date.split('-').map(Number)
@@ -127,6 +138,66 @@ export function SkyView({ place }: { place: StarPlace }) {
     return toUtc({ year: y, month: m, day: d, hour: hh || 0, minute: mm || 0 }, place.timeZone).date
   }, [picked, now, place.timeZone])
   const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+
+  // The bodies' paths across the sky, on unless switched off (remembered in this browser)
+  const [showPaths, setShowPaths] = useState(() => {
+    try {
+      return localStorage.getItem(PATHS_KEY) !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const togglePaths = () =>
+    setShowPaths((on) => {
+      try {
+        localStorage.setItem(PATHS_KEY, on ? 'off' : 'on')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !on
+    })
+  // The body whose path is picked out (hover or focus a body or its row), with its hours labelled
+  const [focus, setFocus] = useState<string | null>(null)
+  const focusProps = (key: string) =>
+    PATH_BODIES.includes(key as SkyBody['key']) && showPaths
+      ? {
+          tabIndex: 0,
+          onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(key),
+          onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
+          onFocus: () => setFocus(key),
+          onBlur: () => setFocus(null),
+        }
+      : {}
+  const paths = useMemo(() => {
+    if (!showPaths) return null
+    const now = utc.getTime()
+    const times: Date[] = []
+    for (let ms = now - PATH_SPAN; ms <= now + PATH_SPAN; ms += PATH_STEP) times.push(new Date(ms))
+    // Whole local hours in the window (from the wall-clock minute, so odd offsets like +5:45 work)
+    const start = now - PATH_SPAN
+    const minute = Number(wallTime(new Date(start), place.timeZone).time.slice(3))
+    const hours: Date[] = []
+    for (let ms = start - (start % 60_000) + ((60 - minute) % 60) * 60_000; ms <= now + PATH_SPAN; ms += HOUR) {
+      hours.push(new Date(ms))
+    }
+    const tracks = tracksAt([...times, ...hours], place.latitude, place.longitude)
+    const nowAt = PATH_SPAN / PATH_STEP
+    return PATH_BODIES.map((key) => {
+      const track = tracks[key]
+      const line = track.slice(0, times.length)
+      return {
+        key,
+        past: pathData(line.slice(0, nowAt + 1)),
+        future: pathData(line.slice(nowAt)),
+        hours: track
+          .slice(times.length)
+          .map((p, i) => ({ ...p, hour: Number(wallTime(hours[i], place.timeZone).time.slice(0, 2)) }))
+          .filter((p) => p.alt >= 0),
+      }
+    })
+  }, [showPaths, utc, place.latitude, place.longitude, place.timeZone])
+  const clipId = useId()
+  const focused = paths?.find((p) => p.key === focus)
   const up = sky.bodies.filter((b) => b.alt >= 0)
   const labels = useMemo(
     () =>
@@ -180,6 +251,9 @@ export function SkyView({ place }: { place: StarPlace }) {
           >
             {t('现在')}
           </button>
+          <button type="button" className={`ghost toggle${showPaths ? ' on' : ''}`} aria-pressed={showPaths} onClick={togglePaths}>
+            {t('轨迹')}
+          </button>
         </div>
       </div>
       <p className="muted row-note">
@@ -218,17 +292,50 @@ export function SkyView({ place }: { place: StarPlace }) {
               <Star key={s.hip} star={s} name={s.name && t(s.name)} azimuth={azimuth} />
             ))}
           </g>
+          {paths && (
+            <>
+              <defs>
+                <clipPath id={clipId}>
+                  <circle cx={C} cy={C} r={R} />
+                </clipPath>
+              </defs>
+              <g className={`sky-paths${focus ? ' has-focus' : ''}`} clipPath={`url(#${clipId})`} aria-hidden="true">
+                {paths.map((p) => (
+                  <g key={p.key} className={`sky-path${focus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] }}>
+                    <path className="past" d={p.past} />
+                    <path className="future" d={p.future} />
+                    {p.hours.map((h) => {
+                      const [x, y] = project(h.az, h.alt)
+                      return <circle key={h.hour} className="hour" cx={x} cy={y} r={1.6} />
+                    })}
+                  </g>
+                ))}
+              </g>
+            </>
+          )}
           <g className="sky-bodies">
             {up.map((b) => {
               const [x, y] = project(b.az, b.alt)
               return (
-                <g key={b.key} className={`sky-body sky-${b.key}`}>
+                <g key={b.key} className={`sky-body sky-${b.key}`} {...focusProps(b.key)}>
                   <title>{t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })}</title>
                   <circle cx={x} cy={y} r={bodyRadius(b)} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
                 </g>
               )
             })}
           </g>
+          {focused && (
+            <g className="sky-hour-labels" aria-hidden="true">
+              {focused.hours.map((h) => {
+                const [x, y] = project(h.az, h.alt)
+                return (
+                  <text key={h.hour} x={x + 4} y={y - 4}>
+                    {t('{h}时', { h: h.hour })}
+                  </text>
+                )
+              })}
+            </g>
+          )}
           <g className="sky-labels" aria-hidden="true">
             {labels.map((l) => (
               <text
@@ -257,7 +364,7 @@ export function SkyView({ place }: { place: StarPlace }) {
             </thead>
             <tbody>
               {sky.bodies.map((b) => (
-                <tr key={b.key} className={b.alt < 0 ? 'below' : undefined}>
+                <tr key={b.key} className={[b.alt < 0 && 'below', focus === b.key && 'on'].filter(Boolean).join(' ') || undefined} {...focusProps(b.key)}>
                   <td>
                     <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
                     {t(b.name)}
@@ -273,6 +380,8 @@ export function SkyView({ place }: { place: StarPlace }) {
             {lightNote && <>{lightNote}</>}
             {lightNote && en && ' '}
             {t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+            {paths && en && ' '}
+            {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
           </p>
         </div>
       </div>
