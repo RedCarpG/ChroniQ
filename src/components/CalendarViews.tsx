@@ -1,10 +1,24 @@
 import type { SolarDay } from 'tyme4ts'
-import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
+import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type DayCell, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
 import type { ChartDay } from '../lib/chartDays'
 import { offTags, type RegionDay, type TaggedRegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] // tyme4ts index: 0 = Sunday
+
+/**
+ * The class for a day's background, by what kind of day it is, strongest
+ * first: China's 休, another country's day off, China's 班, a Chinese
+ * festival, a saved chart's date (other than the every-twelve-days 冲).
+ */
+export function dayTone(d: DayCell, region: TaggedRegionDay[], mine: ChartDay[]): string | false {
+  if (d.holiday === '休') return 'tone-off'
+  if (region.some((x) => x.kind === 'public')) return 'tone-region'
+  if (d.holiday === '班') return 'tone-work'
+  if (d.festival) return 'tone-festival'
+  if (mine.some((x) => x.kind !== 'pillar')) return 'tone-mine'
+  return false
+}
 const PREVIEW = 4 // 宜忌 items shown per day
 
 /** Seven day cards with 建除 and a short 宜忌 preview. */
@@ -34,12 +48,14 @@ export function WeekView({
     <div className="week-view">
       {days.map((d) => {
         const rd = regionOf(d.solar)
+        const mine = chartDaysOf(d.solar, d.ganzhi)
         return (
         <button
           key={d.key}
           type="button"
           className={[
             'week-day',
+            dayTone(d, rd, mine),
             d.isToday && 'today',
             d.isWeekend && 'weekend',
             sameDay(d.solar, selected) && 'selected',
@@ -62,7 +78,7 @@ export function WeekView({
           <span className="num">{d.day}</span>
           <span className={`sub ${d.subKind}`}>{term(d.sub)}</span>
           {rd.length > 0 && <span className="sub region">{rd.map((x) => (en ? x.en : x.name)).join(' · ')}</span>}
-          {chartDaysOf(d.solar, d.ganzhi).map((x, i) => (
+          {mine.map((x, i) => (
             <span key={i} className="mine-line">
               {chartText(x)}
             </span>
@@ -140,6 +156,7 @@ export function YearView({
                     'mini-day',
                     d.isWeekend && 'weekend',
                     d.holiday === '休' && 'off',
+                    d.holiday === '班' && 'work',
                     d.termName && 'term',
                     d.festival && 'festival',
                     regionOf(d.solar).some((x) => x.kind === 'public') && 'region-off',

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
-import { WeekView, YearView } from './CalendarViews'
+import { WeekView, YearView, dayTone } from './CalendarViews'
+import { MonthOutline } from './MonthOutline'
 import {
   WEEKDAYS_EN,
   buildDayDetail,
@@ -220,6 +221,7 @@ export function CalendarView({ onPickBazi }: Props) {
               ))}
             </div>
             <div className="grid days">
+              <MonthOutline layoutKey={`${view.year}-${view.month}-${weekStart}`} />
               {cells.map((c) => {
                 const rd = regionOf(c.solar)
                 // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
@@ -231,6 +233,7 @@ export function CalendarView({ onPickBazi }: Props) {
                   className={[
                     'day',
                     !c.inMonth && 'out',
+                    dayTone(c, rd, mine),
                     c.isToday && 'today',
                     c.isWeekend && 'weekend',
                     sameDay(c.solar, selected) && 'selected',
@@ -272,6 +275,47 @@ export function CalendarView({ onPickBazi }: Props) {
             chartDaysOf={gridDays}
             chartText={chartText}
           />
+        )}
+
+        {mode !== 'year' && (
+          <ul className="cal-legend" aria-label={t('图例')}>
+            {holidays.china && (
+              <>
+                <li>
+                  <i className="tone-off" />
+                  {t('休 · 放假')}
+                </li>
+                <li>
+                  <i className="tone-work" />
+                  {t('班 · 调休上班')}
+                </li>
+                <li>
+                  <i className="tone-festival" />
+                  {t('节日')}
+                </li>
+              </>
+            )}
+            {holidays.regions.map((code) => (
+              <li key={code}>
+                <i className="tone-region" />
+                {t('{country}假日', { country: t(REGIONS[code].name) })}
+              </li>
+            ))}
+            {chartDays.shown.length > 0 && chartDays.items.length > 0 && (
+              <li>
+                <i className="tone-mine" />
+                {t('命盘')}
+              </li>
+            )}
+            <li>
+              <i className="tone-weekend" />
+              {t('周末')}
+            </li>
+            <li>
+              <i className="tone-today" />
+              {t('今天')}
+            </li>
+          </ul>
         )}
 
         {mode === 'year' && chartDays.taiSuiOf(yearBranch(view.year)).length > 0 && (

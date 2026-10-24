@@ -430,8 +430,9 @@ export function SkyView({ place }: { place: StarPlace }) {
           </defs>
           {figureViews.length > 0 && (
             <g className={`sky-figures sky-figures-${figures}`} clipPath={`url(#${clipId})`} aria-hidden="true">
-              {figureViews.map((c) => (
-                <path key={c.id} d={c.lines.map((l) => pathData(l, at)).join('')} />
+              {figureViews.map((c, i) => (
+                // Serpens comes in two parts with the same id
+                <path key={`${c.id}-${i}`} d={c.lines.map((l) => pathData(l, at)).join('')} />
               ))}
             </g>
           )}
@@ -447,9 +448,10 @@ export function SkyView({ place }: { place: StarPlace }) {
                   <g key={p.key} className={`sky-path${focus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] }}>
                     <path className="past" d={p.past} />
                     <path className="future" d={p.future} />
-                    {p.hours.map((h) => {
+                    {p.hours.map((h, i) => {
                       const [x, y] = at(h.az, h.alt)
-                      return <circle key={h.hour} className="hour" cx={x} cy={y} r={1.6} />
+                      // a 24-hour window has one hour twice
+                      return <circle key={i} className="hour" cx={x} cy={y} r={1.6} />
                     })}
                   </g>
                 ))}
@@ -493,10 +495,10 @@ export function SkyView({ place }: { place: StarPlace }) {
           </g>
           {focused && (
             <g className="sky-hour-labels" aria-hidden="true">
-              {focused.hours.map((h) => {
+              {focused.hours.map((h, i) => {
                 const [x, y] = at(h.az, h.alt)
                 return (
-                  <text key={h.hour} x={x + 4} y={y - 4}>
+                  <text key={i} x={x + 4} y={y - 4}>
                     {t('{h}时', { h: h.hour })}
                   </text>
                 )

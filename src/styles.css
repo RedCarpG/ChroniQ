@@ -278,8 +278,46 @@ footer {
 .day.weekend:not(.selected) { background: var(--weekend); }
 .day.weekend:not(.selected):hover { background: var(--surface-2); }
 .day.weekend .num { color: var(--accent); }
-.day.out { opacity: 0.35; }
-.day.today { border-color: var(--accent); }
+.day.out { opacity: 0.3; }
+.day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Kinds of day: one background each, strongest first (CalendarViews dayTone) */
+:root {
+  --tone-off: color-mix(in srgb, var(--good) 20%, transparent);
+  --tone-region: color-mix(in srgb, #3f6fbf 22%, transparent);
+  --tone-work: color-mix(in srgb, var(--muted) 24%, transparent);
+  --tone-festival: color-mix(in srgb, var(--accent) 13%, transparent);
+  --tone-mine: color-mix(in srgb, #8a5cc8 16%, transparent);
+}
+.day:not(.selected).tone-mine, .week-day:not(.selected).tone-mine { background: var(--tone-mine); }
+.day:not(.selected).tone-festival, .week-day:not(.selected).tone-festival { background: var(--tone-festival); }
+.day:not(.selected).tone-work, .week-day:not(.selected).tone-work { background: var(--tone-work); }
+.day:not(.selected).tone-region, .week-day:not(.selected).tone-region { background: var(--tone-region); }
+.day:not(.selected).tone-off, .week-day:not(.selected).tone-off { background: var(--tone-off); }
+.day.tone-off:not(.selected) .num { color: var(--good); }
+.day:not(.selected)[class*='tone-']:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
+.day.today:not(.selected)[class*='tone-']:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* The current month's days: one outline round the whole block, on a faint plate (MonthOutline) */
+.grid.days { position: relative; }
+.grid.days .day { z-index: 1; }
+.month-outline { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; }
+.month-outline path {
+  fill: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--border)); stroke-width: 1.5;
+}
+
+/* Legend under the month and week views */
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 2px 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.cal-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border); }
+.cal-legend .tone-off { background: var(--tone-off); }
+.cal-legend .tone-region { background: var(--tone-region); }
+.cal-legend .tone-work { background: var(--tone-work); }
+.cal-legend .tone-festival { background: var(--tone-festival); }
+.cal-legend .tone-mine { background: var(--tone-mine); }
+.cal-legend .tone-weekend { background: var(--weekend); }
+.cal-legend .tone-today { border: 2px solid var(--accent); }
 .day.selected { background: var(--accent); }
 .day.selected .num, .day.selected .sub, .day.selected .gz { color: #fff; }
 .badge {
@@ -296,10 +334,18 @@ footer {
 .mini-marks .region { color: #3f6fbf; }
 .region-days { margin: 10px 0; display: grid; gap: 6px; }
 /* 节假日 choice at the bottom of the day panel */
-.holiday-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 14px 0 0; padding: 10px 0 0; border: 0; border-top: 1px solid var(--border); font-size: 13px; }
-.holiday-choice legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
-.holiday-choice label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
-.holiday-choice input { accent-color: var(--accent); }
+/* The 节假日 and 命盘 choices: toggle chips (the checkbox stays, for keyboards and screen readers) */
+.holiday-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--border); font-size: 13px; }
+.holiday-choice legend { float: left; width: 3.2em; padding: 0; margin-right: 4px; color: var(--muted); }
+.holiday-choice label {
+  position: relative; display: inline-flex; align-items: center; height: 28px; padding: 0 11px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.holiday-choice label:hover { border-color: var(--accent); }
+.holiday-choice label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.holiday-choice label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.holiday-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .region-days li .tag-title { margin-right: 2px; }
 .holiday-hint { flex-basis: 100%; font-size: 11px; }
 /* 命盘: the saved charts' dates, in purple */
@@ -635,7 +681,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .mini-day:hover { background: var(--surface-2); }
 .mini-day.weekend { background: var(--weekend); }
-.mini-day.off { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.mini-day.off { background: var(--tone-off); }
+.mini-day.work { background: var(--tone-work); }
 .mini-day.term { color: var(--good); font-weight: 700; }
 .mini-day.festival { color: var(--accent); font-weight: 700; }
 .mini-day.today { border-color: var(--accent); }

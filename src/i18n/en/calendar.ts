@@ -49,6 +49,13 @@ export const CALENDAR: Record<string, string> = {
   公众假日: 'Public holiday',
   节假日: 'Holidays',
   中国: 'China',
+  // Legend
+  图例: 'Key',
+  '休 · 放假': '休 · day off',
+  '班 · 调休上班': '班 · working day in lieu',
+  节日: 'Festival',
+  '{country}假日': '{country} holiday',
+  周末: 'Weekend',
   // Saved charts on the calendar
   生日: 'Birthdays',
   冲合: '冲 / 合',
