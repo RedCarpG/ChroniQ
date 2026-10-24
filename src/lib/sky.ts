@@ -246,6 +246,41 @@ export function trackOf(what: { body: BodyKey } | { hip: number }, times: Date[]
   return times.map((utc) => horizonOf(utc, latitude, longitude)(ra, dec))
 }
 
+// The galactic frame: the north galactic pole and the galactic longitude of the north celestial pole (J2000)
+const NGP_RA = 192.85948
+const NGP_DEC = 27.12825
+const NCP_L = 122.93192
+const RAD = Math.PI / 180
+
+/** Galactic longitude and latitude (degrees) → J2000 RA / Dec (degrees) */
+export function galacticToEquatorial(l: number, b: number): [number, number] {
+  const [sb, cb] = [Math.sin(b * RAD), Math.cos(b * RAD)]
+  const [sd, cd] = [Math.sin(NGP_DEC * RAD), Math.cos(NGP_DEC * RAD)]
+  const dl = (NCP_L - l) * RAD
+  const dec = Math.asin(sb * sd + cb * cd * Math.cos(dl))
+  const ra = NGP_RA * RAD + Math.atan2(cb * Math.sin(dl), sb * cd - cb * sd * Math.cos(dl))
+  return [((ra / RAD) % 360 + 360) % 360, dec / RAD]
+}
+
+/**
+ * The Milky Way as it stands in the sky: points along the galactic equator every few degrees of
+ * galactic longitude, with how bright the band is there (1 towards the centre in Sagittarius and
+ * in Cygnus, about a third towards the anticentre), and the dark Great Rift that splits it from
+ * Cygnus to Sagittarius, a little north of the plane.
+ */
+export function milkyWayAt(utc: Date, latitude: number, longitude: number) {
+  const toHorizon = horizonOf(utc, latitude, longitude)
+  const band = []
+  for (let l = 0; l <= 360; l += 5) {
+    const centre = (Math.cos(l * RAD) + 1) / 2
+    const cygnus = Math.exp(-((((l - 78 + 540) % 360) - 180) ** 2) / 400)
+    band.push({ l, ...toHorizon(...galacticToEquatorial(l, 0)), bright: Math.min(1, 0.32 + 0.68 * centre ** 1.5 + 0.35 * cygnus) })
+  }
+  const rift = []
+  for (let l = 8; l <= 80; l += 4) rift.push(toHorizon(...galacticToEquatorial(l, 2.5)))
+  return { band, rift }
+}
+
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
 const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
