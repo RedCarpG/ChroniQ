@@ -331,7 +331,7 @@ export function buildStarChart(
 
 /* ---------- 行运与推运 ---------- */
 
-export type OverlayKind = 'transit' | 'progressed'
+export type OverlayKind = 'transit' | 'progressed' | 'synastry'
 
 export interface Overlay {
   kind: OverlayKind
@@ -345,16 +345,25 @@ export interface Overlay {
   points: ChartPoint[]
   /** Overlay body (a) to natal point (b) */
   aspects: Aspect[]
+  /** 合盘 only: the other person's chart, and which of their houses each of my points falls in */
+  partner?: StarChart
+  inPartnerHouses?: ChartPoint[]
 }
 
 /** Orbs for overlay-to-natal aspects: transits are read tightly, progressions tighter still. */
-export const OVERLAY_ORB: Record<OverlayKind, number> = { transit: 2, progressed: 1 }
+export const OVERLAY_ORB: Record<Exclude<OverlayKind, 'synastry'>, number> = { transit: 2, progressed: 1 }
+/** 合盘 orbs: the natal orbs less 2° (合、冲 6°, 刑、拱 5°, 六合 3°), no extra for the Sun and Moon */
+export const SYNASTRY_ORB_LESS = 2
 const TROPICAL_YEAR_MS = 365.24219 * 86400000
 /** Naibod rate: the Sun's mean daily motion, in degrees per year of life */
 const NAIBOD = 0.98564736
 
 /** Aspects from overlay points to natal points (planets and angles, no nodes). */
-function crossAspects(over: ChartPoint[], natal: ChartPoint[], orb: number): Aspect[] {
+function crossAspects(
+  over: ChartPoint[],
+  natal: ChartPoint[],
+  orbOf: number | ((type: (typeof ASPECTS)[number]) => number),
+): Aspect[] {
   const usable = (p: ChartPoint) => p.key !== 'node' && p.key !== 'southNode'
   const out: Aspect[] = []
   for (const a of over.filter(usable)) {
@@ -362,7 +371,7 @@ function crossAspects(over: ChartPoint[], natal: ChartPoint[], orb: number): Asp
       const sep = Math.abs(norm(a.lon - b.lon + 180) - 180)
       for (const type of ASPECTS) {
         const d = Math.abs(sep - type.angle)
-        if (d <= orb) {
+        if (d <= (typeof orbOf === 'number' ? orbOf : orbOf(type))) {
           out.push({ a, b, type, orb: d })
           break
         }
@@ -412,5 +421,33 @@ export function progressions(natal: StarChart, target: Date, settings: StarSetti
     age,
     points,
     aspects: crossAspects(points, natal.points, OVERLAY_ORB.progressed),
+  }
+}
+
+/* ---------- 合盘 ---------- */
+
+const GENERATIONAL = new Set<ChartPoint['key']>(['uranus', 'neptune', 'pluto'])
+
+/** Re-house a point into another chart's houses. */
+const rehouse = (p: ChartPoint, cusps: number[]): ChartPoint => ({ ...p, house: houseOf(p.lon, cusps) })
+
+/**
+ * 合盘 (synastry): the other person's planets and angles laid round my chart,
+ * the houses of mine they fall in (and mine in theirs), and the aspects
+ * between the two charts. Their points are the overlay (a), mine natal (b).
+ */
+export function synastry(me: StarChart, partner: StarChart): Overlay {
+  const points = partner.points.map((p) => rehouse(p, me.cusps))
+  return {
+    kind: 'synastry',
+    target: partner.utc,
+    age: 0,
+    points,
+    // Outer planet to outer planet is shared by everyone born within a few years: a generation, not the pair.
+    aspects: crossAspects(points, me.points, (type) => type.orb - SYNASTRY_ORB_LESS).filter(
+      (x) => !(GENERATIONAL.has(x.a.key) && GENERATIONAL.has(x.b.key)),
+    ),
+    partner,
+    inPartnerHouses: me.points.map((p) => rehouse(p, partner.cusps)),
   }
 }

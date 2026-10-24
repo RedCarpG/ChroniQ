@@ -8,6 +8,7 @@ import {
   SIGNS,
   buildStarChart,
   progressions,
+  synastry,
   toUtc,
   transits,
   type Overlay,
@@ -23,16 +24,21 @@ import {
   type StarSettings,
 } from '../lib/astrology'
 import type { BaziInput } from '../lib/bazi'
+import { loadCharts, sameInput } from '../lib/savedCharts'
 import { CITIES } from '../lib/solarTime'
 import { WORLD_CITIES, allTimeZones } from '../lib/worldCities'
 import { STAR_SCHOOLS, cityPlace } from '../lib/starPrefs'
-import { BirthForm } from './BirthForm'
+import { BirthForm, DateParts } from './BirthForm'
 import { InfoTip, TipLine } from './InfoTip'
 import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
 import { SkyView } from './SkyView'
+
+/** Short name of each overlay, as used in labels: 行运金星, 对方金星 … */
+const OVERLAY_LABEL: Record<OverlayKind, string> = { transit: '行运', progressed: '推运', synastry: '对方' }
+const OVERLAY_TITLE: Record<OverlayKind, string> = { transit: '行运', progressed: '推运', synastry: '合盘' }
 
 interface Props {
   input: BaziInput
@@ -49,6 +55,12 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
   // 行运 / 推运: a moment to compare with the natal chart, read in the birthplace's time zone.
   const [mode, setMode] = useState<'natal' | OverlayKind>('natal')
   const [when, setWhen] = useState(nowLocal)
+  // 合盘: the other person, remembered between visits
+  const [partner, setPartnerState] = useState<Partner>(() => loadPartner(input, place))
+  const setPartner = (next: Partner) => {
+    setPartnerState(next)
+    savePartner(next)
+  }
   // Highlight: a house, or a planet (with the planets it aspects). Mouse hover, or tap / focus.
   const [focus, setFocus] = useState<Focus>(null)
   const hover = (f: NonNullable<Focus>) => ({
@@ -60,13 +72,14 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
   })
   const overlay = useMemo<Overlay | null>(() => {
     if (mode === 'natal') return null
+    if (mode === 'synastry') return synastry(chart, buildStarChart(partner.wall, partner.place, settings))
     const [y, m, d] = when.date.split('-').map(Number)
     const [hh, mm] = when.time.split(':').map(Number)
     if (!y || !m || !d) return null
     const target = toUtc({ year: y, month: m, day: d, hour: hh || 0, minute: mm || 0 }, place.timeZone).date
     if (target.getTime() <= chart.utc.getTime()) return null
     return mode === 'transit' ? transits(chart, target, settings) : progressions(chart, target, settings)
-  }, [mode, when, chart, place.timeZone, settings])
+  }, [mode, when, chart, place.timeZone, settings, partner])
   const hl = useMemo(() => highlight(chart, overlay, focus), [chart, overlay, focus])
   const byKey = (k: ChartPoint['key']) => chart.points.find((p) => p.key === k)!
   const sun = byKey('sun')
@@ -91,7 +104,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
       <SectionNav
         items={[
           ['star-natal', '本命'],
-          ...(overlay ? [['star-overlay', overlay.kind === 'transit' ? '行运' : '推运'] as [string, string]] : []),
+          ...(overlay ? [['star-overlay', OVERLAY_TITLE[overlay.kind]] as [string, string]] : []),
           ['star-houses', '宫位'],
           ['star-sky', '天空'],
         ]}
@@ -128,6 +141,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
                 ['natal', '本命'],
                 ['transit', '行运'],
                 ['progressed', '推运'],
+                ['synastry', '合盘'],
               ] as const
             ).map(([v, label]) => (
               <button key={v} className={mode === v ? 'on' : undefined} onClick={() => mode !== v && smoothUpdate('star', () => setMode(v))}>
@@ -135,7 +149,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
               </button>
             ))}
           </div>
-          {mode !== 'natal' && (
+          {(mode === 'transit' || mode === 'progressed') && (
             <>
               <input
                 type="date"
@@ -157,6 +171,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
             </>
           )}
         </div>
+        {mode === 'synastry' && <PartnerPicker partner={partner} onChange={setPartner} fallbackPlace={place} input={input} />}
         {mode !== 'natal' && !overlay && <p className="muted row-note">请选择出生之后的日期。</p>}
         <div className="star-layout">
           <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
@@ -212,7 +227,16 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
         </div>
       </section>
 
-      {overlay && <OverlayCard overlay={overlay} timeZone={place.timeZone} hl={hl} hover={hover} active={!!focus} />}
+      {overlay && (
+        <OverlayCard
+          overlay={overlay}
+          timeZone={place.timeZone}
+          partnerName={partner.name}
+          hl={hl}
+          hover={hover}
+          active={!!focus}
+        />
+      )}
 
       <section className="card" id="star-houses">
         <h3 className="section-title">
@@ -264,14 +288,22 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
 }
 
 /** Birthplace for houses and the time zone: a city (China or overseas), or custom coordinates and zone. */
-function PlacePicker({ place, onChange }: { place: StarPlace; onChange: (p: StarPlace) => void }) {
+function PlacePicker({
+  place,
+  onChange,
+  label = '出生地',
+}: {
+  place: StarPlace
+  onChange: (p: StarPlace) => void
+  label?: string
+}) {
   const known = findCity(place.name)
   const custom = !known
   const zones = useMemo(allTimeZones, [])
   return (
     <>
       <label>
-        出生地
+        {label}
         <select
           value={custom ? '' : place.name}
           onChange={(e) => {
@@ -344,6 +376,121 @@ function PlacePicker({ place, onChange }: { place: StarPlace; onChange: (p: Star
         </>
       )}
     </>
+  )
+}
+
+/* ---------- 合盘: the other person ---------- */
+
+interface Partner {
+  /** Saved-chart name, or 对方 */
+  name: string
+  wall: { year: number; month: number; day: number; hour: number; minute: number }
+  place: StarPlace
+}
+
+const PARTNER_KEY = 'chroniq-star-partner'
+
+/** A saved chart as a partner: its 真太阳时 city if it has one, else the given place. */
+function partnerFrom(name: string, input: BaziInput, fallback: StarPlace): Partner {
+  const city = input.longitude != null ? CITIES.find((c) => c.longitude === input.longitude) : undefined
+  const { year, month, day, hour, minute } = input
+  return { name, wall: { year, month, day, hour, minute }, place: city ? cityPlace(city) : fallback }
+}
+
+/** The last partner, else the first saved chart that isn't the one on screen, else a placeholder. */
+function loadPartner(input: BaziInput, place: StarPlace): Partner {
+  try {
+    const p = JSON.parse(localStorage.getItem(PARTNER_KEY) ?? 'null') as Partner | null
+    const w = p?.wall
+    if (
+      p &&
+      typeof p.name === 'string' &&
+      w &&
+      [w.year, w.month, w.day, w.hour, w.minute].every(Number.isInteger) &&
+      w.year >= 1900 &&
+      w.year <= 2100 &&
+      p.place &&
+      Number.isFinite(p.place.latitude) &&
+      Number.isFinite(p.place.longitude) &&
+      typeof p.place.timeZone === 'string'
+    )
+      return p
+  } catch {
+    // fall through
+  }
+  const other = loadCharts().find((c) => !sameInput(c.input, input))
+  if (other) return partnerFrom(other.name, other.input, place)
+  return { name: '对方', wall: { year: 1990, month: 1, day: 1, hour: 12, minute: 0 }, place }
+}
+
+function savePartner(p: Partner) {
+  try {
+    localStorage.setItem(PARTNER_KEY, JSON.stringify(p))
+  } catch {
+    // Storage unavailable: the partner lasts for this visit only.
+  }
+}
+
+/** The other person for 合盘: pick a saved chart, or enter a birth date, time and place. */
+function PartnerPicker({
+  partner,
+  onChange,
+  fallbackPlace,
+  input,
+}: {
+  partner: Partner
+  onChange: (p: Partner) => void
+  fallbackPlace: StarPlace
+  input: BaziInput
+}) {
+  const charts = useMemo(loadCharts, [])
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const w = partner.wall
+  const savedMatch = charts.find(
+    (c) =>
+      c.name === partner.name &&
+      c.input.year === w.year &&
+      c.input.month === w.month &&
+      c.input.day === w.day &&
+      c.input.hour === w.hour &&
+      c.input.minute === w.minute,
+  )
+  const edit = (patch: Partial<Partner['wall']>) =>
+    onChange({ ...partner, name: savedMatch ? '对方' : partner.name, wall: { ...w, ...patch } })
+  return (
+    <div className="bazi-form partner-form">
+      <label>
+        对方
+        <select
+          value={savedMatch?.id ?? ''}
+          onChange={(e) => {
+            const c = charts.find((x) => x.id === e.target.value)
+            if (c) onChange(partnerFrom(c.name, c.input, fallbackPlace))
+          }}
+        >
+          <option value="">{charts.length ? '手动输入' : '手动输入（没有已保存的命盘）'}</option>
+          {charts.map((c) => (
+            <option key={c.id} value={c.id} disabled={sameInput(c.input, input)}>
+              {c.name}
+              {sameInput(c.input, input) ? '（当前）' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <DateParts label="对方出生日期" value={w} onChange={(d) => edit(d)} />
+      <label>
+        出生时间
+        <input
+          type="time"
+          value={`${pad(w.hour)}:${pad(w.minute)}`}
+          onChange={(e) => {
+            const [h, mi] = e.target.value.split(':').map(Number)
+            if (!Number.isNaN(h)) edit({ hour: h, minute: mi })
+          }}
+        />
+      </label>
+      <PlacePicker label="对方出生地" place={partner.place} onChange={(place) => onChange({ ...partner, place })} />
+    </div>
   )
 }
 
@@ -487,7 +634,7 @@ function StarWheel({
             x2={x2}
             y2={y2}
             className={`aspect-line tone-${a.type.tone}${(overlay ? hl.cross(a) : hl.aspect(a)) ? ' on' : ''}`}
-            strokeOpacity={Math.max(0.25, 1 - a.orb / (overlay ? 2.5 : 8))}
+            strokeOpacity={Math.max(0.25, 1 - a.orb / (!overlay ? 8 : overlay.kind === 'synastry' ? 7 : 2.5))}
           >
             <title>
               {a.a.name}
@@ -534,9 +681,9 @@ function StarWheel({
             {...hover({ planet: p.key, layer: 'overlay' })}
           >
             <title>
-              {overlay!.kind === 'transit' ? '行运' : '推运'}
+              {OVERLAY_LABEL[overlay!.kind]}
               {p.name} {formatLon(p.lon)}
-              {p.retrograde ? ' 逆行' : ''} · 本命第{p.house}宫
+              {p.retrograde ? ' 逆行' : ''} · {overlay!.kind === 'synastry' ? '落我的' : '本命'}第{p.house}宫
             </title>
             <line x1={tx} y1={ty} x2={lx} y2={ly} className="planet-tick" />
             <text
@@ -592,30 +739,37 @@ function nowLocal() {
 function OverlayCard({
   overlay: o,
   timeZone,
+  partnerName,
   hl,
   hover,
   active,
 }: {
   overlay: Overlay
   timeZone: string
+  partnerName?: string
   hl: Highlight
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
   active: boolean
 }) {
-  const label = o.kind === 'transit' ? '行运' : '推运'
-  const fmt = (d: Date) =>
-    new Intl.DateTimeFormat('zh-CN', { timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(d)
+  const label = OVERLAY_LABEL[o.kind]
+  const syn = o.kind === 'synastry'
+  const mine = syn ? '我的' : '本命'
+  const fmt = (d: Date, tz = timeZone) =>
+    new Intl.DateTimeFormat('zh-CN', { timeZone: tz, dateStyle: 'medium', timeStyle: 'short' }).format(d)
+  const tones = (t: string) => o.aspects.filter((a) => a.type.tone === t).length
   return (
     <section className={`card overlay-card is-${o.kind}`} id="star-overlay">
       <h3 className="section-title">
         <TitleMark />
-        {label} · {fmt(o.target)}
+        {syn ? `合盘 · ${partnerName ?? '对方'}` : `${label} · ${fmt(o.target)}`}
       </h3>
       <p className="muted row-note">
-        {o.kind === 'transit'
+        {syn
+          ? `对方生于 ${fmt(o.target, o.partner!.place.timeZone)}（${o.partner!.place.name}）。外圈是对方的星体，看它们落在你的哪一宫、与你的星体形成什么相位；下方也列出你的星体落在对方的哪一宫。容许度：合、冲 6°，刑、拱 5°，六合 3°；天王、海王、冥王彼此之间的相位是同一代人共有的，不列出。`
+          : o.kind === 'transit'
           ? `此刻行星在天上的位置（${o.age.toFixed(1)} 岁），对照本命盘看它们落在哪一宫、与本命星体形成什么相位。`
           : `二次推运：出生后一天对应人生一年。${o.age.toFixed(1)} 岁对应 ${fmt(o.progressedUtc!)} 的天象，上升、天顶按流派设置推进。`}
-        容许度 {o.kind === 'transit' ? '2°' : '1°'}。
+        {!syn && `容许度 ${o.kind === 'transit' ? '2°' : '1°'}。`}
       </p>
       <div className="star-layout">
         <table className="star-table">
@@ -623,7 +777,7 @@ function OverlayCard({
             <tr>
               <th>{label}</th>
               <th>位置</th>
-              <th>本命宫</th>
+              <th>{syn ? '落我宫' : '本命宫'}</th>
             </tr>
           </thead>
           <tbody>
@@ -653,8 +807,14 @@ function OverlayCard({
         <div>
           <h4 className="overlay-subtitle">
             <TitleMark />
-            与本命的相位
+            {syn ? '双方相位' : '与本命的相位'}
           </h4>
+          {syn && o.aspects.length > 0 && (
+            <p className="muted synastry-tally">
+              <span className="tone-soft">和谐 {tones('soft')}</span> · <span className="tone-hard">紧张 {tones('hard')}</span>{' '}
+              · <span>合相 {tones('major')}</span>
+            </p>
+          )}
           {o.aspects.length === 0 ? (
             <p className="muted">容许度内没有相位。</p>
           ) : (
@@ -666,11 +826,32 @@ function OverlayCard({
                   <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
                     <span>{ASPECT_INFO[a.type.key]}</span>
                   </InfoTip>
-                  本命{a.b.name}
-                  <small>{a.orb.toFixed(2)}°</small>
+                  {mine}
+                  {a.b.name}
+                  <small>{a.orb.toFixed(syn ? 1 : 2)}°</small>
                 </span>
               ))}
             </div>
+          )}
+          {syn && (
+            <>
+              <h4 className="overlay-subtitle reverse-title">
+                <TitleMark />
+                我的星体落在对方的宫位
+              </h4>
+              <div className="house-overlay">
+                {o.inPartnerHouses!.map((p) => (
+                  <span
+                    key={p.key}
+                    className={`ho-item${hl.row(p) ? ' on' : ''}`}
+                    {...hover({ planet: p.key, layer: 'natal' })}
+                  >
+                    {p.name}
+                    <b>{p.house}</b>
+                  </span>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

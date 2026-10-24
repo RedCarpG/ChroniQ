@@ -43,7 +43,7 @@ export function AboutBadges() {
               <b>{term('紫微斗数')}</b>：十二宫命盘、{term('三方四正')}、星曜解释、大限至流时
             </li>
             <li>
-              <b>{term('星盘')}</b>：西洋占星本命盘，行星、宫位与相位，行运与推运
+              <b>{term('星盘')}</b>：西洋占星本命盘，行星、宫位与相位，行运、推运与合盘
             </li>
           </ul>
           <p className="muted">

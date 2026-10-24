@@ -24,6 +24,46 @@ const MAX_YEAR = 2100
  * paging a date picker month by month. Half-typed years stay in the box and
  * only a full year in range changes the chart.
  */
+/** 年 / 月 / 日 controls: the year typed or stepped, month and day picked. */
+export function DateParts({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: { year: number; month: number; day: number }
+  onChange: (date: { year: number; month: number; day: number }) => void
+}) {
+  const { year, month, day } = value
+  return (
+    <fieldset className="date-parts">
+      <legend>{label}</legend>
+      <YearInput year={year} onChange={(y) => onChange({ year: y, month, day: Math.min(day, daysIn(y, month)) })} />
+      <select
+        aria-label="月"
+        value={month}
+        onChange={(e) => {
+          const m = Number(e.target.value)
+          onChange({ year, month: m, day: Math.min(day, daysIn(year, m)) })
+        }}
+      >
+        {Array.from({ length: 12 }, (_, i) => (
+          <option key={i} value={i + 1}>
+            {i + 1}月
+          </option>
+        ))}
+      </select>
+      <select aria-label="日" value={day} onChange={(e) => onChange({ year, month, day: Number(e.target.value) })}>
+        {Array.from({ length: daysIn(year, month) }, (_, i) => (
+          <option key={i} value={i + 1}>
+            {i + 1}日
+          </option>
+        ))}
+      </select>
+    </fieldset>
+  )
+}
+
 function YearInput({ year, onChange }: { year: number; onChange: (year: number) => void }) {
   const [draft, setDraft] = useState<string | null>(null)
   const commit = (text: string) => {
@@ -58,34 +98,7 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, ext
 
   return (
     <section className="card bazi-form">
-      <fieldset className="date-parts">
-        <legend>出生日期</legend>
-        <YearInput
-          year={input.year}
-          onChange={(year) => change({ year, day: Math.min(input.day, daysIn(year, input.month)) })}
-        />
-        <select
-          aria-label="月"
-          value={input.month}
-          onChange={(e) => {
-            const month = Number(e.target.value)
-            change({ month, day: Math.min(input.day, daysIn(input.year, month)) })
-          }}
-        >
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i} value={i + 1}>
-              {i + 1}月
-            </option>
-          ))}
-        </select>
-        <select aria-label="日" value={input.day} onChange={(e) => change({ day: Number(e.target.value) })}>
-          {Array.from({ length: daysIn(input.year, input.month) }, (_, i) => (
-            <option key={i} value={i + 1}>
-              {i + 1}日
-            </option>
-          ))}
-        </select>
-      </fieldset>
+      <DateParts label="出生日期" value={input} onChange={(d) => change(d)} />
       <label>
         出生时间
         <input
