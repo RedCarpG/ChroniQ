@@ -1,9 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
 import { MonthOutline } from './MonthOutline'
+import { TitleMark } from './Logo'
+import { useDismiss } from './useDismiss'
 import {
   WEEKDAYS_EN,
   buildDayDetail,
@@ -544,6 +547,9 @@ export function CalendarView({ onPickBazi }: Props) {
         <button className="primary block" onClick={() => onPickBazi(selected)}>
           {t('以此日排八字 →')}
         </button>
+      </aside>
+      {/* What the calendar shows: in a drawer on the right edge, the 命盘 drawer's twin */}
+      <DisplayDrawer count={(holidays.china ? 1 : 0) + holidays.regions.length + chartDays.items.length}>
         <fieldset className="holiday-choice">
           <legend>{t('节假日')}</legend>
           <label>
@@ -582,8 +588,52 @@ export function CalendarView({ onPickBazi }: Props) {
               : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
           </small>
         </fieldset>
-      </aside>
+      </DisplayDrawer>
     </div>
+  )
+}
+
+/**
+ * The calendar's 显示 choices (holidays, saved charts' dates) in a drawer on the right edge of the
+ * screen, as the 命盘 drawer is on the left: closed, a slim 显示 tab with how many are on; open,
+ * the panel slides over the page. Rendered into <body>, beside the 命盘 drawer, so it takes the
+ * page zoom (显示大小) the same way.
+ */
+function DisplayDrawer({ count, children }: { count: number; children: ReactNode }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useDismiss(ref, open, close)
+  return createPortal(
+    <div className={`drawer right display-drawer${open ? ' open' : ''}`} ref={ref}>
+      <aside id="calendar-display" className="drawer-panel" aria-label={t('日历显示')} inert={!open}>
+        <div className="drawer-head">
+          <h3>
+            <TitleMark />
+            {t('日历显示')}
+          </h3>
+          <button type="button" className="chip-x" aria-label={t('收起')} onClick={close}>
+            ×
+          </button>
+        </div>
+        {children}
+      </aside>
+      <div className="drawer-rail">
+        <button
+          type="button"
+          className="drawer-handle"
+          aria-expanded={open}
+          aria-controls="calendar-display"
+          title={t('日历显示')}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span className="drawer-handle-text">{t('显示')}</span>
+          {count > 0 && <span className="drawer-count">{count}</span>}
+        </button>
+      </div>
+    </div>,
+    document.body,
   )
 }
 

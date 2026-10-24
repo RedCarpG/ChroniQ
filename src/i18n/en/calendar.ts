@@ -1,5 +1,7 @@
 // English for the 日历 page.
 export const CALENDAR: Record<string, string> = {
+  // The calendar's 显示 drawer (holidays and saved charts' dates)
+  日历显示: 'Calendar display',
   // Header and navigation
   年份: 'Year',
   月份: 'Month',
