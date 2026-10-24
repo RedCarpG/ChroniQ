@@ -275,7 +275,7 @@ export function CalendarView({ onPickBazi }: Props) {
                 </button>
               ))}
             </div>
-            <div className="cal-nav">
+            <div className="cal-nav" data-sounds="flip">
               {mode !== 'year' && (
                 <button onClick={() => shift(-2)} aria-label={navLabels[mode][0]}>
                   «

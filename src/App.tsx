@@ -21,6 +21,7 @@ import { DEFAULT_PLACE } from './lib/place'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
 import { translate, type Vars } from './i18n'
+import { play, setSoundEnabled, startClickSounds } from './sound'
 
 type Tab = Page
 /** Order of the pages, which sets the way a page switch slides. */
@@ -123,6 +124,14 @@ export function App() {
     document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
   }, [settings.language])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
+  // The interface sounds: one listener for the page's clicks, and a chime to say they are back on
+  useEffect(() => startClickSounds(), [])
+  const soundWas = useRef(settings.sound)
+  useEffect(() => {
+    setSoundEnabled(settings.sound === 'on')
+    if (settings.sound === 'on' && soundWas.current === 'off') play('on')
+    soundWas.current = settings.sound
+  }, [settings.sound])
   // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', tab === 'sky')
