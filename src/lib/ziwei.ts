@@ -33,6 +33,16 @@ export interface ZiweiPalace {
   changsheng: string
   /** 大限 age range */
   decadal: [number, number]
+  /** 宫干四化: where this palace's 天干 sends 禄、权、科、忌 */
+  flies: ZiweiFly[]
+}
+
+/** One of a palace's four 飞化: the star its 天干 transforms and the palace that star sits in. */
+export interface ZiweiFly {
+  mutagen: string
+  star: string
+  /** 地支 of the palace the star is in; the palace's own 地支 is a 自化 */
+  to: string
 }
 
 export interface ZiweiChart {
@@ -141,6 +151,7 @@ export function buildZiwei(input: BaziInput, schools: ZiweiSchoolSettings): Ziwe
       adjective: p.adjectiveStars.map(star),
       changsheng: p.changsheng12,
       decadal: p.decadal.range,
+      flies: [],
     }
   }
 
@@ -149,6 +160,17 @@ export function buildZiwei(input: BaziInput, schools: ZiweiSchoolSettings): Ziwe
     // month index (寅 = 0) keeps 闰月 handling in line with its other 月系 stars.
     const month = BRANCH_ORDER[(2 + util.fixLunarMonthIndex(dateStr, timeIdx, true)) % 12]
     moveStar(palaces, '天马', MA[month])
+  }
+
+  // 飞化 after any star moves, so they land where the board shows the star.
+  const starBranch = new Map<string, string>()
+  for (const p of Object.values(palaces)) for (const s of [...p.major, ...p.minor]) starBranch.set(s.name, p.branch)
+  const table = { ...MUTAGEN_TABLE, ...mutagenTable(schools) }
+  for (const p of Object.values(palaces)) {
+    p.flies = (table[p.stem] ?? []).flatMap((name, i) => {
+      const to = starBranch.get(name)
+      return to ? [{ mutagen: MUTAGENS[i], star: name, to }] : []
+    })
   }
 
   const birthYear = chart.rawDates.lunarDate.lunarYear
@@ -182,6 +204,21 @@ export function buildZiwei(input: BaziInput, schools: ZiweiSchoolSettings): Ziwe
 }
 
 const MUTAGENS = ['禄', '权', '科', '忌']
+
+/**
+ * 十干四化 (禄 权 科 忌), the common table; the 庚、戊、壬 rows that schools
+ * dispute come from the 流派设置 (mutagenTable). Kept here rather than read
+ * from iztro, whose table only follows the 流派 inside its own calculations.
+ */
+const MUTAGEN_TABLE: Partial<Record<string, string[]>> = {
+  甲: ['廉贞', '破军', '武曲', '太阳'],
+  乙: ['天机', '天梁', '紫微', '太阴'],
+  丙: ['天同', '天机', '文昌', '廉贞'],
+  丁: ['太阴', '天同', '天机', '巨门'],
+  己: ['武曲', '贪狼', '天梁', '文曲'],
+  辛: ['巨门', '太阳', '文曲', '文昌'],
+  癸: ['破军', '巨门', '太阴', '贪狼'],
+}
 
 /** A 运限 moment: lunar year, month (1–12), day, and 时辰 (0 子 … 11 亥). */
 export interface HoroscopeTarget {
