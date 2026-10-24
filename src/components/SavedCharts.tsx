@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useRef, useState } from 'react'
 import { useCalendarHidden, useSavedCharts } from './chartStore'
 import type { BaziInput } from '../lib/bazi'
 import { sameInput, upsertChart } from '../lib/savedCharts'
@@ -10,78 +9,6 @@ import { TitleMark } from './Logo'
 
 /** id of the spot under the 命盘 tab where a page can portal its own tabs. */
 export const DRAWER_RAIL_SLOT = 'drawer-rail-slot'
-/** id of the drawer's panel for a page's own tab (DrawerPageTab) */
-const DRAWER_PAGE_PANEL = 'drawer-page-panel'
-
-// Which of the drawer's tabs is open, if any: its own 命盘, or the page's (shared with DrawerPageTab)
-type DrawerTab = 'charts' | 'page' | null
-let openTab: DrawerTab = null
-const listeners = new Set<() => void>()
-const setOpenTab = (next: DrawerTab | ((tab: DrawerTab) => DrawerTab)) => {
-  openTab = typeof next === 'function' ? next(openTab) : next
-  listeners.forEach((l) => l())
-}
-function useOpenTab() {
-  const tab = useSyncExternalStore(
-    (l) => {
-      listeners.add(l)
-      return () => listeners.delete(l)
-    },
-    () => openTab,
-  )
-  return [tab, setOpenTab] as const
-}
-
-/**
- * A page's own tab in the left drawer, under 命盘 (the calendar's 显示): its handle goes in the
- * rail, its contents in the drawer's panel, which slides out as for 命盘.
- */
-export function DrawerPageTab({ label, title, count, children }: { label: string; title: string; count: number; children: ReactNode }) {
-  const t = useT()
-  const [tab, setTab] = useOpenTab()
-  const [slots, setSlots] = useState<{ rail: HTMLElement; panel: HTMLElement } | null>(null)
-  useEffect(() => {
-    const rail = document.getElementById(DRAWER_RAIL_SLOT)
-    const panel = document.getElementById(DRAWER_PAGE_PANEL)
-    if (rail && panel) setSlots({ rail, panel })
-    // Leaving the page closes its tab
-    return () => setTab((open) => (open === 'page' ? null : open))
-  }, [setTab])
-  if (!slots) return null
-  return (
-    <>
-      {createPortal(
-        <button
-          type="button"
-          className="drawer-handle"
-          aria-expanded={tab === 'page'}
-          aria-controls={DRAWER_PAGE_PANEL}
-          title={title}
-          onClick={() => setTab(tab === 'page' ? null : 'page')}
-        >
-          <span className="drawer-handle-text">{label}</span>
-          {count > 0 && <span className="drawer-count">{count}</span>}
-        </button>,
-        slots.rail,
-      )}
-      {createPortal(
-        <>
-          <div className="drawer-head">
-            <h3>
-              <TitleMark />
-              {title}
-            </h3>
-            <button type="button" className="chip-x" aria-label={t('收起')} onClick={() => setTab(null)}>
-              ×
-            </button>
-          </div>
-          {children}
-        </>,
-        slots.panel,
-      )}
-    </>
-  )
-}
 
 /**
  * Saved charts in a drawer on the left edge of the screen. Closed, only a
@@ -105,10 +32,9 @@ export function SavedChartsDrawer({
   const [hidden, toggleHidden] = useCalendarHidden()
   const active = charts.find((c) => sameInput(c.input, input))
   const [name, setName] = useState('')
-  const [tab, setTab] = useOpenTab()
-  const open = tab !== null
+  const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const close = useCallback(() => setTab(null), [setTab])
+  const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
 
   const save = () => {
@@ -119,8 +45,7 @@ export function SavedChartsDrawer({
 
   return (
     <div className={`drawer${open ? ' open' : ''}`} ref={ref}>
-      <aside className="drawer-panel" inert={!open}>
-        <div id="saved-charts" className="drawer-section" aria-label={t('已保存的命盘')} hidden={tab === 'page'}>
+      <aside id="saved-charts" className="drawer-panel" aria-label={t('已保存的命盘')} inert={!open}>
         <div className="drawer-head">
           <h3>
             <TitleMark />
@@ -184,18 +109,15 @@ export function SavedChartsDrawer({
           <p className="muted saved-empty">{t('还没有保存的命盘。填好出生信息后，在上面命名并保存。')}</p>
         )}
         <small className="muted">{t('命盘只保存在本机浏览器中，不会上传。')}</small>
-        </div>
-        {/* A page's own tab shows here (DrawerPageTab) */}
-        <div id={DRAWER_PAGE_PANEL} className="drawer-section" hidden={tab !== 'page'} />
       </aside>
       <div className="drawer-rail">
         <button
           type="button"
           className="drawer-handle"
-          aria-expanded={tab === 'charts'}
+          aria-expanded={open}
           aria-controls="saved-charts"
           title={t('已保存的命盘')}
-          onClick={() => setTab(tab === 'charts' ? null : 'charts')}
+          onClick={() => setOpen((o) => !o)}
         >
           <span className="drawer-handle-text">{t('命盘')}</span>
           {charts.length > 0 && <span className="drawer-count">{charts.length}</span>}
