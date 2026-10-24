@@ -11,8 +11,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="星曆" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f6f3ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0e1b" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eee9df" media="(prefers-color-scheme: light)" />
     <title>星曆 ChroniQ · 萬年曆、八字、紫微與星盤</title>
     <script>
       // Apply the saved colour mode before the first paint, so the loading screen matches it too.
@@ -32,19 +32,23 @@
         scrollbar-color: color-mix(in srgb, var(--splash-muted) 40%, transparent) transparent;
       }
       /* Loading screen: shown here until the app mounts, and by <Splash> while a tab's code loads.
-         It lives here, not in styles.css, so it is styled before any script or stylesheet arrives. */
+         It lives here, not in styles.css, so it is styled before any script or stylesheet arrives.
+         Its background is the starry background's, without the stars (styles.css --sf-bg). */
       :root {
-        --splash-bg: #f6f3ee; --splash-text: #2b2724; --splash-muted: #8a8079;
+        --splash-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(214 189 138 / 0.3), transparent 70%), radial-gradient(ellipse 50% 45% at 6% 96%, rgb(140 160 210 / 0.22), transparent 70%), linear-gradient(180deg, #f2eee6, #e9e3d6);
+        --splash-text: #2a2f3f; --splash-muted: #7f7d86;
         --splash-line: #b48a4c; --splash-star: #d7a765; --splash-en: #b48a4c;
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme='light']) {
-          --splash-bg: #161412; --splash-text: #ece6de; --splash-muted: #9b918a;
+          --splash-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(64 86 170 / 0.3), transparent 70%), radial-gradient(ellipse 50% 45% at 6% 96%, rgb(110 70 150 / 0.2), transparent 70%), linear-gradient(180deg, #0c1226, #090c18 60%, #0b0d1a);
+          --splash-text: #e9e5da; --splash-muted: #8e95aa;
           --splash-line: #d7a765; --splash-star: #f4d9a2; --splash-en: #d7a765;
         }
       }
       :root[data-theme='dark'] {
-        --splash-bg: #161412; --splash-text: #ece6de; --splash-muted: #9b918a;
+        --splash-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(64 86 170 / 0.3), transparent 70%), radial-gradient(ellipse 50% 45% at 6% 96%, rgb(110 70 150 / 0.2), transparent 70%), linear-gradient(180deg, #0c1226, #090c18 60%, #0b0d1a);
+        --splash-text: #e9e5da; --splash-muted: #8e95aa;
         --splash-line: #d7a765; --splash-star: #f4d9a2; --splash-en: #d7a765;
       }
       .splash {

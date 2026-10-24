@@ -1,12 +1,15 @@
 :root {
-  --bg: #f6f3ee;
-  --surface: #ffffff;
-  --surface-2: #f1ece4;
-  --text: #2b2724;
-  --muted: #8a8079;
-  --border: #e6dfd5;
-  --accent: #b23a2e;
-  --accent-soft: #f6e3df;
+  --bg: #eee9df;
+  --surface: #fbf9f4;
+  --surface-2: #f2eee5;
+  --card: rgb(251 249 244 / 0.86);
+  --text: #2a2f3f;
+  --muted: #7f7d86;
+  --border: #e1d9ca;
+  --accent: #9a7536;
+  --on-accent: #fff;
+  --accent-soft: #f2e8d5;
+  --festive: #b23a2e;
   --good: #2f7d4f;
   --bad: #b23a2e;
   --wood: #3f8f4f;
@@ -14,7 +17,7 @@
   --earth: #a9772a;
   --metal: #c09a2a;
   --water: #2d6cb5;
-  --weekend: #f5e3dc;
+  --weekend: #efe6d6;
   --logo-line: #B48A4C;
   --logo-star: #D7A765;
   /* 紫微运限 layers: 大限, 流年, 流月 */
@@ -23,31 +26,50 @@
   --ly-monthly: #5a62c2;
   --ly-daily: #b0407a;
   --ly-hourly: #5d7a1e;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.05);
+  --radius: 12px;
+  --shadow: 0 1px 2px rgb(40 40 70 / 0.05), 0 6px 20px rgb(40 40 70 / 0.06);
+  /* The gold hairline along the top of a card */
+  --edge: rgb(180 138 76 / 0.55);
+  /* The starry background (starfield.ts): by day a pale star chart, by night the night sky */
+  --sf-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(214 189 138 / 0.3), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 6% 96%, rgb(140 160 210 / 0.22), transparent 70%),
+    linear-gradient(180deg, #f2eee6, #e9e3d6);
+  --sf-star: #5d6a8e;
+  --sf-star-warm: #a8814a;
+  --sf-star-cool: #5577b8;
+  --sf-haze: #9aa8cc;
+  --sf-line: #a8823f;
+  --sf-twinkle: #b08a4a;
+  --sf-star-alpha: 0.55;
+  --sf-haze-alpha: 0.12;
+  --sf-line-alpha: 0.22;
   color-scheme: light;
 }
 
 /* Dark palette: follows the system unless the 颜色模式 setting forces light
-   (data-theme="light"), and always applies with data-theme="dark". */
+   (data-theme="light"), and always applies with data-theme="dark". The look is a
+   night sky: deep navy, starlight white and gold lines. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #161412;
-    --surface: #211e1b;
-    --surface-2: #2b2723;
-    --text: #ece6de;
-    --muted: #9b918a;
-    --border: #36312c;
-    --accent: #e0695b;
-    --accent-soft: #3a2420;
+    --bg: #0a0e1b;
+    --surface: #121829;
+    --surface-2: #1a2137;
+    --card: rgb(16 21 36 / 0.8);
+    --text: #e9e5da;
+    --muted: #8e95aa;
+    --border: #263150;
+    --accent: #d8bf8c;
+    --on-accent: #151a2b;
+    --accent-soft: rgb(216 191 140 / 0.14);
+    --festive: #ec7b68;
     --good: #6cc08b;
-    --bad: #e0695b;
+    --bad: #e66e5e;
     --wood: #6cc08b;
     --fire: #ef7360;
     --earth: #d5a55a;
     --metal: #e3c25c;
     --water: #6aa5ea;
-    --weekend: #3a2721;
+    --weekend: #1b2340;
     --logo-line: #D7A765;
     --logo-star: #F4D9A2;
     --ly-decadal: #5cc2c7;
@@ -55,27 +77,43 @@
     --ly-monthly: #959bf0;
     --ly-daily: #e889b9;
     --ly-hourly: #a8c95a;
-    --shadow: none;
+    --shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+    --edge: rgb(216 191 140 / 0.5);
+    --sf-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(64 86 170 / 0.3), transparent 70%),
+      radial-gradient(ellipse 50% 45% at 6% 96%, rgb(110 70 150 / 0.2), transparent 70%),
+      linear-gradient(180deg, #0c1226, #090c18 60%, #0b0d1a);
+    --sf-star: #e6ebff;
+    --sf-star-warm: #ffe2b0;
+    --sf-star-cool: #a9c2ff;
+    --sf-haze: #7d93e0;
+    --sf-line: #d8bf8c;
+    --sf-twinkle: #fff3d6;
+    --sf-star-alpha: 1;
+    --sf-haze-alpha: 0.07;
+    --sf-line-alpha: 0.09;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #161412;
-  --surface: #211e1b;
-  --surface-2: #2b2723;
-  --text: #ece6de;
-  --muted: #9b918a;
-  --border: #36312c;
-  --accent: #e0695b;
-  --accent-soft: #3a2420;
+  --bg: #0a0e1b;
+  --surface: #121829;
+  --surface-2: #1a2137;
+  --card: rgb(16 21 36 / 0.8);
+  --text: #e9e5da;
+  --muted: #8e95aa;
+  --border: #263150;
+  --accent: #d8bf8c;
+  --on-accent: #151a2b;
+  --accent-soft: rgb(216 191 140 / 0.14);
+  --festive: #ec7b68;
   --good: #6cc08b;
-  --bad: #e0695b;
+  --bad: #e66e5e;
   --wood: #6cc08b;
   --fire: #ef7360;
   --earth: #d5a55a;
   --metal: #e3c25c;
   --water: #6aa5ea;
-  --weekend: #3a2721;
+  --weekend: #1b2340;
   --logo-line: #D7A765;
   --logo-star: #F4D9A2;
   --ly-decadal: #5cc2c7;
@@ -83,11 +121,54 @@
   --ly-monthly: #959bf0;
   --ly-daily: #e889b9;
   --ly-hourly: #a8c95a;
-  --shadow: none;
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+  --edge: rgb(216 191 140 / 0.5);
+  --sf-bg: radial-gradient(ellipse 55% 45% at 88% 8%, rgb(64 86 170 / 0.3), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 6% 96%, rgb(110 70 150 / 0.2), transparent 70%),
+    linear-gradient(180deg, #0c1226, #090c18 60%, #0b0d1a);
+  --sf-star: #e6ebff;
+  --sf-star-warm: #ffe2b0;
+  --sf-star-cool: #a9c2ff;
+  --sf-haze: #7d93e0;
+  --sf-line: #d8bf8c;
+  --sf-twinkle: #fff3d6;
+  --sf-star-alpha: 1;
+  --sf-haze-alpha: 0.07;
+  --sf-line-alpha: 0.09;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
+
+/* The starry background (starfield.ts), fixed behind the page */
+.starfield {
+  position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100lvh; overflow: hidden; pointer-events: none;
+  background: var(--sf-bg);
+}
+.starfield canvas { position: absolute; display: block; }
+.starfield-far {
+  top: -16px; left: -16px; width: calc(100% + 32px); height: calc(100% + 32px);
+  transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform;
+}
+.starfield-near { top: 0; left: 0; width: 100%; height: 100%; }
+.starfield-twinkles i {
+  position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0;
+  background:
+    radial-gradient(circle, var(--sf-twinkle) 0 1.2px, transparent 3px),
+    linear-gradient(var(--sf-twinkle), var(--sf-twinkle)) center / 1px 100% no-repeat,
+    linear-gradient(var(--sf-twinkle), var(--sf-twinkle)) center / 100% 1px no-repeat;
+  -webkit-mask: radial-gradient(circle, #000 15%, transparent 68%); mask: radial-gradient(circle, #000 15%, transparent 68%);
+  animation: sf-twinkle 6s ease-in-out infinite; will-change: opacity, transform;
+}
+@keyframes sf-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 0.9; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .starfield-far { transition: none; }
+  .starfield-twinkles { display: none; }
+}
+@media print { .starfield { display: none; } }
 
 body {
   margin: 0;
@@ -144,8 +225,11 @@ main { view-transition-name: page; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
 }
 
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.topbar h1 { margin: 0; font-size: 22px; letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding-bottom: 10px;
+  background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat;
+}
+.topbar h1 { margin: 0; font-size: 22px; letter-spacing: 3px; display: flex; align-items: center; gap: 8px; }
 .topbar h1 .logo { flex: none; }
 .brand-en { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; color: var(--muted); }
 /* 页面菜单: the current page, opening a grouped menu of all pages */
@@ -154,7 +238,7 @@ main { view-transition-name: page; }
   display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 16px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface); font-weight: 600; white-space: nowrap;
 }
-.page-menu-btn:hover, .page-menu-btn[aria-expanded='true'] { background: var(--surface-2); }
+.page-menu-btn:hover, .page-menu-btn[aria-expanded='true'] { background: var(--surface-2); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .page-menu-btn .chev { width: auto; font-size: 11px; transition: transform 0.25s; }
 .page-menu-btn[aria-expanded='true'] .chev { transform: rotate(180deg); }
 .page-menu-panel {
@@ -201,7 +285,7 @@ footer {
 .about-credits { font-size: 12px; }
 
 .card {
-  background: var(--surface);
+  background: linear-gradient(90deg, transparent 8%, var(--edge), transparent 92%) top / 100% 1px no-repeat, var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -229,7 +313,8 @@ footer {
   .app.page-calendar .grid.days .day { aspect-ratio: auto; min-height: 0; }
   .app.page-calendar .detail { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
   .app.page-calendar footer {
-    position: relative; z-index: 6; margin-top: 16px; padding: 14px 0 4px; background: var(--bg);
+    position: relative; z-index: 6; margin-top: 16px; padding: 14px 0 4px;
+    background: linear-gradient(90deg, transparent, var(--edge), transparent) top / 100% 1px no-repeat, var(--bg);
     box-shadow: 0 -16px 24px -18px rgb(0 0 0 / 0.35);
   }
 }
@@ -267,7 +352,7 @@ footer {
 .picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .picker-grid button:hover:not(:disabled), .picker-head button:hover:not(:disabled) { background: var(--surface-2); }
 .picker-grid button.now { border-color: var(--accent); }
-.picker-grid button.on { background: var(--accent); color: #fff; }
+.picker-grid button.on { background: var(--accent); color: var(--on-accent); }
 .picker-sep { height: 1px; background: var(--border); margin: 2px 0; }
 .picker-foot { display: flex; gap: 6px; }
 .picker-foot input {
@@ -295,7 +380,7 @@ footer {
 .day:hover { background: var(--surface-2); }
 .day .num { font-size: 20px; font-weight: 500; line-height: 1.2; }
 .day .sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.day .sub.festival, .day .sub.month { color: var(--accent); }
+.day .sub.festival, .day .sub.month { color: var(--festive); }
 .day .sub.term { color: var(--good); }
 .day .gz { font-size: 10px; line-height: 1.2; color: var(--muted); opacity: 0.8; letter-spacing: 1px; }
 .day.weekend:not(.selected) { background: var(--weekend); }
@@ -309,7 +394,7 @@ footer {
   --tone-off: color-mix(in srgb, var(--good) 20%, transparent);
   --tone-region: color-mix(in srgb, #3f6fbf 22%, transparent);
   --tone-work: color-mix(in srgb, var(--muted) 24%, transparent);
-  --tone-festival: color-mix(in srgb, var(--accent) 13%, transparent);
+  --tone-festival: color-mix(in srgb, var(--festive) 13%, transparent);
   --tone-mine: color-mix(in srgb, #8a5cc8 16%, transparent);
 }
 .day:not(.selected).tone-mine, .week-day:not(.selected).tone-mine { background: var(--tone-mine); }
@@ -356,7 +441,7 @@ footer {
 .cal-legend .tone-weekend { background: var(--weekend); }
 .cal-legend .tone-today { border: 2px solid var(--accent); }
 .day.selected { background: var(--accent); }
-.day.selected .num, .day.selected .sub, .day.selected .gz { color: #fff; }
+.day.selected .num, .day.selected .sub, .day.selected .gz { color: var(--on-accent); }
 .badge {
   position: absolute; top: 2px; right: 4px; font-size: 10px; line-height: 1; padding: 2px 3px; border-radius: 4px; color: #fff;
 }
@@ -391,7 +476,7 @@ footer {
   font-size: 10px; color: #8a5cc8;
 }
 .day.mine::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #8a5cc8; }
-.day.selected .mine-line { color: #fff; }
+.day.selected .mine-line { color: var(--on-accent); }
 .mini-day.mine { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #8a5cc8 70%, transparent); }
 .mini-marks .mine { color: #8a5cc8; }
 .year-taisui { margin: 0 0 8px; color: #8a5cc8; }
@@ -434,7 +519,7 @@ footer {
 .tag-title.bad { background: var(--bad); }
 .tag-title.neutral { background: var(--surface-2); color: var(--text); width: auto; padding: 0 6px; }
 
-.primary { border: 0; background: var(--accent); color: #fff; border-radius: 10px; padding: 10px 14px; font-weight: 600; }
+.primary { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 10px; padding: 10px 14px; font-weight: 600; }
 .primary:hover { filter: brightness(1.08); }
 .block { width: 100%; }
 
@@ -452,7 +537,7 @@ footer {
 .date-parts select { padding-right: 26px; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 36px; }
 .seg button { border: 0; background: none; padding: 0 16px; }
-.seg button.on { background: var(--accent); color: #fff; }
+.seg button.on { background: var(--accent); color: var(--on-accent); }
 
 .chart-meta { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-bottom: 12px; font-size: 14px; }
 
@@ -530,7 +615,7 @@ button.fortune:hover { background: var(--surface-2); }
 
 /* ---------- 流派 ---------- */
 .ghost { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; height: 36px; padding: 0 14px; margin-left: auto; }
-.ghost:hover, .ghost.on { background: var(--surface-2); }
+.ghost:hover, .ghost.on { background: var(--surface-2); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 
 .school-panel {
   flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;
@@ -647,7 +732,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .drawer-handle-text { width: 1em; line-height: 1.15; word-break: break-all; }
 .drawer-count {
   min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; box-sizing: border-box;
-  background: var(--accent); color: #fff; font-size: 11px; line-height: 18px; text-align: center;
+  background: var(--accent); color: var(--on-accent); font-size: 11px; line-height: 18px; text-align: center;
 }
 .saved-form { display: flex; gap: 8px; }
 .saved-form input {
@@ -691,7 +776,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .week-day .num { font-size: 26px; font-weight: 600; line-height: 1.2; }
 .week-day.weekend .num { color: var(--accent); }
 .week-day .sub { font-size: 12px; color: var(--muted); }
-.week-day .sub.festival, .week-day .sub.month { color: var(--accent); }
+.week-day .sub.festival, .week-day .sub.month { color: var(--festive); }
 .week-day .sub.term { color: var(--good); }
 .week-day .gz { font-size: 12px; color: var(--muted); }
 .wd-head { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
@@ -721,12 +806,12 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .mini-day.off { background: var(--tone-off); }
 .mini-day.work { background: var(--tone-work); }
 .mini-day.term { color: var(--good); font-weight: 700; }
-.mini-day.festival { color: var(--accent); font-weight: 700; }
+.mini-day.festival { color: var(--festive); font-weight: 700; }
 .mini-day.today { border-color: var(--accent); }
-.mini-day.selected { background: var(--accent); color: #fff; }
+.mini-day.selected { background: var(--accent); color: var(--on-accent); }
 .mini-marks { list-style: none; margin: 6px 0 0; padding: 0; font-size: 11px; line-height: 1.6; }
 .mini-marks .term { color: var(--good); }
-.mini-marks .festival { color: var(--accent); }
+.mini-marks .festival { color: var(--festive); }
 
 @media (max-width: 600px) {
   .week-view { grid-template-columns: 1fr; }
@@ -943,7 +1028,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .zc-sf-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .zc-sf-row .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zc-sf-role { flex: none; font-size: 10px; line-height: 1; padding: 2px 5px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
-.zc-sf-row.sf-self .zc-sf-role { background: var(--accent); color: #fff; }
+.zc-sf-row.sf-self .zc-sf-role { background: var(--accent); color: var(--on-accent); }
 .zw-legends { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
 .ziwei-credit { margin: 10px 0 0; }
 /* 三方四正: the hovered palace, its 对宫 and 三合 stay lit; lines join them across the centre */
@@ -956,7 +1041,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   position: absolute; right: 8px; bottom: 28px; font-size: 10px; line-height: 1; padding: 2px 5px; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent); animation: tip-in 0.2s ease-out;
 }
-.sf-self .sf-tag { background: var(--accent); color: #fff; }
+.sf-self .sf-tag { background: var(--accent); color: var(--on-accent); }
 .sf-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; animation: tip-in 0.25s ease-out; }
 .sf-lines polygon, .sf-lines line {
   fill: color-mix(in srgb, var(--accent) 5%, transparent); stroke: var(--accent); stroke-width: 1.5;
@@ -1290,7 +1375,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .fx-active .palace:not(.fx-src, .fx-to) { opacity: 0.4; }
 .palace.fx-src { box-shadow: inset 0 0 0 2px var(--accent); }
 .palace.fx-to { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
-.fx-src .fx-tag { background: var(--accent); color: #fff; }
+.fx-src .fx-tag { background: var(--accent); color: var(--on-accent); }
 /* 飞入 and 自化 badges: outlined in the 四化 colour, so they read apart from 生年四化 */
 .mutagen.fly { background: none; box-shadow: inset 0 0 0 1px currentColor; animation: tip-in 0.2s ease-out; }
 .mutagen.fly.m-禄 { color: var(--good); }
