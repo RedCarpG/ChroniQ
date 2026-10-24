@@ -1,6 +1,6 @@
 import type { SolarDay } from 'tyme4ts'
 import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
-import { REGIONS, type RegionDay } from '../lib/regionHolidays'
+import type { RegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] // tyme4ts index: 0 = Sunday
@@ -13,6 +13,7 @@ export function WeekView({
   onSelect,
   showGanzhi,
   regionOf,
+  regionTag,
 }: {
   days: WeekDay[]
   selected: SolarDay
@@ -20,11 +21,12 @@ export function WeekView({
   showGanzhi: boolean
   /** The chosen country's days on a date (其他地区节日) */
   regionOf: (day: SolarDay) => RegionDay[]
+  /** Its tag on days off, e.g. FR */
+  regionTag: string
 }) {
   const term = useTerm()
   const t = useT()
-  const { language, region } = useSettings()
-  const en = language === 'en'
+  const en = useSettings().language === 'en'
   return (
     <div className="week-view">
       {days.map((d) => {
@@ -48,8 +50,8 @@ export function WeekView({
               {en ? WEEKDAYS_EN[d.solar.getWeek().getIndex()] : `周${WEEKDAYS[d.solar.getWeek().getIndex()]}`}
             </span>
             {d.holiday && <span className={`badge ${d.holiday === '休' ? 'off' : 'work'}`}>{t(d.holiday)}</span>}
-            {region !== 'none' && rd.some((x) => x.kind !== 'observance') && (
-              <span className={`badge region${rd.some((x) => x.kind === 'public') ? '' : ' partial'}`}>{REGIONS[region].tag}</span>
+            {rd.some((x) => x.kind !== 'observance') && (
+              <span className={`badge region${rd.some((x) => x.kind === 'public') ? '' : ' partial'}`}>{regionTag}</span>
             )}
           </span>
           <span className="num">{d.day}</span>

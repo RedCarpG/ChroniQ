@@ -137,6 +137,29 @@ export const REGIONS: Record<RegionCode, { name: string; en: string; tag: string
   fr: { name: '法国', en: 'France', tag: 'FR', rules: FRANCE },
 }
 
+const REGION_KEY = 'chroniq-calendar-region'
+const isRegion = (v: unknown): v is Region => v === 'none' || (typeof v === 'string' && v in REGIONS)
+
+/** The calendar's chosen region, kept in this browser (it used to live in the app settings) */
+export function loadRegion(): Region {
+  try {
+    const saved = localStorage.getItem(REGION_KEY)
+    if (isRegion(saved)) return saved
+    const legacy = (JSON.parse(localStorage.getItem('chroniq-settings') ?? '{}') as { region?: unknown }).region
+    return isRegion(legacy) ? legacy : 'none'
+  } catch {
+    return 'none'
+  }
+}
+
+export function saveRegion(region: Region): void {
+  try {
+    localStorage.setItem(REGION_KEY, region)
+  } catch {
+    // storage unavailable: lasts for this visit
+  }
+}
+
 const cache = new Map<string, Map<string, RegionDay[]>>()
 
 /** All of a region's days in a year, keyed by `${month}-${day}` */
