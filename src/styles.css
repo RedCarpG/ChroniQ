@@ -965,6 +965,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .star-wheel.has-focus .outer-planet:not(.on) { opacity: 0.25; }
 .star-wheel.has-focus .aspect-line:not(.on) { opacity: 0.08; }
 .star-wheel.has-focus .aspect-line.on { stroke-width: 1.8; }
+.star-wheel .aspect { outline: none; cursor: pointer; }
+.star-wheel .aspect-hit { stroke: transparent; stroke-width: 9; pointer-events: stroke; }
 .star-table tbody tr { outline: none; cursor: default; transition: background-color 0.2s; }
 .star-table tbody tr.on td { background: var(--accent-soft); }
 .house-cell { outline: none; transition: border-color 0.2s, background-color 0.2s; }
