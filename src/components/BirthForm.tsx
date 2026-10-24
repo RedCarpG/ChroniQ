@@ -14,30 +14,78 @@ interface Props {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
+/** Days in a solar month */
+const daysIn = (year: number, month: number) => new Date(year, month, 0).getDate()
+const MIN_YEAR = 1900
+const MAX_YEAR = 2100
+
+/**
+ * Year typed straight in (or stepped with the arrows / arrow keys), instead of
+ * paging a date picker month by month. Half-typed years stay in the box and
+ * only a full year in range changes the chart.
+ */
+function YearInput({ year, onChange }: { year: number; onChange: (year: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = (text: string) => {
+    const y = Number(text)
+    if (/^\d{4}$/.test(text) && y >= MIN_YEAR && y <= MAX_YEAR) onChange(y)
+  }
+  return (
+    <input
+      type="number"
+      className="year-input"
+      aria-label="年"
+      inputMode="numeric"
+      min={MIN_YEAR}
+      max={MAX_YEAR}
+      value={draft ?? year}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        commit(e.target.value)
+      }}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => setDraft(null)}
+    />
+  )
+}
 
 /** Birth date/time, gender, 真太阳时 and 流派设置 — shared by 八字 and 紫微. */
 export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, extra }: Props) {
   const [showSchools, setShowSchools] = useState(false)
   const city = CITIES.find((c) => c.longitude === input.longitude)
-  const dateValue = `${input.year}-${pad(input.month)}-${pad(input.day)}`
   const timeValue = `${pad(input.hour)}:${pad(input.minute)}`
   const change = (patch: Partial<BaziInput>) => onChange({ ...input, ...patch })
 
   return (
     <section className="card bazi-form">
-      <label>
-        出生日期
-        <input
-          type="date"
-          min="1900-01-01"
-          max="2100-12-31"
-          value={dateValue}
-          onChange={(e) => {
-            const [y, m, d] = e.target.value.split('-').map(Number)
-            if (y >= 1900 && y <= 2100) change({ year: y, month: m, day: d })
-          }}
+      <fieldset className="date-parts">
+        <legend>出生日期</legend>
+        <YearInput
+          year={input.year}
+          onChange={(year) => change({ year, day: Math.min(input.day, daysIn(year, input.month)) })}
         />
-      </label>
+        <select
+          aria-label="月"
+          value={input.month}
+          onChange={(e) => {
+            const month = Number(e.target.value)
+            change({ month, day: Math.min(input.day, daysIn(input.year, month)) })
+          }}
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i} value={i + 1}>
+              {i + 1}月
+            </option>
+          ))}
+        </select>
+        <select aria-label="日" value={input.day} onChange={(e) => change({ day: Number(e.target.value) })}>
+          {Array.from({ length: daysIn(input.year, input.month) }, (_, i) => (
+            <option key={i} value={i + 1}>
+              {i + 1}日
+            </option>
+          ))}
+        </select>
+      </fieldset>
       <label>
         出生时间
         <input
