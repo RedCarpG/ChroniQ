@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "gen:trad": "vite-node scripts/gen-trad.ts"
+    "gen:trad": "vite-node scripts/gen-trad.ts",
+    "gen:stars": "vite-node scripts/gen-stars.ts"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

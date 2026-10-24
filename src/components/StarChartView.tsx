@@ -32,6 +32,7 @@ import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
+import { SkyView } from './SkyView'
 
 interface Props {
   input: BaziInput
@@ -92,6 +93,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
           ['star-natal', '本命'],
           ...(overlay ? [['star-overlay', overlay.kind === 'transit' ? '行运' : '推运'] as [string, string]] : []),
           ['star-houses', '宫位'],
+          ['star-sky', '天空'],
         ]}
       />
 
@@ -255,6 +257,8 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
           仅供参考
         </p>
       </section>
+
+      <SkyView place={place} />
     </div>
   )
 }
