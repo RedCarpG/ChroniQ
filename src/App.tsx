@@ -14,14 +14,8 @@ import { loadLastInput, saveLastInput } from './lib/savedCharts'
 import { parseShareHash } from './lib/shareLink'
 import { loadSchools, saveSchools, type SchoolSettings } from './lib/schools'
 import { loadZiweiSchools, saveZiweiSchools, type ZiweiSchoolSettings } from './lib/ziweiSchools'
-import {
-  loadStarPlace,
-  loadStarSettings,
-  saveStarPlace,
-  saveStarSettings,
-  type StarPlace,
-  type StarSettings,
-} from './lib/starPrefs'
+import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/starPrefs'
+import { DEFAULT_PLACE } from './lib/place'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
 
@@ -104,12 +98,6 @@ export function App() {
     setStarSettings(next)
     saveStarSettings(next)
   }
-  // A shared birthplace is shown but not saved over the user's own.
-  const [starPlace, setStarPlace] = useState<StarPlace>(() => shared?.place ?? loadStarPlace(baziInput.longitude))
-  const changeStarPlace = (next: StarPlace) => {
-    setStarPlace(next)
-    saveStarPlace(next)
-  }
   const [ziweiSchools, setZiweiSchools] = useState<ZiweiSchoolSettings>(loadZiweiSchools)
   const changeZiweiSchools = (next: ZiweiSchoolSettings) => {
     setZiweiSchools(next)
@@ -135,7 +123,7 @@ export function App() {
           <div className="topbar-right">
             <PageMenu page={tab} onPick={goTab} />
             {tab !== 'calendar' && tab !== 'sky' && (
-              <ShareButton chart={{ tab, input: baziInput, place: tab === 'star' ? starPlace : undefined }} />
+              <ShareButton chart={{ tab, input: baziInput }} />
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
@@ -158,7 +146,7 @@ export function App() {
             />
           ) : tab === 'sky' ? (
             <Suspense fallback={<SplashSignal />}>
-              <SkyPage fallbackPlace={starPlace} />
+              <SkyPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />
             </Suspense>
           ) : tab === 'star' ? (
             <Suspense fallback={<SplashSignal />}>
@@ -166,8 +154,6 @@ export function App() {
                 key={loads}
                 input={baziInput}
                 onChange={setBaziInput}
-                place={starPlace}
-                onPlaceChange={changeStarPlace}
                 settings={starSettings}
                 onSettingsChange={changeStarSettings}
               />

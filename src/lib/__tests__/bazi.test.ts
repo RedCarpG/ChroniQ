@@ -9,6 +9,8 @@ import { computeShenSha } from '../shensha'
 import { equationOfTime, toTrueSolarTime } from '../solarTime'
 
 const base = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, gender: 1 } as const
+const urumqi = { name: '乌鲁木齐', latitude: 43.83, longitude: 87.62, timeZone: 'Asia/Shanghai' }
+const ny = { name: '纽约', latitude: 40.71, longitude: -74.01, timeZone: 'America/New_York' }
 const names = (xs: { name: string }[]) => xs.map((x) => x.name).sort()
 
 describe('buildBazi', () => {
@@ -24,10 +26,18 @@ describe('buildBazi', () => {
   })
 
   it('applies true solar time', () => {
-    // 乌鲁木齐 10:30 北京时间 ≈ 08:24 真太阳时 → 辰时 (庚辰)
-    const chart = buildBazi({ ...base, longitude: 87.62 })
-    expect(chart.trueSolar?.text).toMatch(/1990年5月15日 08:2\d/)
+    // 乌鲁木齐 10:30 北京时间, on 1990 summer time (UTC+9): 01:30 UT → ≈ 07:24 真太阳时 → 辰时 (庚辰)
+    const chart = buildBazi({ ...base, place: urumqi, trueSolar: true })
+    expect(chart.trueSolar?.text).toMatch(/1990年5月15日 07:2\d/)
     expect(chart.pillars[3].stem.char + chart.pillars[3].branch.char).toBe('庚辰')
+    // The birthplace alone, without 真太阳时, leaves the clock time
+    expect(buildBazi({ ...base, place: urumqi }).trueSolar).toBeUndefined()
+  })
+
+  it('applies 真太阳时 abroad, in the local time zone', () => {
+    // 纽约 1990-05-15 10:30 EDT (UTC−4) = 14:30 UT; −74.01° → −296 min, EoT ≈ +3.7 → ≈ 09:38
+    const chart = buildBazi({ ...base, place: ny, trueSolar: true })
+    expect(chart.trueSolar?.text).toMatch(/1990年5月15日 09:3\d/)
   })
 
   it('lists 岁运 relations only when they involve a fortune column', () => {
@@ -122,6 +132,14 @@ describe('solarTime', () => {
     const { time } = toTrueSolarTime({ year: 2000, month: 1, day: 1, hour: 0, minute: 10 }, 87.62)
     expect(time).toMatchObject({ year: 1999, month: 12, day: 31, hour: 21 })
   })
+  it('takes China’s 1986–91 daylight saving off', () => {
+    // 1988-07-01 12:00 北京夏令时 = 03:00 UT; at 120°E solar time is about 10:56 (EoT ≈ −3.8 min)
+    const summer = toTrueSolarTime({ year: 1988, month: 7, day: 1, hour: 12, minute: 0 }, 120)
+    expect(summer.time).toMatchObject({ hour: 10, minute: 56 })
+    // Outside daylight saving, 120°E is only the equation of time away
+    const winter = toTrueSolarTime({ year: 1988, month: 1, day: 1, hour: 12, minute: 0 }, 120)
+    expect(winter.time.hour).toBe(11)
+  })
 })
 
 describe('流派 settings', () => {
@@ -207,7 +225,12 @@ describe('神煞说明', () => {
 describe('saved charts', () => {
   it('validates stored input and upserts by name', async () => {
     const { toBaziInput, upsertChart } = await import('../savedCharts')
-    expect(toBaziInput({ ...base, longitude: 87.62 })).toEqual({ ...base, longitude: 87.62 })
+    // Older saved input: a 真太阳时 longitude becomes 真太阳时 at its city
+    expect(toBaziInput({ ...base, longitude: 87.62 })).toEqual({ ...base, place: urumqi, trueSolar: true })
+    expect(toBaziInput({ ...base, place: ny, trueSolar: true })).toEqual({ ...base, place: ny, trueSolar: true })
+    // A broken place is dropped, the rest kept; with no place, the fallback is used
+    expect(toBaziInput({ ...base, place: { ...ny, timeZone: 'Mars/Base' } })).toEqual(base)
+    expect(toBaziInput(base, ny)).toEqual({ ...base, place: ny })
     expect(toBaziInput({ ...base, month: 13 })).toBeNull()
     expect(toBaziInput({ ...base, gender: 2 })).toBeNull()
     expect(toBaziInput('junk')).toBeNull()

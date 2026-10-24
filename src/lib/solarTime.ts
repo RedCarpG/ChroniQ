@@ -1,4 +1,7 @@
-// 真太阳时 = 北京时间 + 经度差（每度 4 分钟，以东经 120° 为基准）+ 均时差.
+// 真太阳时 = 世界时 + 经度 × 4 分钟 + 均时差. For a birth recorded in 北京时间 that
+// is 北京时间 + (经度 − 120°) × 4 分钟 + 均时差; the time zone's own offset (and
+// daylight saving, e.g. China 1986–91) comes from Intl.
+import { toUtc } from './timeZone'
 
 export interface City {
   name: string
@@ -62,9 +65,17 @@ export function equationOfTime(year: number, month: number, day: number): number
   return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b)
 }
 
-/** Convert Beijing time (UTC+8) at the given longitude to apparent solar time. */
-export function toTrueSolarTime(t: WallTime, longitude: number): { time: WallTime; offsetMinutes: number } {
-  const offsetMinutes = (longitude - 120) * 4 + equationOfTime(t.year, t.month, t.day)
+/**
+ * Clock time recorded in timeZone (北京时间 by default) at the given east
+ * longitude → apparent solar time there. offsetMinutes is the whole shift.
+ */
+export function toTrueSolarTime(
+  t: WallTime,
+  longitude: number,
+  timeZone = 'Asia/Shanghai',
+): { time: WallTime; offsetMinutes: number } {
+  const zone = toUtc(t, timeZone).offsetMinutes
+  const offsetMinutes = longitude * 4 - zone + equationOfTime(t.year, t.month, t.day)
   // Work in UTC so the host time zone never interferes.
   const d = new Date(Date.UTC(t.year, t.month - 1, t.day, t.hour, t.minute) + Math.round(offsetMinutes) * 60_000)
   return {

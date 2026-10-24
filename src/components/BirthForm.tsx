@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { BaziInput } from '../lib/bazi'
-import { CITIES } from '../lib/solarTime'
+import { DEFAULT_PLACE } from '../lib/place'
+import { PlacePicker } from './PlacePicker'
 
 interface Props {
   input: BaziInput
@@ -9,8 +10,6 @@ interface Props {
   schoolsPanel: ReactNode
   /** Show the 真太阳时 option (not used by 星盘, which works in UTC) */
   trueSolar?: boolean
-  /** Extra controls before 流派设置, e.g. the 星盘 birthplace */
-  extra?: ReactNode
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -89,10 +88,9 @@ function YearInput({ year, onChange }: { year: number; onChange: (year: number) 
   )
 }
 
-/** Birth date/time, gender, 真太阳时 and 流派设置 — shared by 八字 and 紫微. */
-export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, extra }: Props) {
+/** Birth date/time, gender, birthplace, 真太阳时 and 流派设置 — shared by 八字, 紫微 and 星盘. */
+export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: Props) {
   const [showSchools, setShowSchools] = useState(false)
-  const city = CITIES.find((c) => c.longitude === input.longitude)
   const timeValue = `${pad(input.hour)}:${pad(input.minute)}`
   const change = (patch: Partial<BaziInput>) => onChange({ ...input, ...patch })
 
@@ -121,55 +119,13 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, ext
           </button>
         ))}
       </div>
+      <PlacePicker label="出生地" place={input.place ?? DEFAULT_PLACE} onChange={(place) => change({ place })} />
       {trueSolar && (
-        <>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={input.longitude != null}
-              onChange={(e) => change({ longitude: e.target.checked ? CITIES[0].longitude : undefined })}
-            />
-            真太阳时
-          </label>
-          {input.longitude != null && (
-            <>
-              <label>
-                出生地
-                <select
-                  value={city?.name ?? ''}
-                  onChange={(e) => {
-                    const c = CITIES.find((x) => x.name === e.target.value)
-                    if (c) change({ longitude: c.longitude })
-                  }}
-                >
-                  {!city && <option value="">自定义</option>}
-                  {CITIES.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                东经
-                <input
-                  type="number"
-                  className="narrow"
-                  min={73}
-                  max={135}
-                  step={0.01}
-                  value={input.longitude}
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (e.target.value !== '' && v >= -180 && v <= 180) change({ longitude: v })
-                  }}
-                />
-              </label>
-            </>
-          )}
-        </>
+        <label className="check" title="按出生地经度与时区，把钟表时间换算成当地真太阳时再排盘">
+          <input type="checkbox" checked={!!input.trueSolar} onChange={(e) => change({ trueSolar: e.target.checked })} />
+          真太阳时
+        </label>
       )}
-      {extra}
       <button
         type="button"
         className={`ghost${showSchools ? ' on' : ''}`}

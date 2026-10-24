@@ -21,6 +21,7 @@ import {
 import { computeRelations, type Relation, type RelationMember } from './relations'
 import { DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
 import { computeShenSha, type ShenSha } from './shensha'
+import { DEFAULT_PLACE, type Place } from './place'
 import { toTrueSolarTime } from './solarTime'
 
 export type ElementName = '木' | '火' | '土' | '金' | '水'
@@ -93,8 +94,10 @@ export interface BaziInput {
   hour: number
   minute: number
   gender: 0 | 1
-  /** Birthplace longitude; when set, the chart uses 真太阳时 */
-  longitude?: number
+  /** Birthplace (北京 when unset): for 真太阳时, and for 星盘 houses and time zone */
+  place?: Place
+  /** Cast 八字 / 紫微 from 真太阳时 at the birthplace instead of the clock time */
+  trueSolar?: boolean
 }
 
 const eightCharProviders = { nextDay: new DefaultEightCharProvider(), sameDay: new LunarSect2EightCharProvider() }
@@ -219,9 +222,10 @@ export function buildBazi(input: BaziInput, schools: SchoolSettings = DEFAULT_SC
   }
 }
 
-/** The birth time charts are cast from: 真太阳时 when a longitude is set, else the clock time. */
+/** The birth time charts are cast from: 真太阳时 at the birthplace when chosen, else the clock time. */
 export function effectiveTime(input: BaziInput) {
-  const corrected = input.longitude == null ? undefined : toTrueSolarTime(input, input.longitude)
+  const place = input.place ?? DEFAULT_PLACE
+  const corrected = input.trueSolar ? toTrueSolarTime(input, place.longitude, place.timeZone) : undefined
   return { corrected, time: corrected?.time ?? input }
 }
 

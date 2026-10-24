@@ -26,8 +26,8 @@ import {
 } from '../lib/astrology'
 import type { BaziInput } from '../lib/bazi'
 import { loadCharts, sameInput } from '../lib/savedCharts'
-import { CITIES } from '../lib/solarTime'
-import { STAR_SCHOOLS, cityPlace } from '../lib/starPrefs'
+import { DEFAULT_PLACE } from '../lib/place'
+import { STAR_SCHOOLS } from '../lib/starPrefs'
 import { BirthForm, DateParts } from './BirthForm'
 import { InfoTip, TipLine } from './InfoTip'
 import { TitleMark } from './Logo'
@@ -43,14 +43,14 @@ const OVERLAY_TITLE: Record<OverlayKind, string> = { transit: '行运', progress
 interface Props {
   input: BaziInput
   onChange: (input: BaziInput) => void
-  place: StarPlace
-  onPlaceChange: (place: StarPlace) => void
   settings: StarSettings
   onSettingsChange: (settings: StarSettings) => void
 }
 
 /** 西洋占星 natal chart: the shared birth form, a birthplace, the wheel and the tables. */
-export function StarChartView({ input, onChange, place, onPlaceChange, settings, onSettingsChange }: Props) {
+export function StarChartView({ input, onChange, settings, onSettingsChange }: Props) {
+  // The chart's own birthplace, shared with 八字 / 紫微 and saved with the chart
+  const place = input.place ?? DEFAULT_PLACE
   const chart = useMemo(() => buildStarChart(input, place, settings), [input, place, settings])
   // 行运 / 推运: a moment to compare with the natal chart, read in the birthplace's time zone.
   const [mode, setMode] = useState<'natal' | OverlayKind | 'composite'>('natal')
@@ -103,7 +103,6 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
         input={input}
         onChange={onChange}
         trueSolar={false}
-        extra={<PlacePicker place={place} onChange={onPlaceChange} />}
         schoolsPanel={<SchoolSettingsPanel registry={STAR_SCHOOLS} settings={settings} onChange={onSettingsChange} />}
       />
       <SectionNav
@@ -177,7 +176,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
             </>
           )}
         </div>
-        {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} fallbackPlace={place} input={input} />}
+        {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} input={input} />}
         {(mode === 'transit' || mode === 'progressed') && !overlay && (
           <p className="muted row-note">请选择出生之后的日期。</p>
         )}
@@ -392,11 +391,10 @@ interface Partner {
 
 const PARTNER_KEY = 'chroniq-star-partner'
 
-/** A saved chart as a partner: its 真太阳时 city if it has one, else the given place. */
-function partnerFrom(name: string, input: BaziInput, fallback: StarPlace): Partner {
-  const city = input.longitude != null ? CITIES.find((c) => c.longitude === input.longitude) : undefined
+/** A saved chart as a partner, with its birthplace (北京 if it has none). */
+function partnerFrom(name: string, input: BaziInput): Partner {
   const { year, month, day, hour, minute } = input
-  return { name, wall: { year, month, day, hour, minute }, place: city ? cityPlace(city) : fallback }
+  return { name, wall: { year, month, day, hour, minute }, place: input.place ?? DEFAULT_PLACE }
 }
 
 /** The last partner, else the first saved chart that isn't the one on screen, else a placeholder. */
@@ -421,7 +419,7 @@ function loadPartner(input: BaziInput, place: StarPlace): Partner {
     // fall through
   }
   const other = loadCharts().find((c) => !sameInput(c.input, input))
-  if (other) return partnerFrom(other.name, other.input, place)
+  if (other) return partnerFrom(other.name, other.input)
   return { name: '对方', wall: { year: 1990, month: 1, day: 1, hour: 12, minute: 0 }, place }
 }
 
@@ -437,12 +435,10 @@ function savePartner(p: Partner) {
 function PartnerPicker({
   partner,
   onChange,
-  fallbackPlace,
   input,
 }: {
   partner: Partner
   onChange: (p: Partner) => void
-  fallbackPlace: StarPlace
   input: BaziInput
 }) {
   const charts = useMemo(loadCharts, [])
@@ -467,7 +463,7 @@ function PartnerPicker({
           value={savedMatch?.id ?? ''}
           onChange={(e) => {
             const c = charts.find((x) => x.id === e.target.value)
-            if (c) onChange(partnerFrom(c.name, c.input, fallbackPlace))
+            if (c) onChange(partnerFrom(c.name, c.input))
           }}
         >
           <option value="">{charts.length ? '手动输入' : '手动输入（没有已保存的命盘）'}</option>

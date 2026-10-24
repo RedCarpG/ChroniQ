@@ -1,5 +1,7 @@
 // Last bazi input and named saved charts, kept only in this browser.
 import type { BaziInput } from './bazi'
+import { DEFAULT_PLACE, placeFromLongitude, samePlace, toPlace, type Place } from './place'
+import { loadLegacyStarPlace } from './starPrefs'
 
 export interface SavedChart {
   id: string
@@ -12,8 +14,12 @@ const CHARTS_KEY = 'chroniq-bazi-charts'
 
 const inRange = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
 
-/** Accepts only a well-formed BaziInput, so stale or edited storage can't break the chart. */
-export function toBaziInput(v: unknown): BaziInput | null {
+/**
+ * Accepts only a well-formed BaziInput, so stale or edited storage can't break
+ * the chart. Older inputs had no birthplace, only a 真太阳时 longitude: that
+ * becomes 真太阳时 at its city; with neither, `fallback` (if given) is the place.
+ */
+export function toBaziInput(v: unknown, fallback?: Place | null): BaziInput | null {
   if (!v || typeof v !== 'object') return null
   const o = v as Record<string, unknown>
   if (
@@ -33,7 +39,14 @@ export function toBaziInput(v: unknown): BaziInput | null {
     minute: o.minute as number,
     gender: o.gender,
   }
-  if (typeof o.longitude === 'number' && o.longitude >= -180 && o.longitude <= 180) input.longitude = o.longitude
+  const place = toPlace(o.place)
+  if (place) input.place = place
+  if (o.trueSolar === true) input.trueSolar = true
+  if (!place && typeof o.longitude === 'number' && o.longitude >= -180 && o.longitude <= 180) {
+    input.place = placeFromLongitude(o.longitude)
+    input.trueSolar = true
+  }
+  if (!input.place && fallback) input.place = fallback
   return input
 }
 
@@ -54,14 +67,15 @@ function write(key: string, value: unknown): void {
   }
 }
 
-export const loadLastInput = (): BaziInput | null => toBaziInput(read(LAST_KEY))
+export const loadLastInput = (): BaziInput | null => toBaziInput(read(LAST_KEY), loadLegacyStarPlace())
 export const saveLastInput = (input: BaziInput): void => write(LAST_KEY, input)
 
 export function loadCharts(): SavedChart[] {
   const raw = read(CHARTS_KEY)
   if (!Array.isArray(raw)) return []
+  const legacy = loadLegacyStarPlace()
   return raw.flatMap((c) => {
-    const input = toBaziInput(c?.input)
+    const input = toBaziInput(c?.input, legacy)
     return input && typeof c.id === 'string' && typeof c.name === 'string' ? [{ id: c.id, name: c.name, input }] : []
   })
 }
@@ -75,7 +89,8 @@ export const sameInput = (a: BaziInput, b: BaziInput): boolean =>
   a.hour === b.hour &&
   a.minute === b.minute &&
   a.gender === b.gender &&
-  a.longitude === b.longitude
+  !!a.trueSolar === !!b.trueSolar &&
+  samePlace(a.place ?? DEFAULT_PLACE, b.place ?? DEFAULT_PLACE)
 
 /** Adds a chart, or replaces the input of the one with the same name. */
 export function upsertChart(charts: SavedChart[], name: string, input: BaziInput): SavedChart[] {
