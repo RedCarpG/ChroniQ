@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { WESTERN } from '../constellations'
-import { constellationsAt, formatAzimuth, historyTrack, skyAt, tracksAt } from '../sky'
+import { constellationsAt, formatAzimuth, galacticToEquatorial, historyTrack, milkyWayAt, skyAt, tracksAt } from '../sky'
 import { XINGGUAN } from '../xingguan'
 
 const BEIJING = [39.9, 116.4] as const
@@ -134,5 +134,24 @@ describe('formatAzimuth', () => {
     expect(formatAzimuth(0)).toBe('北 0°')
     expect(formatAzimuth(134)).toBe('东南 134°')
     expect(formatAzimuth(359)).toBe('北 359°')
+  })
+})
+
+describe('the Milky Way', () => {
+  it('finds the galactic centre in Sagittarius and the pole in Coma Berenices', () => {
+    const [ra, dec] = galacticToEquatorial(0, 0)
+    expect(ra).toBeCloseTo(266.4, 0)
+    expect(dec).toBeCloseTo(-28.9, 0)
+    const [pra, pdec] = galacticToEquatorial(0, 90)
+    expect(pra).toBeCloseTo(192.86, 1)
+    expect(pdec).toBeCloseTo(27.13, 1)
+  })
+
+  it('runs the band all round the sky, brightest towards the centre', () => {
+    const { band, rift } = milkyWayAt(new Date('2026-08-15T14:00:00Z'), ...BEIJING)
+    expect(band).toHaveLength(73)
+    expect(band[0].bright).toBe(1)
+    expect(band[36].bright).toBeLessThan(0.4) // the anticentre, l = 180°
+    expect(rift.length).toBeGreaterThan(10)
   })
 })

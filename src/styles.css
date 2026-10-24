@@ -94,7 +94,8 @@
     color-scheme: dark;
   }
 }
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+.app.page-sky {
   --bg: #0a0e1b;
   --surface: #121829;
   --surface-2: #1a2137;
@@ -1291,7 +1292,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
    over the empty .sky-window at the top of the page. The toolbar and the panel float beside it;
    the page lets the pointer through to the sky wherever nothing of its own is in the way, and
    scrolling down slides the 太阳系 card up over the sky. */
-.app.page-sky { position: relative; z-index: 1; pointer-events: none; }
+.app.page-sky { position: relative; z-index: 1; pointer-events: none; color: var(--text); }
 .app.page-sky > :not(main), .app.page-sky main > :not(.sky-page), .app.page-sky .sky-page > :not(.sky-stage),
 .app.page-sky .sky-stage > :not(.sky-window) { pointer-events: auto; }
 .sky-stage {
@@ -1311,7 +1312,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-options .seg { justify-self: start; }
 .sky-options .seg button { white-space: nowrap; }
 .sky-history-pick { display: flex; flex-wrap: wrap; gap: 6px; }
-.sky-backdrop { position: fixed; inset: 0; z-index: 0; animation: cal-fade 0.5s ease both; }
+.sky-backdrop { position: fixed; inset: 0; z-index: 0; background: #020308; animation: cal-fade 0.5s ease both; }
 .sky-backdrop.unplaced { visibility: hidden; }
 .sky-map { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 /* Zoomed in, a drag moves the map, also on a touch screen */
@@ -1332,6 +1333,37 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .sky-panel { overflow: visible; }
 }
 @media print { .sky-backdrop { display: none; } }
+/* Coming in: the sky fades up from the dark and settles from a little closer; the Milky Way comes
+   up after it, the figures draw themselves in, and the twinkling starts */
+.sky-map.entering { animation: sky-settle 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes sky-settle {
+  from { opacity: 0; transform: scale(1.12); }
+  45% { opacity: 1; }
+  to { transform: none; }
+}
+.sky-map.entering .sky-milkyway { animation: cal-fade 2.2s 0.5s ease both; }
+.sky-map.entering .sky-figures .line { stroke-dasharray: 1; animation: sky-draw 2.2s 0.7s ease-out both; }
+.sky-twinkles { position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s ease; }
+.sky-twinkles.entering { opacity: 0; }
+.sky-twinkles i {
+  position: absolute; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  background:
+    radial-gradient(circle, var(--c) 0 5%, transparent 28%),
+    linear-gradient(var(--c), var(--c)) center / 1px 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) center / 100% 1px no-repeat;
+  -webkit-mask: radial-gradient(circle, #000 8%, transparent 62%); mask: radial-gradient(circle, #000 8%, transparent 62%);
+  animation: sky-twinkle 3s ease-in-out infinite; will-change: opacity, transform;
+}
+@keyframes sky-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  50% { opacity: 0.95; transform: scale(1.05) rotate(6deg); }
+}
+.sky-meteor {
+  position: absolute; left: 0; top: 0; width: 150px; height: 2px; margin-top: -1px; border-radius: 2px; transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(214 226 255 / 0.5) 60%, #fff); opacity: 0; pointer-events: none;
+}
+/* The panel lets more of the sky through */
+.app.page-sky .sky-panel { background: linear-gradient(90deg, transparent 8%, var(--edge), transparent 92%) top / 100% 1px no-repeat, rgb(9 13 26 / 0.7); }
 /* Hovering: a name tag, and a readout of where the pointer points with its altitude circle and
    azimuth line; dragging: the time it has been turned to */
 .sky-tip {
@@ -1341,25 +1373,32 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .sky-tip.on { opacity: 1; }
 .sky-readout, .sky-drag-hint, .sky-drag-chip {
-  position: absolute; left: 50%; bottom: 4px; translate: -50% 0; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  position: absolute; left: 4px; bottom: 4px; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
   font-size: 12px; font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .sky-readout { z-index: 1; background: rgb(12 16 30 / 0.7); border: 1px solid rgb(216 191 140 / 0.35); color: #f1ead9; opacity: 0; transition: opacity 0.15s; }
 .sky-readout.on { opacity: 1; }
 .sky-drag-hint { color: var(--muted); transition: opacity 0.15s; }
 .sky-readout.on + .sky-drag-hint { opacity: 0; }
-.sky-drag-chip { bottom: auto; top: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.sky-drag-chip { bottom: auto; top: 4px; left: 50%; translate: -50% 0; background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .sky-cursor { opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .sky-cursor.on { opacity: 1; }
 .sky-cursor circle, .sky-cursor line { fill: none; stroke: rgb(216 191 140 / 0.45); stroke-width: calc(1px * var(--k, 1)); stroke-dasharray: calc(3px * var(--k, 1)) calc(5px * var(--k, 1)); }
-.sky-disc { fill: #0f1424; stroke: var(--border); stroke-width: calc(1.5px * var(--k, 1)); transition: fill 0.6s ease; }
-.sky-twilight .sky-disc { fill: #26355c; }
-.sky-day .sky-disc { fill: #4f77a6; }
-/* 脚下: the sky beneath the horizon, seen through the Earth — a darker, earthier disc */
-.sky-below .sky-disc { fill: #17120f; stroke: #5a4632; stroke-dasharray: calc(7px * var(--k, 1)) calc(5px * var(--k, 1)); }
+/* The sky as an all-sky camera sees it: darkest overhead, glowing low down, with the Milky Way
+   across it, the Sun's or Moon's light where they are, hills and trees round the horizon and dark
+   ground beyond (SkyView; the colours by sunlight are its SKY_STOPS and HORIZON_GLOW) */
+.sky-airglow, .sky-light, .sky-halos, .sky-milkyway, .sky-ground, .sky-ticks { pointer-events: none; }
+.sky-milkyway { transition: opacity 0.8s ease; }
+.sky-milkyway path { fill: none; stroke: #c9d4ff; stroke-linecap: round; stroke-linejoin: round; }
+.sky-milkyway .rift { stroke: #04060f; stroke-width: 7; opacity: 0.5; }
+.sky-milkyway .cloud { opacity: 0.32; }
+.sky-twilight .sky-milkyway { opacity: 0.35; }
+.sky-day .sky-milkyway, .sky-day .sky-halos { opacity: 0; }
+.sky-below .sky-milkyway { opacity: 0.7; }
+.sky-ticks { fill: none; stroke: rgb(216 191 140 / 0.35); stroke-width: calc(1px * var(--k, 1)); }
 .sky-grid { fill: none; stroke: rgb(255 255 255 / 0.12); stroke-width: calc(1px * var(--k, 1)); stroke-dasharray: calc(3px * var(--k, 1)) calc(5px * var(--k, 1)); }
 /* Text on the map keeps its size on screen however big the map is: --k is map units per screen pixel */
-.sky-compass { fill: var(--muted); font-size: calc(14px * var(--k, 1)); font-weight: 600; }
+.sky-compass { fill: #d8bf8c; font-size: calc(14px * var(--k, 1)); font-weight: 600; letter-spacing: 0.1em; }
 .sky-stars { transition: opacity 0.6s ease; }
 .sky-twilight .sky-stars { opacity: 0.7; }
 .sky-day .sky-stars { opacity: 0.35; }
@@ -1475,7 +1514,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .sky-layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sky-disc, .sky-stars { transition: none; }
+  .sky-stars, .sky-milkyway { transition: none; }
+  .sky-twinkles { display: none; }
   .sky-chosen .pulse, .sky-chosen-info, .sky-chosen circle, .sky-body.on circle, .sky-star.on circle, .sky-backdrop,
   .sky-figure.on .line, .sky-figure-name.chosen { animation: none; }
 }

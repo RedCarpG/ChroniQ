@@ -7,6 +7,7 @@ import {
   constellationsAt,
   formatAzimuth,
   historyTrack,
+  milkyWayAt,
   skyAt,
   trackOf,
   tracksAt,
@@ -27,6 +28,76 @@ const project = (az: number, alt: number): [number, number] => {
   const a = (az * Math.PI) / 180
   return [C - r * Math.sin(a), C - r * Math.cos(a)]
 }
+
+/** A small seeded random generator (mulberry32): the same hills and trees every time */
+function seeded(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** A ring of ground from the given inner line out far past any screen's corners (fill even-odd) */
+const groundFrom = (inner: string) => `M${C - 4 * R} ${C}a${4 * R} ${4 * R} 0 1 0 ${8 * R} 0a${4 * R} ${4 * R} 0 1 0 ${-8 * R} 0Z${inner}`
+
+/**
+ * The skyline round the horizon, as an all-sky camera sees it: low rolling hills (half a degree
+ * to two and a half up) with clumps of trees to six or seven degrees, then dark ground beyond.
+ * In map units, made once.
+ */
+const SKYLINE = (() => {
+  const rand = seeded(20261024)
+  const waves = [2, 3, 5, 9].map((f, i) => ({ f, a: [0.9, 0.6, 0.4, 0.25][i], p: rand() * Math.PI * 2 }))
+  // Stands of trees, each a row of rounded crowns of their own sizes
+  const trees: { az: number; w: number; h: number }[] = []
+  for (let stand = 0; stand < 9; stand++) {
+    let az = rand() * 360
+    const count = 3 + Math.floor(rand() * 9)
+    const tall = 2.5 + rand() * 3
+    for (let i = 0; i < count; i++) {
+      const w = 0.9 + rand() * 1.6
+      trees.push({ az, w, h: tall * (0.7 + rand() * 0.45) })
+      az += w * (0.9 + rand() * 0.6)
+    }
+  }
+  const points: string[] = []
+  for (let i = 0; i < 1440; i++) {
+    const az = i / 4
+    let h = 1.3 + waves.reduce((sum, w) => sum + w.a * Math.sin((az * w.f * Math.PI) / 180 + w.p), 0)
+    for (const tree of trees) {
+      const d = Math.abs(((az - tree.az + 540) % 360) - 180)
+      if (d < tree.w) h = Math.max(h, tree.h * Math.sqrt(1 - (d / tree.w) ** 2))
+    }
+    const [x, y] = project(az, Math.max(0.3, h))
+    points.push(`${x.toFixed(1)} ${y.toFixed(1)}`)
+  }
+  return groundFrom(`M${points.join('L')}Z`)
+})()
+/** Under one's feet there is no skyline: the ground starts at the horizon itself */
+const GROUND = groundFrom(`M${C - R} ${C}a${R} ${R} 0 1 0 ${2 * R} 0a${R} ${R} 0 1 0 ${-2 * R} 0Z`)
+/** Azimuth ticks just outside the horizon, every 5° (longer every 30°) */
+const TICKS = Array.from({ length: 72 }, (_, i) => {
+  const a = (i * 5 * Math.PI) / 180
+  const [r0, r1] = [R + 2, R + (i % 6 === 0 ? 9 : 5)]
+  return `M${(C - r0 * Math.sin(a)).toFixed(1)} ${(C - r0 * Math.cos(a)).toFixed(1)}L${(C - r1 * Math.sin(a)).toFixed(1)} ${(C - r1 * Math.cos(a)).toFixed(1)}`
+}).join('')
+/** The sky's colours from the zenith (first) out to the horizon, by how much sunlight there is */
+const SKY_STOPS: Record<string, [number, string][]> = {
+  night: [[0, '#04081a'], [0.55, '#091027'], [0.85, '#111a39'], [1, '#1b2850']],
+  twilight: [[0, '#0b1433'], [0.55, '#182553'], [0.85, '#2c3a6e'], [1, '#4a5486']],
+  day: [[0, '#3c6aa3'], [0.7, '#5e8cc4'], [1, '#a9c7e6']],
+  below: [[0, '#0b0806'], [0.7, '#15100c'], [1, '#221a14']],
+}
+/** The glow low in the sky all round (airglow, a town's light): its colour and strength */
+const HORIZON_GLOW: Record<string, [string, number]> = {
+  night: ['#5a6eb0', 0.26],
+  twilight: ['#7d84c4', 0.4],
+  day: ['#e8f1ff', 0.35],
+  below: ['#6a4a30', 0.25],
+}
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** Star colour from its B−V index: hot blue-white to cool orange */
 const starColour = (bv: number) =>
@@ -424,6 +495,52 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return o && shown(o.alt) ? at(o.az, o.alt) : null
   }
   const up = sky.bodies.filter((b) => shown(b.alt))
+  const light = below ? 'below' : sky.light
+  // The Milky Way: a soft band along the galactic plane in three widths, its stretches grouped by
+  // how bright they are (so a few paths draw it all), and the dark Great Rift down part of it
+  const galaxy = useMemo(() => milkyWayAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+  const milkyWay = useMemo(() => {
+    const levels: string[][] = [[], [], []]
+    const hidden = (alt: number) => (below ? alt > 15 : alt < -15)
+    for (let i = 0; i + 1 < galaxy.band.length; i++) {
+      const [a, b] = [galaxy.band[i], galaxy.band[i + 1]]
+      if (hidden(a.alt) && hidden(b.alt)) continue
+      const bright = (a.bright + b.bright) / 2
+      const [x1, y1] = at(a.az, a.alt)
+      const [x2, y2] = at(b.az, b.alt)
+      levels[bright > 0.75 ? 2 : bright > 0.5 ? 1 : 0].push(`M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`)
+    }
+    const clouds = [
+      [0, 30],
+      [25, 18],
+      [75, 22],
+      [330, 16],
+    ]
+      .map(([l, size]) => ({ p: galaxy.band[l / 5], size }))
+      .filter(({ p }) => !hidden(p.alt))
+      .map(({ p, size }) => [...at(p.az, p.alt), size] as [number, number, number])
+    return { levels: levels.map((l) => l.join('')), rift: pathData(galaxy.rift, at), clouds }
+    // at follows below
+  }, [galaxy, below])
+  // Sunlight low in the sky: at dusk and dawn a warm glow on the Sun's side of the horizon, by day a
+  // bright one round the Sun; and moonlight round the Moon
+  const sun = sky.bodies[0]
+  const sunGlow =
+    below || sun.alt < -18
+      ? null
+      : { at: at(sun.az, Math.max(0, sun.alt)), day: sun.alt >= 0, strength: sun.alt >= 0 ? 0.75 : 0.7 * ((sun.alt + 18) / 18) ** 1.5 }
+  const moon = sky.bodies[1]
+  const moonGlow = !below && moon.alt > 0 && sky.light !== 'day' ? { at: at(moon.az, moon.alt), strength: 0.22 * moon.lit } : null
+  // The brightest stars twinkle: drawn over the map (screen pixels), where the compositor animates them
+  const twinkles =
+    below || sky.light === 'day' || !frame
+      ? []
+      : sky.stars
+          .filter((st) => st.mag < 1.6 && st.alt > 6)
+          .map((st) => {
+            const [x, y] = at(st.az, st.alt)
+            return { hip: st.hip, x: centre[0] + (x - C) * scale, y: centre[1] + (y - C) * scale, size: 14 + (1.6 - st.mag) * 7, colour: starColour(st.bv) }
+          })
   // The stars without a name, which are only looked at, as one path of dots per colour rather than
   // hundreds of elements: far less to redraw as the sky is dragged through time
   const starDots = useMemo(() => {
@@ -635,12 +752,50 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return `${minutes < 0 ? '−' : '+'}${span}`
   }
 
+  // Coming in: the sky fades up from the dark, settles from a little closer, and the figures draw in
+  const [entering, setEntering] = useState(() => !reducedMotion())
+  useEffect(() => {
+    const id = setTimeout(() => setEntering(false), 3200)
+    return () => clearTimeout(id)
+  }, [])
+  // Now and then, at night, a shooting star somewhere high in the sky (animated by the compositor)
+  const meteorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (below || sky.light === 'day' || reducedMotion()) return
+    let timer = 0
+    const fire = () => {
+      const el = meteorRef.current
+      const f = frameRef.current
+      if (el && f && el.animate && !document.hidden && !drag.current?.moved) {
+        const v = viewRef.current
+        const s = (Math.min(f.width, f.height) / (2 * C)) * v.z
+        const turn = Math.random() * Math.PI * 2
+        const off = Math.random() * 0.55 * R * s
+        el.style.left = `${f.left + f.width / 2 + v.x + Math.cos(turn) * off}px`
+        el.style.top = `${f.top + f.height / 2 + v.y + Math.sin(turn) * off}px`
+        const dir = 25 + Math.random() * 130
+        const run = 90 + Math.random() * 140
+        el.animate(
+          [
+            { transform: `rotate(${dir}deg) translateX(0) scaleX(0.15)`, opacity: 0 },
+            { opacity: 1, offset: 0.2 },
+            { transform: `rotate(${dir}deg) translateX(${run}px) scaleX(1)`, opacity: 0 },
+          ],
+          { duration: 650 + Math.random() * 550, easing: 'cubic-bezier(0.2, 0.6, 0.3, 1)' },
+        )
+      }
+      timer = window.setTimeout(fire, 7000 + Math.random() * 9000)
+    }
+    timer = window.setTimeout(fire, 2500 + Math.random() * 3000)
+    return () => clearTimeout(timer)
+  }, [below, sky.light])
+
   const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
   const map = (
     <svg
       ref={svgRef}
-      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
-      style={{ '--k': k } as CSSProperties}
+      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}${entering ? ' entering' : ''}`}
+      style={{ '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties}
       // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
       role="group"
       aria-label={t('此刻天空星图')}
@@ -660,29 +815,73 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }}
     >
       <g ref={mapRef} transform={`translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`}>
-      <circle className="sky-disc" cx={C} cy={C} r={R} />
-      {(
-        [
-          ['北', 'N', 0],
-          ['东', 'E', 90],
-          ['南', 'S', 180],
-          ['西', 'W', 270],
-        ] as const
-      ).map(([label, labelEn, az]) => {
-        const [x, y] = project(below ? (360 - az) % 360 : az, -9)
-        return (
-          <text key={label} className="sky-compass" x={x} y={y} textAnchor="middle" dominantBaseline="central">
-            {en ? labelEn : label}
-          </text>
-        )
-      })}
-
       <defs>
         <clipPath id={clipId}>
           <circle cx={C} cy={C} r={R} />
         </clipPath>
+        <radialGradient id={`${clipId}-sky`} cx={C} cy={C} r={R} gradientUnits="userSpaceOnUse">
+          {SKY_STOPS[light].map(([offset, colour]) => (
+            <stop key={offset} offset={offset} stopColor={colour} />
+          ))}
+        </radialGradient>
+        <radialGradient id={`${clipId}-air`} cx={C} cy={C} r={R} gradientUnits="userSpaceOnUse">
+          <stop offset={0.5} stopColor={HORIZON_GLOW[light][0]} stopOpacity={0} />
+          <stop offset={0.86} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1] * 0.45} />
+          <stop offset={1} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1]} />
+        </radialGradient>
+        <radialGradient id={`${clipId}-ground`} cx={C} cy={C} r={4 * R} gradientUnits="userSpaceOnUse">
+          <stop offset={0.25} stopColor="#0a0f1d" />
+          <stop offset={0.42} stopColor="#05070f" />
+          <stop offset={1} stopColor="#020308" />
+        </radialGradient>
+        <radialGradient id={`${clipId}-dusk`}>
+          <stop offset={0} stopColor="#ffa766" stopOpacity={0.75} />
+          <stop offset={0.45} stopColor="#e46e5a" stopOpacity={0.28} />
+          <stop offset={1} stopColor="#7a4a8a" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`${clipId}-noon`}>
+          <stop offset={0} stopColor="#fffbea" stopOpacity={0.9} />
+          <stop offset={0.25} stopColor="#fff3c4" stopOpacity={0.35} />
+          <stop offset={1} stopColor="#ffffff" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`${clipId}-moon`}>
+          <stop offset={0} stopColor="#e4ebff" stopOpacity={1} />
+          <stop offset={1} stopColor="#e4ebff" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`${clipId}-halo`}>
+          <stop offset={0} stopColor="#ffffff" stopOpacity={0.55} />
+          <stop offset={0.35} stopColor="#ffffff" stopOpacity={0.12} />
+          <stop offset={1} stopColor="#ffffff" stopOpacity={0} />
+        </radialGradient>
       </defs>
+      {/* The sky: darkest overhead, lighter and glowing towards the horizon */}
+      <circle className="sky-disc" cx={C} cy={C} r={R} fill={`url(#${clipId}-sky)`} />
+      <circle className="sky-airglow" cx={C} cy={C} r={R} fill={`url(#${clipId}-air)`} />
+      <g clipPath={`url(#${clipId})`} className="sky-light" aria-hidden="true">
+        {sunGlow && (
+          <circle
+            cx={sunGlow.at[0]}
+            cy={sunGlow.at[1]}
+            r={sunGlow.day ? R * 0.75 : R * 1.05}
+            fill={`url(#${clipId}-${sunGlow.day ? 'noon' : 'dusk'})`}
+            opacity={sunGlow.strength}
+          />
+        )}
+        {moonGlow && <circle cx={moonGlow.at[0]} cy={moonGlow.at[1]} r={R * 0.42} fill={`url(#${clipId}-moon)`} opacity={moonGlow.strength} />}
+      </g>
       <g clipPath={`url(#${clipId})`}>
+        <g className="sky-milkyway" aria-hidden="true">
+          {milkyWay.levels.map((d, level) =>
+            [56, 32, 14].map((width, i) => (
+              <path key={`${level}-${width}`} d={d} strokeWidth={width} opacity={[0.07, 0.1, 0.13][i] * [0.5, 0.78, 1][level]} />
+            )),
+          )}
+          {/* Its brightest star clouds: Sagittarius, Scutum, Cygnus, Norma */}
+          {milkyWay.clouds.map((c, i) => (
+            <circle key={i} className="cloud" cx={c[0]} cy={c[1]} r={c[2]} fill={`url(#${clipId}-halo)`} />
+          ))}
+          <path className="rift" d={milkyWay.rift} />
+        </g>
         {[30, 60].map((alt) => (
           <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
         ))}
@@ -714,12 +913,27 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 >
                   <path className="hit" d={d} />
                   {/* The chosen one's lines draw themselves in: one length unit for the whole figure */}
-                  <path className="line" d={d} pathLength={on ? 1 : undefined} />
+                  <path className="line" d={d} pathLength={1} />
                 </g>
               )
             })}
           </g>
         )}
+        <g className="sky-halos" aria-hidden="true">
+          {up
+            .filter((b) => b.key !== 'sun')
+            .map((b) => {
+              const [x, y] = at(b.az, b.alt)
+              const r = bodyRadius(b) * dot * (b.key === 'moon' ? 4.5 : 3.6)
+              return <circle key={b.key} cx={x} cy={y} r={r} fill={`url(#${clipId}-halo)`} opacity={b.key === 'moon' ? 0.4 + 0.5 * b.lit : 0.55} />
+            })}
+          {sky.stars
+            .filter((st) => st.mag < 1.2)
+            .map((st) => {
+              const [x, y] = at(st.az, st.alt)
+              return <circle key={st.hip} cx={x} cy={y} r={starRadius(st.mag) * dot * 5} fill={`url(#${clipId}-halo)`} opacity={0.45} />
+            })}
+        </g>
         <g className="sky-stars">
           {starDots.map((g) => (
             <path key={g.fill} fill={g.fill} d={g.d} />
@@ -813,6 +1027,26 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             })}
           </g>
         )}
+      </g>
+      {/* The ground and the skyline round the horizon, with the azimuths marked just outside it */}
+      <path className="sky-ground" d={below ? GROUND : SKYLINE} fill={`url(#${clipId}-ground)`} fillRule="evenodd" aria-hidden="true" />
+      <path className="sky-ticks" d={TICKS} aria-hidden="true" />
+      {(
+        [
+          ['北', 'N', 0],
+          ['东', 'E', 90],
+          ['南', 'S', 180],
+          ['西', 'W', 270],
+        ] as const
+      ).map(([label, labelEn, az]) => {
+        const [x, y] = project(below ? (360 - az) % 360 : az, -12)
+        return (
+          <text key={label} className="sky-compass" x={x} y={y} textAnchor="middle" dominantBaseline="central">
+            {en ? labelEn : label}
+          </text>
+        )
+      })}
+      <g>
         <g className="sky-labels" aria-hidden="true">
           {labels.map((l) => {
             // The chosen one's name moves out past its ring
@@ -1061,6 +1295,24 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       {createPortal(
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
           {map}
+          <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
+            {twinkles.map((tw) => (
+              <i
+                key={tw.hip}
+                style={
+                  {
+                    left: tw.x,
+                    top: tw.y,
+                    '--c': tw.colour,
+                    '--s': `${tw.size.toFixed(1)}px`,
+                    animationDuration: `${2.6 + (tw.hip % 7) * 0.45}s`,
+                    animationDelay: `${-((tw.hip % 13) * 0.37)}s`,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
+          <div className="sky-meteor" ref={meteorRef} aria-hidden="true" />
           <div className="sky-tip" ref={tipRef} aria-hidden="true" />
           {/* What sits on the sky's window and does not zoom: the readout or hint, and the zoom buttons */}
           {frame && (
