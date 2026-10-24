@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BaziInput } from '../lib/bazi'
 import { ELEMENTS } from '../lib/bazi'
 import {
@@ -14,6 +14,7 @@ import {
   yearGanzhi,
   type HoroscopeTarget,
   type LayerKind,
+  type ZiweiFly,
   type ZiweiLayer,
   type ZiweiPalace,
   type ZiweiStar,
@@ -30,6 +31,17 @@ import { SanFangTip, StarTip } from './ZiweiTips'
 
 /** A palace's part in the selected palace's 三方四正 */
 type Role = 'self' | 'opposite' | 'trine'
+
+/** What hovering a palace shows: its 三方四正, or where its 天干 flies 四化 */
+type BoardMode = 'sanfang' | 'feihua'
+const MODE_KEY = 'chroniq-ziwei-mode'
+function loadMode(): BoardMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'feihua' ? 'feihua' : 'sanfang'
+  } catch {
+    return 'sanfang'
+  }
+}
 
 /** How many 运限 layers the board shows */
 type Depth = 'natal' | LayerKind
@@ -70,6 +82,15 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   const { ziweiColor } = useSettings()
   // The palace whose 三方四正 is shown (hover with a mouse, tap or focus otherwise)
   const [active, setActive] = useState<string | null>(null)
+  const [mode, setModeState] = useState<BoardMode>(loadMode)
+  const setMode = (next: BoardMode) => {
+    setModeState(next)
+    try {
+      localStorage.setItem(MODE_KEY, next)
+    } catch {
+      // Storage unavailable: the choice lasts for this visit only.
+    }
+  }
 
   // 运限: picks default to the current 大限, year, month, day and 时辰; the board only
   // shows layers once one is chosen (or 叠加 is set).
@@ -175,7 +196,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   }
   const shows = (kind: LayerKind) => layers.some((l) => l.kind === kind)
   const roles = useMemo(() => {
-    if (!active) return null
+    if (!active || mode !== 'sanfang') return null
     const { opposite, trines } = sanFangSiZheng(active)
     return new Map<string, Role>([
       [active, 'self'],
@@ -183,7 +204,11 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       [trines[0], 'trine'],
       [trines[1], 'trine'],
     ])
-  }, [active])
+  }, [active, mode])
+  // 四化飞星: the hovered palace's four 飞化, and the 禄权科忌 each palace receives from it
+  const flies = mode === 'feihua' && active ? chart.palaces[active].flies : null
+  const boardRef = useRef<HTMLDivElement>(null)
+  const boardSize = useSize(boardRef)
 
   return (
     <div className="bazi-layout">
@@ -199,12 +224,38 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         ]}
       />
       <section className="card" id="ziwei-board">
-        <div className="ziwei-scroll">
-          <div className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}`}>
-            {Object.values(chart.palaces).map((p) => (
-              <Palace key={p.branch} palace={p} role={roles?.get(p.branch)} layers={layers} onActive={setActive} />
+        <div className="zw-toolbar">
+          <div className="seg small" role="group" aria-label="宫位显示">
+            {(
+              [
+                ['sanfang', '三方四正'],
+                ['feihua', '四化飞星'],
+              ] as const
+            ).map(([value, label]) => (
+              <button key={value} className={mode === value ? 'on' : undefined} onClick={() => setMode(value)}>
+                {term(label)}
+              </button>
             ))}
-            {active && <SanFangLines branch={active} />}
+          </div>
+        </div>
+        <div className="ziwei-scroll">
+          <div
+            ref={boardRef}
+            className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}${flies ? ' fx-active' : ''}`}
+          >
+            {Object.values(chart.palaces).map((p) => (
+              <Palace
+                key={p.branch}
+                palace={p}
+                role={roles?.get(p.branch)}
+                fly={flies && (p.branch === active ? 'src' : flies.filter((f) => f.to === p.branch))}
+                showSelf={mode === 'feihua'}
+                layers={layers}
+                onActive={setActive}
+              />
+            ))}
+            {active && mode === 'sanfang' && <SanFangLines branch={active} />}
+            {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
             <div className="ziwei-center">
               <div className="zc-title">
                 <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong>
@@ -237,7 +288,11 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                   {term(chart.zodiac)} · {chart.sign}
                 </dd>
               </dl>
-              <SanFangSummary chart={chart} active={active} />
+              {mode === 'feihua' ? (
+                <FeiHuaSummary chart={chart} active={active} />
+              ) : (
+                <SanFangSummary chart={chart} active={active} />
+              )}
             </div>
           </div>
         </div>
@@ -276,12 +331,22 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
             )}
             <span className="muted">星曜配色（可在设置中切换）</span>
           </div>
+          {mode === 'feihua' && (
+            <div className="zc-legend">
+              <span className="mutagen fly self m-禄">↑{term('禄')}</span>
+              <span className="muted">宫干自化（离心）</span>
+            </div>
+          )}
           <div className="zc-legend muted">
-            <span>
-              悬停或点按宫位看
-              <SanFangTip />
-              ，悬停或点按星曜看解释
-            </span>
+            {mode === 'feihua' ? (
+              <span>悬停或点按宫位，看它的宫干把禄权科忌飞入哪一宫</span>
+            ) : (
+              <span>
+                悬停或点按宫位看
+                <SanFangTip />
+                ，悬停或点按星曜看解释
+              </span>
+            )}
           </div>
         </div>
         <p className="muted row-note ziwei-credit">
@@ -501,20 +566,33 @@ const ROLE_LABEL: Record<Role, string> = {
 function Palace({
   palace: p,
   role,
+  fly,
+  showSelf,
   layers,
   onActive,
 }: {
   palace: ZiweiPalace
   role?: Role
+  /** 四化飞星: 'src' for the hovered palace, else the 飞化 landing here */
+  fly?: 'src' | ZiweiFly[] | null
+  /** Mark the 自化 of this palace's own 天干 */
+  showSelf: boolean
   layers: ZiweiLayer[]
   onActive: (branch: string | null) => void
 }) {
+  const incoming = Array.isArray(fly) ? fly : []
+  const selfFlies = showSelf ? p.flies.filter((f) => f.to === p.branch) : []
+  const marks = (name: string) => ({
+    flown: incoming.filter((f) => f.star === name).map((f) => f.mutagen),
+    self: selfFlies.filter((f) => f.star === name).map((f) => f.mutagen),
+  })
+  const flyClass = fly === 'src' ? ' fx-src' : incoming.length ? ' fx-to' : ''
   const flowStars = layers.flatMap((l) => l.stars[p.branch].map((s) => ({ kind: l.kind, star: s })))
   const term = useTerm()
   const [row, col] = BOARD[p.branch]
   return (
     <div
-      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}`}
+      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}`}
       style={{ gridRow: row, gridColumn: col }}
       tabIndex={0}
       aria-label={`${term(p.name)}，${p.stem}${p.branch}`}
@@ -525,15 +603,21 @@ function Palace({
       onBlur={() => onActive(null)}
     >
       {role && <span className="sf-tag">{ROLE_LABEL[role]}</span>}
+      {fly === 'src' && <span className="sf-tag fx-tag">{p.stem}干飞出</span>}
+      {incoming.length > 0 && (
+        <span className="sf-tag fx-tag">
+          {incoming.map((f) => term(f.mutagen)).join('')}入
+        </span>
+      )}
       <div className="palace-stars">
         <div className="stars-major">
           {p.major.map((s) => (
-            <StarItem key={s.name} star={s} layers={layers} />
+            <StarItem key={s.name} star={s} layers={layers} {...marks(s.name)} />
           ))}
         </div>
         <div className="stars-minor">
           {p.minor.map((s) => (
-            <StarItem key={s.name} star={s} layers={layers} />
+            <StarItem key={s.name} star={s} layers={layers} {...marks(s.name)} />
           ))}
         </div>
         <div className="stars-adj">
@@ -579,7 +663,19 @@ function Palace({
   )
 }
 
-function StarItem({ star: s, layers }: { star: ZiweiStar; layers: ZiweiLayer[] }) {
+function StarItem({
+  star: s,
+  layers,
+  flown = [],
+  self = [],
+}: {
+  star: ZiweiStar
+  layers: ZiweiLayer[]
+  /** 四化 flown in from the hovered palace */
+  flown?: string[]
+  /** 自化 by this palace's own 天干 */
+  self?: string[]
+}) {
   const term = useTerm()
   return (
     <span className="star-item">
@@ -598,6 +694,16 @@ function StarItem({ star: s, layers }: { star: ZiweiStar; layers: ZiweiLayer[] }
             </span>
           ),
       )}
+      {flown.map((m) => (
+        <span key={`f${m}`} className={`mutagen fly m-${m}`} title={`飞化${m}`}>
+          {term(m)}
+        </span>
+      ))}
+      {self.map((m) => (
+        <span key={`s${m}`} className={`mutagen fly self m-${m}`} title={`自化${m}`}>
+          ↑{term(m)}
+        </span>
+      ))}
     </span>
   )
 }
@@ -638,6 +744,94 @@ function SanFangSummary({ chart, active }: { chart: ReturnType<typeof buildZiwei
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+/** Width and height of an element, kept current as it resizes. */
+function useSize(ref: RefObject<HTMLElement | null>): [number, number] | null {
+  const [size, setSize] = useState<[number, number] | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setSize([el.clientWidth, el.clientHeight])
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
+}
+
+/**
+ * Arrows across the centre from the hovered palace to each palace its 天干
+ * flies a 四化 into, in the 四化 colours. Drawn in pixels (not the 4×4 units
+ * of the 三方四正 lines) so the arrowheads keep their shape on any board.
+ * Several 四化 into one palace fan out side by side; 自化 have no arrow.
+ */
+function FeiHuaLines({ from, flies, size: [w, h] }: { from: string; flies: ZiweiFly[]; size: [number, number] }) {
+  const px = (b: string): [number, number] => {
+    const [x, y] = anchor(b)
+    return [(x * w) / 4, (y * h) / 4]
+  }
+  const [x0, y0] = px(from)
+  const out = flies.filter((f) => f.to !== from)
+  return (
+    <svg className="fx-lines" viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+      {out.map((f) => {
+        const same = out.filter((g) => g.to === f.to)
+        const k = same.indexOf(f) - (same.length - 1) / 2
+        const [x1, y1] = px(f.to)
+        const len = Math.hypot(x1 - x0, y1 - y0) || 1
+        const [ux, uy] = [(x1 - x0) / len, (y1 - y0) / len]
+        // Side-by-side offset, and a little room at each end
+        const [ox, oy] = [-uy * k * 7, ux * k * 7]
+        const a = [x0 + ox + ux * 6, y0 + oy + uy * 6]
+        const b = [x1 + ox - ux * 4, y1 + oy - uy * 4]
+        const head = [
+          b,
+          [b[0] - ux * 9 - uy * 4.5, b[1] - uy * 9 + ux * 4.5],
+          [b[0] - ux * 9 + uy * 4.5, b[1] - uy * 9 - ux * 4.5],
+        ]
+        return (
+          <g key={f.mutagen} className={`fx-${f.mutagen}`}>
+            <line x1={a[0]} y1={a[1]} x2={b[0] - ux * 6} y2={b[1] - uy * 6} />
+            <polygon points={head.map((p) => p.join(',')).join(' ')} />
+          </g>
+        )
+      })}
+      <circle className="fx-origin" cx={x0} cy={y0} r={4} />
+    </svg>
+  )
+}
+
+/** Centre-panel list of the hovered palace's 宫干四化, or a hint when none is hovered. */
+function FeiHuaSummary({ chart, active }: { chart: ReturnType<typeof buildZiwei>; active: string | null }) {
+  const term = useTerm()
+  if (!active)
+    return (
+      <div className="zc-sf-area">
+        <p className="zc-hint muted">悬停或点按宫位，这里会列出它的宫干四化飞入哪一宫</p>
+      </div>
+    )
+  const p = chart.palaces[active]
+  return (
+    <div className="zc-sf-area">
+      <div className="zc-sanfang" key={active}>
+        <strong>
+          {term(p.name)} {p.stem}干{term('四化')}
+        </strong>
+        {p.flies.map((f) => (
+          <div key={f.mutagen} className="zc-sf-row">
+            <span className={`mutagen m-${f.mutagen}`}>{term(f.mutagen)}</span>
+            <b>{term(f.star)}</b>
+            <span className="muted">
+              {f.to === active ? '自化' : `入${term(chart.palaces[f.to].name)}`}
+              {f.mutagen === '忌' && ` · 冲${term(chart.palaces[sanFangSiZheng(f.to).opposite].name)}`}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )

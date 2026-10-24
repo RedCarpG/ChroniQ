@@ -5,10 +5,12 @@ import { AboutBadges } from './components/AboutBadges'
 import { Logo } from './components/Logo'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
+import { ShareButton } from './components/ShareButton'
 import { smoothUpdate } from './components/smoothUpdate'
 import { SPLASH_FADE_IN_MS, SplashOverlay, SplashSignal, holdSplash } from './components/Splash'
 import type { BaziInput } from './lib/bazi'
 import { loadLastInput, saveLastInput } from './lib/savedCharts'
+import { parseShareHash } from './lib/shareLink'
 import { loadSchools, saveSchools, type SchoolSettings } from './lib/schools'
 import { loadZiweiSchools, saveZiweiSchools, type ZiweiSchoolSettings } from './lib/ziweiSchools'
 import {
@@ -38,8 +40,13 @@ const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// A share link opens its chart once; the hash is then dropped, so a reload or
+// the user's own edits are not overridden by it again.
+const shared = parseShareHash(location.hash)
+if (location.hash) history.replaceState(null, '', location.pathname + location.search)
+
 export function App() {
-  const [tab, setTab] = useState<Tab>('calendar')
+  const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
   // side of the new tab (styles.css: [data-vt='page']).
   const goTab = (next: Tab) => {
@@ -63,6 +70,7 @@ export function App() {
     smoothUpdate('page', () => setTab(next))
   }
   const [baziInput, setBaziInput] = useState<BaziInput>(() => {
+    if (shared) return shared.input
     const last = loadLastInput()
     if (last) return last
     const now = new Date()
@@ -93,7 +101,8 @@ export function App() {
     setStarSettings(next)
     saveStarSettings(next)
   }
-  const [starPlace, setStarPlace] = useState<StarPlace>(() => loadStarPlace(baziInput.longitude))
+  // A shared birthplace is shown but not saved over the user's own.
+  const [starPlace, setStarPlace] = useState<StarPlace>(() => shared?.place ?? loadStarPlace(baziInput.longitude))
   const changeStarPlace = (next: StarPlace) => {
     setStarPlace(next)
     saveStarPlace(next)
@@ -136,6 +145,9 @@ export function App() {
                 {term('星盘')}
               </button>
             </nav>
+            {tab !== 'calendar' && (
+              <ShareButton chart={{ tab, input: baziInput, place: tab === 'star' ? starPlace : undefined }} />
+            )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
         </header>

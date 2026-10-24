@@ -307,6 +307,10 @@ footer {
 .bazi-form input, .bazi-form select {
   border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 10px; height: 36px;
 }
+.bazi-form .date-parts { display: flex; flex-wrap: wrap; gap: 4px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.date-parts legend { float: left; width: 100%; margin-bottom: 0; padding: 0; font-size: 13px; color: var(--muted); }
+.date-parts .year-input { width: 82px; }
+.date-parts select { padding-right: 26px; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 36px; }
 .seg button { border: 0; background: none; padding: 0 16px; }
 .seg button.on { background: var(--accent); color: #fff; }
@@ -431,6 +435,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* ---------- 设置菜单 ---------- */
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 .settings { position: relative; }
+.share { position: relative; }
+.share-note {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; white-space: nowrap; padding: 8px 12px;
+  font-size: 13px; background: var(--text); color: var(--surface); border-radius: 8px; animation: tip-in 0.2s ease-out;
+}
 .icon-btn {
   width: 36px; height: 36px; display: grid; place-items: center; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text);
@@ -452,6 +461,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .topbar { flex-wrap: wrap; row-gap: 10px; }
   .topbar-right { display: contents; }
   .topbar .settings { order: 1; margin-left: auto; }
+  .topbar .share { order: 1; margin-left: auto; }
+  .topbar .share + .settings { margin-left: 0; }
   .tabs { order: 2; flex-basis: 100%; }
   .tabs button { flex: 1; padding: 7px 8px; }
 }
@@ -1036,3 +1047,27 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .sky-layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .sky-disc, .sky-stars { transition: none; } }
+
+/* ---------- 紫微 四化飞星 ---------- */
+.zw-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.fx-active .palace:not(.fx-src, .fx-to) { opacity: 0.4; }
+.palace.fx-src { box-shadow: inset 0 0 0 2px var(--accent); }
+.palace.fx-to { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+.fx-src .fx-tag { background: var(--accent); color: #fff; }
+/* 飞入 and 自化 badges: outlined in the 四化 colour, so they read apart from 生年四化 */
+.mutagen.fly { background: none; box-shadow: inset 0 0 0 1px currentColor; animation: tip-in 0.2s ease-out; }
+.mutagen.fly.m-禄 { color: var(--good); }
+.mutagen.fly.m-权 { color: #8a4fbf; }
+.mutagen.fly.m-科 { color: var(--water); }
+.mutagen.fly.m-忌 { color: var(--bad); }
+.mutagen.fly.self { box-shadow: none; padding-left: 0; padding-right: 0; }
+.fx-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; animation: tip-in 0.25s ease-out; }
+.fx-lines line { stroke-width: 1.8; stroke-opacity: 0.6; }
+.fx-lines .fx-禄 { stroke: var(--good); fill: var(--good); }
+.fx-lines .fx-权 { stroke: #8a4fbf; fill: #8a4fbf; }
+.fx-lines .fx-科 { stroke: var(--water); fill: var(--water); }
+.fx-lines .fx-忌 { stroke: var(--bad); fill: var(--bad); }
+.fx-lines .fx-忌 line { stroke-dasharray: 6 4; }
+.fx-origin { fill: var(--accent); }
+.zc-sf-row .mutagen { flex: none; }
+@media (prefers-reduced-motion: reduce) { .fx-lines, .mutagen.fly { animation: none; } }
