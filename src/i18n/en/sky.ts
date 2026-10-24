@@ -103,6 +103,21 @@ export const SKY: Record<string, string> = {
     'Distances are in astronomical units (AU; the mean Sun–Earth distance, about 150 million km). Light time is how long a planet’s light takes to reach Earth. Retrograde is a planet seeming to move backwards among the stars as seen from Earth: in fact Earth overtaking an outer planet on its inner track (or an inner planet passing between Earth and the Sun). Hover over a planet to see Earth’s line of sight to it. Positions computed by astronomy-engine.',
   // Day paths
   轨迹: 'Paths',
+  // Constellations and history track
+  星座: 'Constellations',
+  不显示: 'Off',
+  西方星座: 'Western',
+  中国星官: 'Chinese 星官',
+  历史轨迹: 'Past track',
+  时长: 'Span',
+  '1 个月': '1 month',
+  '3 个月': '3 months',
+  '1 年': '1 year',
+  '{name}过去 {span}在星空中走过的路线（画在此刻的星空上）：空心圆是起点，圆点标出日期；行星逆行时会折返或打圈。':
+    'The line is {name}’s way among the stars over the past {span}, drawn on the sky as it is now: the hollow circle is where it started, dots mark dates, and a planet turning retrograde doubles back or loops.',
+  '星座连线来自 d3-celestial。': 'Constellation figures from d3-celestial.',
+  '中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。':
+    'Chinese 星官 from Stellarium’s Chinese sky culture (CC BY-SA 4.0), via d3-celestial.',
   '{h}时': '{h}:00',
   '彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。':
     'The coloured arcs are the paths of the Sun, Moon and naked-eye planets across the sky over 12 hours either side: dashed where they have been, solid where they are going, with a dot on each hour. Hover a body or its row to see the hours.',

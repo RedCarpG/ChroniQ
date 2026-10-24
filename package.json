@@ -11,7 +11,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "gen:trad": "vite-node scripts/gen-trad.ts",
-    "gen:stars": "vite-node scripts/gen-stars.ts"
+    "gen:stars": "vite-node scripts/gen-stars.ts",
+    "gen:constellations": "vite-node scripts/gen-constellations.ts"
   },
   "dependencies": {
     "astronomy-engine": "^2.1.19",

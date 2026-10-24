@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { formatAzimuth, skyAt, tracksAt } from '../sky'
+import { WESTERN } from '../constellations'
+import { constellationsAt, formatAzimuth, historyTrack, skyAt, tracksAt } from '../sky'
+import { XINGGUAN } from '../xingguan'
 
 const BEIJING = [39.9, 116.4] as const
 
@@ -61,6 +63,50 @@ describe('tracksAt', () => {
     expect(sun.some((p) => p.alt < 0)).toBe(true)
     // above the horizon for about 15 hours at midsummer
     expect(sun.filter((p) => p.alt > 0).length).toBeGreaterThanOrEqual(14)
+  })
+})
+
+describe('constellationsAt', () => {
+  const winterEvening = new Date('2026-01-15T14:00:00Z') // 22:00 in Beijing
+
+  it('has the 88 Western constellations and the 星官 with the 28 宿', () => {
+    expect(new Set(WESTERN.map((c) => c.name)).size).toBe(88)
+    expect(XINGGUAN.length).toBeGreaterThan(300)
+    expect(XINGGUAN.filter((c) => c.rank === 1).map((c) => c.name)).toHaveLength(28)
+    expect(XINGGUAN.find((c) => c.name === '参宿')!.rank).toBe(1)
+  })
+
+  it('puts Orion and 参宿 up on a winter evening, and leaves out what is below the horizon', () => {
+    const west = constellationsAt(WESTERN, winterEvening, ...BEIJING)
+    expect(west.find((c) => c.name === '猎户座')!.label.alt).toBeGreaterThan(20)
+    expect(west.find((c) => c.name === '天蝎座')).toBeUndefined() // a summer constellation, under the horizon
+    const cn = constellationsAt(XINGGUAN, winterEvening, ...BEIJING)
+    expect(cn.find((c) => c.name === '参宿')!.label.alt).toBeGreaterThan(20)
+    expect(west.every((c) => c.lines.some((l) => l.some((p) => p.alt > 0)))).toBe(true)
+  })
+})
+
+describe('historyTrack', () => {
+  const unit = ({ az, alt }: { az: number; alt: number }) => {
+    const [a, h] = [(az * Math.PI) / 180, (alt * Math.PI) / 180]
+    return [Math.cos(h) * Math.sin(a), Math.cos(h) * Math.cos(a), Math.sin(h)]
+  }
+  const dot = (u: number[], v: number[]) => u.reduce((s, x, i) => s + x * v[i], 0)
+
+  it('ends at the body where it is now', () => {
+    const at = new Date('2026-01-15T14:00:00Z')
+    const track = historyTrack('jupiter', at, ...BEIJING, 30)
+    const now = skyAt(at, ...BEIJING).bodies.find((b) => b.key === 'jupiter')!
+    expect(track.at(-1)!.utc.getTime()).toBe(at.getTime())
+    expect(Math.acos(Math.min(1, dot(unit(track.at(-1)!), unit(now)))) * (180 / Math.PI)).toBeLessThan(0.5)
+  })
+
+  it("shows Mars turning back during its retrograde (Dec 2024 – Feb 2025)", () => {
+    const track = historyTrack('mars', new Date('2025-02-20T14:00:00Z'), ...BEIJING, 120, 120)
+    const step = (i: number) => unit(track[i + 1]).map((x, k) => x - unit(track[i])[k])
+    // Early on it moves one way; later it moves back the other way
+    const first = step(0)
+    expect(Math.min(...track.slice(0, -1).map((_, i) => dot(first, step(i))))).toBeLessThan(0)
   })
 })
 
