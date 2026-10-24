@@ -928,6 +928,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .overlay-bar .ghost { margin-left: 0; height: 32px; font-size: 13px; }
 .star-wheel.with-transit { --overlay: var(--ly-yearly); }
 .star-wheel.with-progressed { --overlay: var(--ly-decadal); }
+.star-wheel.with-synastry { --overlay: var(--ly-monthly); }
 .star-wheel .outer-band { fill: color-mix(in srgb, var(--overlay) 7%, transparent); stroke: var(--overlay); stroke-opacity: 0.4; }
 .star-wheel .outer-planet { color: var(--overlay); }
 .star-wheel .outer-angle { font-size: 9px; font-weight: 700; fill: var(--overlay); }
@@ -935,6 +936,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .overlay-card.is-progressed { border-color: color-mix(in srgb, var(--ly-decadal) 45%, var(--border)); }
 .overlay-card.is-transit .section-title { color: var(--ly-yearly); }
 .overlay-card.is-progressed .section-title { color: var(--ly-decadal); }
+.overlay-card.is-synastry { border-color: color-mix(in srgb, var(--ly-monthly) 45%, var(--border)); }
+.overlay-card.is-synastry .section-title { color: var(--ly-monthly); }
+.partner-form { margin: 0 0 12px; padding: 12px; border: 1px dashed color-mix(in srgb, var(--ly-monthly) 50%, var(--border)); border-radius: var(--radius); }
+.synastry-tally { margin: 0 0 8px; font-size: 13px; }
+.synastry-tally .tone-soft { color: var(--good); }
+.synastry-tally .tone-hard { color: var(--bad); }
+.reverse-title { margin-top: 16px; }
+.house-overlay { display: flex; flex-wrap: wrap; gap: 6px; }
+.ho-item {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 13px;
+  background: var(--surface-2); outline: none; cursor: pointer; transition: box-shadow 0.2s;
+}
+.ho-item b { color: var(--ly-monthly); }
+.ho-item.on { box-shadow: 0 0 0 2px var(--ly-monthly); }
 .overlay-subtitle { margin: 0 0 6px; font-size: 14px; }
 /* 星盘 highlight: a house (sector, its planets, rows) or a planet (its aspects and partners) */
 .star-wheel .house-sector { fill: transparent; cursor: pointer; outline: none; transition: fill 0.2s; }

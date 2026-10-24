@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildStarChart, computeChart, formatLon, houseOf, toUtc } from '../astrology'
+import { buildStarChart, computeChart, formatLon, houseOf, synastry, toUtc } from '../astrology'
 import { DEFAULT_STAR_SETTINGS } from '../starPrefs'
 
 // Einstein, 1879-03-14 11:30 LMT Ulm (48°24′N, 10°E) = 10:50 UT.
@@ -172,5 +172,31 @@ describe('星盘 行运 and 推运', () => {
     const p = progressions(natal, new Date(einstein.utc.getTime() + 1000), DEFAULT_STAR_SETTINGS)
     expect(p.points.find((x) => x.key === 'asc')!.lon).toBeCloseTo(einstein.asc, 3)
     expect(p.points.find((x) => x.key === 'mc')!.lon).toBeCloseTo(einstein.mc, 3)
+  })
+})
+
+describe('合盘', () => {
+  const place = { name: '北京', latitude: 39.9, longitude: 116.4, timeZone: 'Asia/Shanghai' }
+  const a = buildStarChart({ year: 1990, month: 5, day: 1, hour: 8, minute: 0 }, place, DEFAULT_STAR_SETTINGS)
+  const b = buildStarChart({ year: 1992, month: 9, day: 20, hour: 21, minute: 30 }, place, DEFAULT_STAR_SETTINGS)
+
+  it('with oneself, every point conjoins its own place', () => {
+    const s = synastry(a, a)
+    const generational = ['uranus', 'neptune', 'pluto', 'node', 'southNode']
+    for (const p of a.points.filter((p) => !generational.includes(p.key)))
+      expect(s.aspects.some((x) => x.a.key === p.key && x.b.key === p.key && x.type.key === 'conjunction')).toBe(true)
+    expect(s.inPartnerHouses!.map((p) => p.house)).toEqual(a.points.map((p) => p.house))
+  })
+
+  const generational = (k: string) => ['uranus', 'neptune', 'pluto'].includes(k)
+
+  it('puts their points in my houses and mine in theirs, at synastry orbs', () => {
+    const s = synastry(a, b)
+    for (const p of s.points) expect(p.house).toBe(houseOf(p.lon, a.cusps))
+    for (const p of s.inPartnerHouses!) expect(p.house).toBe(houseOf(p.lon, b.cusps))
+    for (const x of s.aspects) expect(x.orb).toBeLessThanOrEqual(x.type.orb - 2)
+    expect(s.aspects.some((x) => generational(x.a.key) && generational(x.b.key))).toBe(false)
+    // The pair is symmetric: the same aspects either way round
+    expect(synastry(b, a).aspects.length).toBe(s.aspects.length)
   })
 })
