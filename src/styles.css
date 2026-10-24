@@ -938,6 +938,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .overlay-card.is-progressed .section-title { color: var(--ly-decadal); }
 .overlay-card.is-synastry { border-color: color-mix(in srgb, var(--ly-monthly) 45%, var(--border)); }
 .overlay-card.is-synastry .section-title { color: var(--ly-monthly); }
+.overlay-card.is-composite { border-color: color-mix(in srgb, var(--ly-daily) 45%, var(--border)); }
+.overlay-card.is-composite .section-title { color: var(--ly-daily); }
+.big-three.small { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; font-size: 14px; font-weight: 600; }
 .partner-form { margin: 0 0 12px; padding: 12px; border: 1px dashed color-mix(in srgb, var(--ly-monthly) 50%, var(--border)); border-radius: var(--radius); }
 .synastry-tally { margin: 0 0 8px; font-size: 13px; }
 .synastry-tally .tone-soft { color: var(--good); }

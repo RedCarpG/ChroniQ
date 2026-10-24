@@ -266,25 +266,8 @@ function bodiesAt(utc: Date, settings: StarSettings, cusps: number[]): ChartPoin
   return points
 }
 
-/** Chart for a UTC instant at a latitude / east longitude. */
-export function computeChart(
-  utc: Date,
-  lat: number,
-  lon: number,
-  settings: StarSettings,
-): Omit<StarChart, 'offsetMinutes' | 'dst' | 'place'> {
-  const t = A.MakeTime(utc)
-  const eps = A.e_tilt(t).tobl
-  const ramc = norm(A.SiderealTime(t) * 15 + lon)
-  const mc = raToLon(ramc, eps)
-  const asc = norm(atan2d(cosd(ramc), -(sind(ramc) * cosd(eps) + tand(lat) * sind(eps))))
-  const cusps = houseCusps(settings.houses, asc, mc, ramc, eps, lat)
-
-  const points = bodiesAt(utc, settings, cusps)
-  points.push(makePoint('asc', '上升', 'ASC', asc, cusps))
-  points.push(makePoint('mc', '天顶', 'MC', mc, cusps))
-
-  // Aspects between planets and the angles; the nodes are left out.
+/** Aspects within one chart, between planets and the angles; the nodes are left out. */
+function chartAspects(points: ChartPoint[]): Aspect[] {
   const aspectable = points.filter((p) => p.key !== 'node' && p.key !== 'southNode')
   const aspects: Aspect[] = []
   for (let i = 0; i < aspectable.length; i++) {
@@ -303,7 +286,28 @@ export function computeChart(
       }
     }
   }
-  aspects.sort((x, y) => x.orb - y.orb)
+  return aspects.sort((x, y) => x.orb - y.orb)
+}
+
+/** Chart for a UTC instant at a latitude / east longitude. */
+export function computeChart(
+  utc: Date,
+  lat: number,
+  lon: number,
+  settings: StarSettings,
+): Omit<StarChart, 'offsetMinutes' | 'dst' | 'place'> {
+  const t = A.MakeTime(utc)
+  const eps = A.e_tilt(t).tobl
+  const ramc = norm(A.SiderealTime(t) * 15 + lon)
+  const mc = raToLon(ramc, eps)
+  const asc = norm(atan2d(cosd(ramc), -(sind(ramc) * cosd(eps) + tand(lat) * sind(eps))))
+  const cusps = houseCusps(settings.houses, asc, mc, ramc, eps, lat)
+
+  const points = bodiesAt(utc, settings, cusps)
+  points.push(makePoint('asc', '上升', 'ASC', asc, cusps))
+  points.push(makePoint('mc', '天顶', 'MC', mc, cusps))
+
+  const aspects = chartAspects(points)
   // Placidus needs every cusp's semi-arc, which fails inside the polar circles.
   const housesFallback = settings.houses === 'placidus' && Math.abs(lat) >= 90 - eps
   return { utc, points, asc, mc, cusps, aspects, housesFallback }
@@ -450,4 +454,46 @@ export function synastry(me: StarChart, partner: StarChart): Overlay {
     partner,
     inPartnerHouses: me.points.map((p) => rehouse(p, partner.cusps)),
   }
+}
+
+/* ---------- 组合盘 ---------- */
+
+/** The nearer midpoint of two longitudes (across 0° when that is shorter). */
+export const midpoint = (a: number, b: number) => norm(a + (norm(b - a + 180) - 180) / 2)
+
+/**
+ * 组合盘: one chart for the relationship itself.
+ * - midpoint (Composite): each pair of planets at its nearer midpoint; the MC
+ *   at the MCs' midpoint, with the ascendant and houses derived from it at
+ *   the mean latitude (so the houses stay a real house system).
+ * - davison: the actual sky at the midpoint in time between the births, over
+ *   the midpoint between the birthplaces.
+ */
+export function composite(a: StarChart, b: StarChart, settings: StarSettings): StarChart {
+  const utc = new Date((a.utc.getTime() + b.utc.getTime()) / 2)
+  const lat = (a.place.latitude + b.place.latitude) / 2
+  const lon = norm(midpoint(a.place.longitude, b.place.longitude) + 180) - 180
+  const place = { name: settings.composite === 'davison' ? '时空中点' : '两地中点', latitude: lat, longitude: lon, timeZone: 'UTC' }
+  const base = { offsetMinutes: 0, dst: false, place }
+  if (settings.composite === 'davison') return { ...computeChart(utc, lat, lon, settings), ...base }
+
+  const eps = A.e_tilt(A.MakeTime(utc)).tobl
+  const mc = midpoint(a.mc, b.mc)
+  const ramc = norm(atan2d(sind(mc) * cosd(eps), cosd(mc)))
+  const asc = norm(atan2d(cosd(ramc), -(sind(ramc) * cosd(eps) + tand(lat) * sind(eps))))
+  const cusps = houseCusps(settings.houses, asc, mc, ramc, eps, lat)
+  const points = a.points
+    .filter((p) => p.key !== 'asc' && p.key !== 'mc')
+    .map((p) => {
+      const q = b.points.find((x) => x.key === p.key)!
+      return makePoint(p.key, p.name, p.glyph, midpoint(p.lon, q.lon), cusps)
+    })
+  // Keep the south node opposite the north node, whichever midpoint that took.
+  const north = points.find((p) => p.key === 'node')!
+  const si = points.findIndex((p) => p.key === 'southNode')
+  points[si] = makePoint('southNode', points[si].name, points[si].glyph, north.lon + 180, cusps)
+  points.push(makePoint('asc', '上升', 'ASC', asc, cusps))
+  points.push(makePoint('mc', '天顶', 'MC', mc, cusps))
+  const housesFallback = settings.houses === 'placidus' && Math.abs(lat) >= 90 - eps
+  return { utc, points, asc, mc, cusps, aspects: chartAspects(points), housesFallback, ...base }
 }

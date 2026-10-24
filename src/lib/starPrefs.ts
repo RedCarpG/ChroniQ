@@ -9,9 +9,11 @@ export interface StarSettings {
   node: 'true' | 'mean'
   /** 推运上升 / 天顶的推法 */
   progAngles: 'solarArc' | 'naibod'
+  /** 组合盘的做法 */
+  composite: 'midpoint' | 'davison'
 }
 
-export const DEFAULT_STAR_SETTINGS: StarSettings = { houses: 'placidus', node: 'true', progAngles: 'solarArc' }
+export const DEFAULT_STAR_SETTINGS: StarSettings = { houses: 'placidus', node: 'true', progAngles: 'solarArc', composite: 'midpoint' }
 
 export const STAR_SCHOOLS: {
   [K in keyof StarSettings]: { title: string; summary: string; options: { value: StarSettings[K]; label: string; source: string }[] }
@@ -39,6 +41,22 @@ export const STAR_SCHOOLS: {
     options: [
       { value: 'solarArc', label: '太阳弧（Solar Arc）', source: '天顶前进的度数等于推运太阳走过的弧度，较常用' },
       { value: 'naibod', label: 'Naibod 平均弧', source: '每年按太阳平均日行 0°59′08″ 推进' },
+    ],
+  },
+  composite: {
+    title: '组合盘',
+    summary: '把两个人的星盘合成一张「关系本身」的盘。两种做法的行星位置与宫位都会不同。',
+    options: [
+      {
+        value: 'midpoint',
+        label: '中点组合盘（Composite）',
+        source: '每对行星取两人位置的较近中点；天顶取中点，上升与宫位由组合天顶在两地平均纬度推出。Robert Hand《Planets in Composite》（1975）推广，最常用',
+      },
+      {
+        value: 'davison',
+        label: '时空中点盘（Davison）',
+        source: '取两人出生时刻与出生地的中点，按那一刻那个地点的真实天象起盘。Ronald Davison《Synastry》（1977）提出',
+      },
     ],
   },
 }
