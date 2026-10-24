@@ -130,8 +130,20 @@ export const SKY: Record<string, string> = {
   '高 {altitude}°': 'altitude {altitude}°',
   '星等 {mag}': 'magnitude {mag}',
   取消选中: 'Clear selection',
-  '点一下天体、有名字的亮星或表格里的一行，可把它圈出并放大；再点一次、点空白处或按 Esc 取消。':
-    'Click a body, a named star or a row of the table to ring it and zoom in; click it again, click the empty sky or press Esc to let go.',
+  '点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
+    'Click a body, a named star, a constellation’s lines or a row of the table to pick it out (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
+  // The sky as the page's backdrop: pointing, dragging through time
+  '指向 {direction} · 高 {altitude}°': 'Pointing {direction} · altitude {altitude}°',
+  // Zooming the sky
+  '滚轮或双指缩放 · 左右拖动转动时间': 'Wheel or pinch to zoom · drag sideways to turn time',
+  '拖动移动星图 · 缩回原大小后左右拖动可转动时间': 'Drag to move the map · back at full size, drag sideways to turn time',
+  缩放: 'Zoom',
+  放大: 'Zoom in',
+  缩小: 'Zoom out',
+  复原: 'Reset zoom',
+  '{h} 小时 {m} 分': '{h} h {m} min',
+  '{h} 小时': '{h} h',
+  '{m} 分': '{m} min',
   '彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。':
     'The coloured arcs are the paths of the Sun, Moon and naked-eye planets across the sky over 12 hours either side: dashed where they have been, solid where they are going, with a dot on each hour. Hover a body or its row to see the hours.',
 }

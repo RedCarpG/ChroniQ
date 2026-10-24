@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useT, useTerm } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
-export type Page = 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky'
+export type Page = 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky' | 'solar'
 
 /** The pages, grouped as the menu lists them (shown through t(): src/i18n/__tests__/calendar.test.ts checks the English) */
 export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; desc: string }[] }[] = [
@@ -10,7 +10,8 @@ export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; de
     title: '历法',
     pages: [
       { page: 'calendar', name: '日历', desc: '公历、农历、节气、干支' },
-      { page: 'sky', name: '天象', desc: '此刻天空、太阳系行星' },
+      { page: 'sky', name: '天象', desc: '此刻天空、星座与星官' },
+      { page: 'solar', name: '太阳系', desc: '行星的轨道、距离与顺逆行' },
     ],
   },
   {

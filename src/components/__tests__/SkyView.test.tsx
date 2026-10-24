@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
 import './dom'
-import { fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PLACE } from '../../lib/place'
 import { SkyView } from '../SkyView'
+
+// jsdom has no PointerEvent: a mouse event with a pointer id stands in, so pointer events carry their coordinates
+if (!('PointerEvent' in globalThis)) {
+  class PointerEventStub extends MouseEvent {
+    pointerId: number
+    pointerType: string
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init)
+      this.pointerId = init.pointerId ?? 1
+      this.pointerType = init.pointerType ?? 'mouse'
+    }
+  }
+  Object.assign(globalThis, { PointerEvent: PointerEventStub })
+}
 
 // Beijing, 02:57 on 25 October 2026: Jupiter, Saturn and Sirius are up, the Sun is not
 beforeEach(() => {
@@ -14,43 +28,54 @@ afterEach(() => vi.useRealTimers())
 
 function setUp() {
   const { container } = render(<SkyView place={DEFAULT_PLACE} />)
-  const map = container.querySelector<SVGSVGElement>('.sky-map')!
+  // The map is the page's backdrop, rendered into <body> rather than in the page
+  const map = document.querySelector<SVGSVGElement>('.sky-backdrop .sky-map')!
   return {
+    container,
     map,
     row: (name: string) => [...container.querySelectorAll<HTMLElement>('.sky-table tbody tr')].find((r) => r.textContent!.includes(name))!,
     info: () => container.querySelector('.sky-chosen-info')?.textContent ?? null,
-    zoomed: () => container.querySelector('.sky-zoom')!.getAttribute('style')?.includes('scale(1.5)') ?? false,
-    ringed: () => container.querySelector('.sky-chosen') !== null,
+    ringed: () => map.querySelector('.sky-chosen') !== null,
+    time: () => container.querySelector<HTMLInputElement>('.sky-controls input[type=time]')!.value,
   }
 }
 
+describe('SkyView as the backdrop', () => {
+  it('draws the map behind the page, beside an empty window for it in the page', () => {
+    const { container, map } = setUp()
+    expect(map).not.toBeNull()
+    expect(container.contains(map)).toBe(false)
+    expect(container.querySelector('.sky-window')).not.toBeNull()
+  })
+})
+
 describe('SkyView choosing a body or star', () => {
-  it('rings a body picked from the table and zooms in on it; picking it again lets go', () => {
-    const { map, row, info, zoomed, ringed } = setUp()
+  it('rings a body picked from the table and pops it, without zooming the map; picking it again lets go', () => {
+    const { map, row, info, ringed } = setUp()
     expect(info()).toBeNull()
-    expect(zoomed()).toBe(false)
 
     fireEvent.click(row('木星'))
     expect(info()).toContain('木星')
-    expect(zoomed()).toBe(true)
     expect(ringed()).toBe(true)
     expect(map.classList.contains('has-chosen')).toBe(true)
     expect(map.querySelector('.sky-jupiter')!.classList.contains('on')).toBe(true)
     expect(row('木星').classList.contains('chosen')).toBe(true)
+    // Nothing on the map is moved or scaled as a whole
+    expect(map.querySelector('[style*="scale"]')).toBeNull()
 
     fireEvent.click(row('木星'))
     expect(info()).toBeNull()
-    expect(zoomed()).toBe(false)
+    expect(ringed()).toBe(false)
     expect(map.classList.contains('has-chosen')).toBe(false)
   })
 
   it('picks a named star on the map, and lets go on the empty sky or Esc', () => {
-    const { map, info, zoomed } = setUp()
-    const sirius = () => [...map.querySelectorAll('.sky-star')].find((g) => g.querySelector('title')!.textContent!.startsWith('天狼星'))!
+    const { map, info, ringed } = setUp()
+    const sirius = () => [...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('天狼星'))!
 
     fireEvent.click(sirius())
     expect(info()).toContain('天狼星')
-    expect(zoomed()).toBe(true)
+    expect(ringed()).toBe(true)
     fireEvent.click(map.querySelector('.sky-disc')!)
     expect(info()).toBeNull()
 
@@ -58,14 +83,12 @@ describe('SkyView choosing a body or star', () => {
     expect(info()).toContain('天狼星')
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(info()).toBeNull()
-    expect(zoomed()).toBe(false)
   })
 
-  it('shows a body below the horizon in the panel without zooming the map', () => {
-    const { map, row, info, zoomed, ringed } = setUp()
+  it('shows a body below the horizon in the panel without ringing it on the map', () => {
+    const { map, row, info, ringed } = setUp()
     fireEvent.click(row('太阳'))
     expect(info()).toContain('太阳')
-    expect(zoomed()).toBe(false)
     expect(ringed()).toBe(false)
     expect(map.classList.contains('has-chosen')).toBe(false)
   })
@@ -74,5 +97,99 @@ describe('SkyView choosing a body or star', () => {
     const { map, info } = setUp()
     fireEvent.keyDown(map.querySelector('.sky-saturn')!, { key: 'Enter' })
     expect(info()).toContain('土星')
+  })
+})
+
+describe('SkyView constellations and paths', () => {
+  it('picks out a constellation: its lines drawn in, the rest faded, its name and set in the panel', () => {
+    const { map, info } = setUp()
+    const figure = map.querySelector<SVGGElement>('.sky-figure')!
+    const name = figure.getAttribute('data-tip')!
+    fireEvent.click(figure)
+    expect(figure.classList.contains('on')).toBe(true)
+    expect(map.querySelector('.sky-figures')!.classList.contains('has-chosen')).toBe(true)
+    expect(map.querySelector('.sky-figure-name.chosen')!.textContent).toBe(name)
+    expect(info()).toContain(name)
+    expect(info()).toContain('西方星座')
+    // A figure has no ring and dims no stars
+    expect(map.querySelector('.sky-chosen')).toBeNull()
+    expect(map.classList.contains('has-chosen')).toBe(false)
+    fireEvent.click(figure)
+    expect(info()).toBeNull()
+  })
+
+  it('draws the path of a chosen star alongside the usual ones, picked out with its hours', () => {
+    const { map } = setUp()
+    const usual = map.querySelectorAll('.sky-path').length
+    fireEvent.click([...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('天狼星'))!)
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(usual + 1)
+    expect(map.querySelector('.sky-paths')!.classList.contains('has-focus')).toBe(true)
+    expect(map.querySelectorAll('.sky-path.on')).toHaveLength(1)
+    expect(map.querySelectorAll('.sky-hour-labels text').length).toBeGreaterThan(0)
+  })
+})
+
+describe('SkyView zoomed', () => {
+  it('zooms the map alone with its buttons, within limits, and comes back to full size', () => {
+    const { map } = setUp()
+    const zoomIn = document.querySelector<HTMLButtonElement>('.sky-zoom-buttons [aria-label="放大"]')!
+    const reset = document.querySelector<HTMLButtonElement>('.sky-zoom-buttons [aria-label="复原"]')!
+    const scale = () => Number(/scale\(([\d.]+)\)/.exec(map.querySelector('g')!.getAttribute('transform')!)![1])
+    expect(map.classList.contains('zoomed')).toBe(false)
+    expect(reset.disabled).toBe(true)
+    const full = scale()
+    fireEvent.click(zoomIn)
+    expect(map.classList.contains('zoomed')).toBe(true)
+    expect(scale()).toBeCloseTo(full * 1.6)
+    // Never past eight times
+    for (let i = 0; i < 10; i++) fireEvent.click(zoomIn)
+    expect(scale()).toBeCloseTo(full * 8)
+    expect(zoomIn.disabled).toBe(true)
+    fireEvent.click(reset)
+    expect(scale()).toBeCloseTo(full)
+    expect(map.classList.contains('zoomed')).toBe(false)
+  })
+})
+
+describe('SkyView hovered while one is chosen', () => {
+  it('lights the hovered one up and keeps the path of the chosen one picked out beside its own', () => {
+    const { map, row } = setUp()
+    fireEvent.click(row('土星'))
+    const lit = () => map.querySelectorAll('.sky-path.on').length
+    expect(lit()).toBe(1)
+    fireEvent.pointerEnter(row('海王星'), { pointerType: 'mouse' })
+    expect(map.querySelector('.sky-neptune')!.classList.contains('hover')).toBe(true)
+    expect(map.querySelector('.sky-saturn')!.classList.contains('on')).toBe(true)
+    // Saturn's path stays; Neptune's (not among the usual ones) is added and picked out too
+    expect(lit()).toBe(2)
+    fireEvent.pointerLeave(row('海王星'), { pointerType: 'mouse' })
+    expect(lit()).toBe(1)
+  })
+})
+
+describe('SkyView dragged through time', () => {
+  it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
+    const { map, row, info, time } = setUp()
+    fireEvent.click(row('木星'))
+    // jsdom has no layout: the map counts as 400 px square
+    map.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 400, right: 400, bottom: 400, x: 0, y: 0, toJSON() {} })
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+
+    expect(time()).toBe('02:57')
+    fireEvent.pointerDown(map, { pointerId: 1, pointerType: 'touch', button: 0, clientX: 100, clientY: 200 })
+    fireEvent.pointerMove(map, { pointerId: 1, pointerType: 'touch', clientX: 270, clientY: 200 })
+    flush()
+    // 170 units is half the disc across: three hours later
+    expect(time()).toBe('05:57')
+    expect(document.querySelector('.sky-drag-chip')!.textContent).toContain('+3 小时')
+    fireEvent.pointerUp(map, { pointerId: 1, pointerType: 'touch', clientX: 270, clientY: 200 })
+    fireEvent.click(map.querySelector('.sky-disc')!)
+    flush()
+    flush()
+    expect(info()).toContain('木星')
+    expect(document.querySelector('.sky-drag-chip')).toBeNull()
   })
 })
