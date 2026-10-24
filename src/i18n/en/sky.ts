@@ -134,7 +134,13 @@ export const SKY: Record<string, string> = {
     'Click a body, a named star, a constellation’s lines or a row of the table to pick it out (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
   // The sky as the page's backdrop: pointing, dragging through time
   '指向 {direction} · 高 {altitude}°': 'Pointing {direction} · altitude {altitude}°',
-  '⟷ 左右拖动星空，转动时间': '⟷ Drag the sky sideways to turn time',
+  // Zooming the sky
+  '滚轮或双指缩放 · 左右拖动转动时间': 'Wheel or pinch to zoom · drag sideways to turn time',
+  '拖动移动星图 · 缩回原大小后左右拖动可转动时间': 'Drag to move the map · back at full size, drag sideways to turn time',
+  缩放: 'Zoom',
+  放大: 'Zoom in',
+  缩小: 'Zoom out',
+  复原: 'Reset zoom',
   '{h} 小时 {m} 分': '{h} h {m} min',
   '{h} 小时': '{h} h',
   '{m} 分': '{m} min',

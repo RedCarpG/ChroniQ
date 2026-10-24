@@ -300,8 +300,8 @@ footer {
    and the long year view scroll inside, and the footer slides up over the calendar when the
    page is scrolled. (--topbar-h is the top bar's height, set by App.) */
 @media (min-width: 861px) and (min-height: 600px) {
-  .app.page-calendar .topbar { position: sticky; top: 16px; z-index: 5; }
-  .app.page-calendar main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
+  .app:is(.page-calendar, .page-sky) .topbar { position: sticky; top: 16px; z-index: 5; }
+  .app:is(.page-calendar, .page-sky) main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
   .app.page-calendar .calendar-layout {
     height: calc(100dvh / var(--ui-zoom) - var(--topbar-h, 52px) - 48px); min-height: 520px; align-items: stretch;
   }
@@ -312,7 +312,7 @@ footer {
   .app.page-calendar .month-window:not(.scrolling) .grid.days { height: 100%; grid-template-rows: repeat(6, minmax(0, 1fr)); }
   .app.page-calendar .grid.days .day { aspect-ratio: auto; min-height: 0; }
   .app.page-calendar .detail { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-  .app.page-calendar footer {
+  .app:is(.page-calendar, .page-sky) footer {
     position: relative; z-index: 6; margin-top: 16px; padding: 14px 0 4px;
     background: linear-gradient(90deg, transparent, var(--edge), transparent) top / 100% 1px no-repeat, var(--bg);
     box-shadow: 0 -16px 24px -18px rgb(0 0 0 / 0.35);
@@ -1307,9 +1307,21 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-options .seg { justify-self: start; }
 .sky-options .seg button { white-space: nowrap; }
 .sky-history-pick { display: flex; flex-wrap: wrap; gap: 6px; }
-.sky-backdrop { position: fixed; z-index: 0; animation: cal-fade 0.5s ease both; }
+.sky-backdrop { position: fixed; inset: 0; z-index: 0; animation: cal-fade 0.5s ease both; }
+.sky-backdrop.unplaced { visibility: hidden; }
 .sky-map { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+/* Zoomed in, a drag moves the map, also on a touch screen */
+.sky-map.zoomed { touch-action: none; cursor: move; }
 .sky-backdrop.dragging .sky-map { cursor: grabbing; }
+.sky-frame { position: absolute; pointer-events: none; }
+.sky-zoom-buttons {
+  position: absolute; right: 4px; bottom: 34px; display: flex; flex-direction: column; overflow: hidden; pointer-events: auto;
+  border: 1px solid rgb(216 191 140 / 0.35); border-radius: 10px; background: rgb(12 16 30 / 0.72);
+}
+.sky-zoom-buttons button { width: 32px; height: 30px; padding: 0; border: 0; background: none; color: #f1ead9; font-size: 17px; line-height: 1; }
+.sky-zoom-buttons button + button { border-top: 1px solid rgb(216 191 140 / 0.2); }
+.sky-zoom-buttons button:hover:not(:disabled) { background: rgb(216 191 140 / 0.18); }
+.sky-zoom-buttons button:disabled { opacity: 0.35; cursor: default; }
 @media (max-width: 860px), (max-height: 599px) {
   .sky-stage { display: flex; flex-direction: column; height: auto; min-height: 0; }
   .sky-window { width: 100%; aspect-ratio: 1; flex: none; }
@@ -1335,13 +1347,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-drag-chip { bottom: auto; top: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .sky-cursor { opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .sky-cursor.on { opacity: 1; }
-.sky-cursor circle, .sky-cursor line { fill: none; stroke: rgb(216 191 140 / 0.45); stroke-width: 0.6; stroke-dasharray: 2 3; }
-.sky-disc { fill: #0f1424; stroke: var(--border); stroke-width: 1; transition: fill 0.6s ease; }
+.sky-cursor circle, .sky-cursor line { fill: none; stroke: rgb(216 191 140 / 0.45); stroke-width: calc(1px * var(--k, 1)); stroke-dasharray: calc(3px * var(--k, 1)) calc(5px * var(--k, 1)); }
+.sky-disc { fill: #0f1424; stroke: var(--border); stroke-width: calc(1.5px * var(--k, 1)); transition: fill 0.6s ease; }
 .sky-twilight .sky-disc { fill: #26355c; }
 .sky-day .sky-disc { fill: #4f77a6; }
 /* 脚下: the sky beneath the horizon, seen through the Earth — a darker, earthier disc */
-.sky-below .sky-disc { fill: #17120f; stroke: #5a4632; stroke-dasharray: 4 3; }
-.sky-grid { fill: none; stroke: rgb(255 255 255 / 0.12); stroke-width: 0.6; stroke-dasharray: 2 3; }
+.sky-below .sky-disc { fill: #17120f; stroke: #5a4632; stroke-dasharray: calc(7px * var(--k, 1)) calc(5px * var(--k, 1)); }
+.sky-grid { fill: none; stroke: rgb(255 255 255 / 0.12); stroke-width: calc(1px * var(--k, 1)); stroke-dasharray: calc(3px * var(--k, 1)) calc(5px * var(--k, 1)); }
 /* Text on the map keeps its size on screen however big the map is: --k is map units per screen pixel */
 .sky-compass { fill: var(--muted); font-size: calc(14px * var(--k, 1)); font-weight: 600; }
 .sky-stars { transition: opacity 0.6s ease; }
@@ -1355,24 +1367,24 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* Day paths: the stretch already gone is dashed and faint, the stretch to come
    solid; dots mark whole hours. Hovering a body or its row picks out its path. */
 .sky-path { transition: opacity 0.25s; }
-.sky-path path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
-.sky-path .past { stroke-dasharray: 2 3; opacity: 0.35; }
+.sky-path path { fill: none; stroke: currentColor; stroke-width: calc(2px * var(--k, 1)); stroke-linecap: round; stroke-linejoin: round; }
+.sky-path .past { stroke-dasharray: calc(3px * var(--k, 1)) calc(5px * var(--k, 1)); opacity: 0.35; }
 .sky-path .future { opacity: 0.6; }
 .sky-path .hour { fill: currentColor; opacity: 0.75; }
 .sky-paths.has-focus .sky-path:not(.on) { opacity: 0.15; }
-.sky-path.on path { stroke-width: 1.8; }
+.sky-path.on path { stroke-width: calc(3px * var(--k, 1)); }
 .sky-path.on .past { opacity: 0.6; }
 .sky-path.on .future { opacity: 0.95; }
 .sky-hour-labels text { fill: rgb(255 255 255 / 0.85); font-size: calc(11px * var(--k, 1)); paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: calc(2px * var(--k, 1)); }
 .sky-body, .sky-star, .sky-table tbody tr { cursor: pointer; }
 /* On the map, keyboard focus shows as a dashed circle rather than the browser's box */
 .sky-body, .sky-star { outline: none; }
-.sky-body:focus-visible .hit, .sky-star:focus-visible .hit { stroke: rgb(255 255 255 / 0.75); stroke-width: 0.8; stroke-dasharray: 2 2; }
+.sky-body:focus-visible .hit, .sky-star:focus-visible .hit { stroke: rgb(255 255 255 / 0.75); stroke-width: calc(1.2px * var(--k, 1)); stroke-dasharray: calc(3px * var(--k, 1)) calc(3px * var(--k, 1)); }
 /* Constellation figures, under the stars: pale blue for the Western ones, pale gold for the 星官 */
 .sky-options { margin: 0 0 12px; }
 .sky-option-title { font-size: 13px; color: var(--muted); }
 .sky-options select { height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.sky-figures path { fill: none; stroke-width: 0.8; stroke-linejoin: round; stroke-linecap: round; }
+.sky-figures path { fill: none; stroke-width: calc(1.3px * var(--k, 1)); stroke-linejoin: round; stroke-linecap: round; }
 .sky-figures-west path { stroke: rgb(150 180 240 / 0.38); }
 .sky-figures-china path { stroke: rgb(235 195 125 / 0.42); }
 .sky-figure-name { font-size: calc(11.5px * var(--k, 1)); letter-spacing: 0.05em; }
@@ -1383,10 +1395,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-figure { cursor: pointer; }
 .sky-figures .sky-figure .hit { stroke: transparent; stroke-width: calc(9px * var(--k, 1)); pointer-events: stroke; }
 .sky-figures .line { pointer-events: none; transition: stroke 0.2s, stroke-width 0.2s, opacity 0.3s; }
-.sky-figures-west .sky-figure:hover .line { stroke: rgb(170 200 255 / 0.85); stroke-width: 1.1; }
-.sky-figures-china .sky-figure:hover .line { stroke: rgb(245 210 145 / 0.9); stroke-width: 1.1; }
+.sky-figures-west .sky-figure:hover .line { stroke: rgb(170 200 255 / 0.85); stroke-width: calc(1.9px * var(--k, 1)); }
+.sky-figures-china .sky-figure:hover .line { stroke: rgb(245 210 145 / 0.9); stroke-width: calc(1.9px * var(--k, 1)); }
 .sky-figures .sky-figure.on .line {
-  stroke: #f0d59b; stroke-width: 1.4; stroke-dasharray: 1; animation: sky-draw 0.9s ease-out both;
+  stroke: #f0d59b; stroke-width: calc(2.4px * var(--k, 1)); stroke-dasharray: 1; animation: sky-draw 0.9s ease-out both;
   filter: drop-shadow(0 0 2px rgb(240 213 155 / 0.6));
 }
 @keyframes sky-draw {
@@ -1403,9 +1415,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-figure-mark { flex: none; width: 8px; height: 8px; margin: 0 1px; transform: rotate(45deg); border: 1.5px solid #c9a768; }
 .sky-figure-mark-west { border-color: #7f9be0; }
 /* One body's way among the stars over the past days */
-.sky-history path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.9; }
+.sky-history path { fill: none; stroke: currentColor; stroke-width: calc(2.6px * var(--k, 1)); stroke-linejoin: round; opacity: 0.9; }
 .sky-history .tick { fill: currentColor; }
-.sky-history .start { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.sky-history .start { fill: none; stroke: currentColor; stroke-width: calc(2.2px * var(--k, 1)); }
 .sky-history-labels text { fill: rgb(255 255 255 / 0.85); font-size: calc(10.5px * var(--k, 1)); paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: calc(2px * var(--k, 1)); }
 .sky-table tr.on td { background: var(--accent-soft); }
 /* A chosen body or named star: the map zooms in on it (it and the ring move together),
@@ -1413,7 +1425,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* A body or named star grows a little under the pointer, and the chosen one pops: up past its
    size and back to a little over it, while its ring closes in on it */
 .sky-body circle:not(.hit), .sky-star circle:not(.hit) { transform-box: fill-box; transform-origin: center; transition: transform 0.2s ease; }
-.sky-body:hover circle:not(.hit), .sky-star:hover circle:not(.hit) { transform: scale(1.5); }
+.sky-body:is(:hover, .hover) circle:not(.hit), .sky-star:is(:hover, .hover) circle:not(.hit) { transform: scale(1.5); }
 .sky-body.on circle:not(.hit), .sky-star.on circle:not(.hit) { transform: scale(1.4); animation: sky-pop 0.55s cubic-bezier(0.3, 1.5, 0.5, 1); }
 @keyframes sky-pop {
   0% { transform: scale(1); }
@@ -1428,12 +1440,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-labels .sky-body-name, .sky-labels .sky-star-name { cursor: pointer; }
 .sky-body .hit, .sky-star .hit { fill: transparent; }
 .sky-stars > *, .sky-body, .sky-labels text, .sky-figures { transition: opacity 0.3s ease; }
-.sky-map.has-chosen .sky-stars > :not(.on), .sky-map.has-chosen .sky-body:not(.on) { opacity: 0.4; }
-.sky-map.has-chosen .sky-labels text:not(.on) { opacity: 0.4; }
+.sky-map.has-chosen .sky-stars > :not(.on, .hover, :hover), .sky-map.has-chosen .sky-body:not(.on, .hover, :hover) { opacity: 0.4; }
+.sky-map.has-chosen .sky-labels text:not(.on, .hover) { opacity: 0.4; }
 .sky-map.has-chosen .sky-figures, .sky-map.has-chosen .sky-paths:not(.has-focus) { opacity: 0.6; }
 .sky-paths { transition: opacity 0.3s ease; }
-.sky-labels text.on { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; }
-.sky-chosen circle { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.sky-labels text.on { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: calc(2px * var(--k, 1)); }
+.sky-labels text.hover { fill: #fff; opacity: 1; }
+.sky-chosen circle { fill: none; stroke: currentColor; stroke-width: calc(2px * var(--k, 1)); }
 .sky-chosen .pulse { transform-box: fill-box; transform-origin: center; animation: sky-pulse 1.8s ease-out infinite; }
 @keyframes sky-pulse {
   from { transform: scale(1); opacity: 0.8; }

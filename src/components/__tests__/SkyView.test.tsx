@@ -129,6 +129,44 @@ describe('SkyView constellations and paths', () => {
   })
 })
 
+describe('SkyView zoomed', () => {
+  it('zooms the map alone with its buttons, within limits, and comes back to full size', () => {
+    const { map } = setUp()
+    const zoomIn = document.querySelector<HTMLButtonElement>('.sky-zoom-buttons [aria-label="放大"]')!
+    const reset = document.querySelector<HTMLButtonElement>('.sky-zoom-buttons [aria-label="复原"]')!
+    const scale = () => Number(/scale\(([\d.]+)\)/.exec(map.querySelector('g')!.getAttribute('transform')!)![1])
+    expect(map.classList.contains('zoomed')).toBe(false)
+    expect(reset.disabled).toBe(true)
+    const full = scale()
+    fireEvent.click(zoomIn)
+    expect(map.classList.contains('zoomed')).toBe(true)
+    expect(scale()).toBeCloseTo(full * 1.6)
+    // Never past eight times
+    for (let i = 0; i < 10; i++) fireEvent.click(zoomIn)
+    expect(scale()).toBeCloseTo(full * 8)
+    expect(zoomIn.disabled).toBe(true)
+    fireEvent.click(reset)
+    expect(scale()).toBeCloseTo(full)
+    expect(map.classList.contains('zoomed')).toBe(false)
+  })
+})
+
+describe('SkyView hovered while one is chosen', () => {
+  it('lights the hovered one up and keeps the path of the chosen one picked out beside its own', () => {
+    const { map, row } = setUp()
+    fireEvent.click(row('土星'))
+    const lit = () => map.querySelectorAll('.sky-path.on').length
+    expect(lit()).toBe(1)
+    fireEvent.pointerEnter(row('海王星'), { pointerType: 'mouse' })
+    expect(map.querySelector('.sky-neptune')!.classList.contains('hover')).toBe(true)
+    expect(map.querySelector('.sky-saturn')!.classList.contains('on')).toBe(true)
+    // Saturn's path stays; Neptune's (not among the usual ones) is added and picked out too
+    expect(lit()).toBe(2)
+    fireEvent.pointerLeave(row('海王星'), { pointerType: 'mouse' })
+    expect(lit()).toBe(1)
+  })
+})
+
 describe('SkyView dragged through time', () => {
   it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
     const { map, row, info, time } = setUp()

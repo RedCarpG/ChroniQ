@@ -49,6 +49,9 @@ export const BODY_COLOUR: Record<string, string> = {
 const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 : Math.min(5, Math.max(2.4, 3.6 - 0.35 * b.mag)))
 /** Dragging the sky across the disc turns the time by six hours (later to the right, as the stars go) */
 const DRAG_MINUTES = 360 / (2 * R)
+/** How far the map zooms: from fitting its window to eight times that */
+const Z_MIN = 1
+const Z_MAX = 8
 
 interface Label {
   key: string
@@ -74,12 +77,13 @@ function placeLabels(points: { key: string; text: string; x: number; y: number; 
     const size = (p.kind === 'body' ? 13 : p.kind === 'figure' ? 11.5 : 11) * k
     // A Chinese character is about one em wide, a Latin letter about 0.6 of that
     const w = [...p.text].reduce((sum, ch) => sum + (ch.charCodeAt(0) < 0x2e80 ? 0.62 : 1), 0) * size
-    const h = size + 2
+    const h = size + 2 * k
+    const gap = 4 * k
     const spots: [number, number, Label['anchor'], number][] = [
-      [p.x + p.r + 3, p.y, 'start', p.x + p.r + 3],
-      [p.x - p.r - 3, p.y, 'end', p.x - p.r - 3 - w],
-      [p.x, p.y - p.r - h / 2 - 2, 'middle', p.x - w / 2],
-      [p.x, p.y + p.r + h / 2 + 2, 'middle', p.x - w / 2],
+      [p.x + p.r + gap, p.y, 'start', p.x + p.r + gap],
+      [p.x - p.r - gap, p.y, 'end', p.x - p.r - gap - w],
+      [p.x, p.y - p.r - h / 2 - gap, 'middle', p.x - w / 2],
+      [p.x, p.y + p.r + h / 2 + gap, 'middle', p.x - w / 2],
     ]
     const spot = spots.find(([, y, , left]) => {
       const box: [number, number, number, number] = [left, y - h / 2, left + w, y + h / 2]
@@ -172,17 +176,21 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
 
   // ---- The sky as the page's backdrop ----
-  // The map is fixed behind the page (in <body>), where the empty "window" at the top of the page
-  // is while the page is not scrolled: the controls and the table float beside it, and scrolling
-  // down slides the 太阳系 card up over the sky.
+  // The map fills the screen behind the page (in <body>), fitted at first to the empty "window"
+  // the page leaves for it: the controls and the table float beside it. On a wide screen the page
+  // holds still (sticky, as the calendar does) and the footer slides up over it when scrolled to;
+  // on a phone the page scrolls up over the sky, which stays where the window was at the top.
   const windowRef = useRef<HTMLDivElement>(null)
   const [frame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+  const frameRef = useRef(frame)
+  frameRef.current = frame
   useLayoutEffect(() => {
     const el = windowRef.current
     if (!el) return
     const measure = () => {
       const r = el.getBoundingClientRect()
-      const next = { left: r.left, top: r.top + window.scrollY, width: r.width, height: r.height }
+      const stuck = getComputedStyle(el.closest('main') ?? el).position === 'sticky'
+      const next = { left: r.left, top: r.top + (stuck ? 0 : window.scrollY), width: r.width, height: r.height }
       setFrame((f) =>
         f && Math.abs(f.left - next.left) < 0.5 && Math.abs(f.top - next.top) < 0.5 && Math.abs(f.width - next.width) < 0.5 && Math.abs(f.height - next.height) < 0.5
           ? f
@@ -199,6 +207,42 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       window.removeEventListener('resize', measure)
     }
   }, [])
+
+  // Zoom and pan, the map alone: z 1 fits the window; x, y move the disc's centre from the window's
+  // centre (screen pixels). Text keeps its size on screen, and stars and bodies grow only as the
+  // square root of the zoom, so zooming in spreads them apart.
+  const [view, setView] = useState({ z: 1, x: 0, y: 0 })
+  const viewRef = useRef(view)
+  viewRef.current = view
+  const fit = frame && Math.min(frame.width, frame.height) > 100 ? Math.min(frame.width, frame.height) / (2 * C) : 1
+  const scale = fit * view.z
+  const k = Math.round((1 / scale) * 1000) / 1000
+  const dot = Math.round((1 / Math.sqrt(view.z)) * 100) / 100
+  const centre = frame ? [frame.left + frame.width / 2 + view.x, frame.top + frame.height / 2 + view.y] : [C, C]
+  /** Keeps the zoom in range, and the window's centre on the sky */
+  const clampView = (v: { z: number; x: number; y: number }) => {
+    const f = frameRef.current
+    const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z))
+    const room = f ? (R * Math.min(f.width, f.height) * (z - 1)) / (2 * C) : 0
+    const off = Math.hypot(v.x, v.y)
+    const keep = off > room ? room / off : 1
+    return { z, x: v.x * keep, y: v.y * keep }
+  }
+  /** Zooms by a factor about a point on the screen, which stays where it is */
+  const zoomAt = (fx: number, fy: number, factor: number) =>
+    setView((v) => {
+      const f = frameRef.current
+      if (!f) return v
+      const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z * factor))
+      const wx = f.left + f.width / 2
+      const wy = f.top + f.height / 2
+      const grow = z / v.z
+      return clampView({ z, x: fx - (fx - (wx + v.x)) * grow - wx, y: fy - (fy - (wy + v.y)) * grow - wy })
+    })
+  const zoomBy = (factor: number) => {
+    const f = frameRef.current
+    if (f) zoomAt(f.left + f.width / 2 + viewRef.current.x, f.top + f.height / 2 + viewRef.current.y, factor)
+  }
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
   const [showPaths, setShowPaths] = useState(() => {
@@ -217,18 +261,15 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }
       return !on
     })
-  // The body whose path is picked out (hover or focus a body or its row), with its hours labelled
+  // The body or named star under the pointer (or its row, or keyboard focus): lit up at once, also
+  // while another is chosen, with its path and hours picked out beside the chosen one's
   const [focus, setFocus] = useState<string | null>(null)
-  const focusProps = (key: string) =>
-    PATH_BODIES.includes(key as SkyBody['key']) && showPaths
-      ? {
-          tabIndex: 0,
-          onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(key),
-          onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
-          onFocus: () => setFocus(key),
-          onBlur: () => setFocus(null),
-        }
-      : {}
+  const focusProps = (key: string) => ({
+    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(key),
+    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus((f) => (f === key ? null : f)),
+    onFocus: () => setFocus(key),
+    onBlur: () => setFocus((f) => (f === key ? null : f)),
+  })
   // The body or named star picked out (click it, its name or a body's row; the key is its label's):
   // it pops up a size inside a ring and the rest dims. Click it again, the empty sky or press Esc to let go.
   const [chosen, setChosen] = useState<string | null>(null)
@@ -354,19 +395,28 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
   // Where the chosen one is on the map, if it is on this half of the sky
   const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
-  // The chosen star's path, or that of a chosen body without one of its own (Uranus, Neptune),
-  // drawn like the others while the paths are on
-  const chosenPath = useMemo(() => {
-    if (!pathTimes || !chosen || PATH_BODIES.includes(chosen as SkyBody['key']) || chosen.startsWith('fig')) return null
-    const what = chosen.startsWith('hip') ? { hip: Number(chosen.slice(3)) } : { body: chosen as SkyBody['key'] }
+  // The path of a star, or of a body without one among the usual (Uranus, Neptune), when it is
+  // chosen or hovered, drawn like the others while the paths are on
+  const extraPath = (key: string | null) => {
+    if (!pathTimes || !key || PATH_BODIES.includes(key as SkyBody['key']) || key.startsWith('fig')) return null
+    const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
     const track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
-    return track.length ? pathOf(chosen, track) : null
-  }, [pathTimes, chosen, place.latitude, place.longitude])
-  // The path picked out: the one hovered, else the chosen one's
-  const pathFocus = focus ?? (chosen && (PATH_BODIES.includes(chosen as SkyBody['key']) || chosenPath) ? chosen : null)
-  const focused = chosenPath?.key === pathFocus ? chosenPath : paths?.find((p) => p.key === pathFocus)
-  const focusedBody = focused && sky.bodies.find((b) => b.key === focused.key)
-  const focusedAt = focused && focused === chosenPath ? spot : focusedBody && shown(focusedBody.alt) ? at(focusedBody.az, focusedBody.alt) : null
+    return track.length ? pathOf(key, track) : null
+  }
+  const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, chosen, place.latitude, place.longitude])
+  const hoverPath = useMemo(() => (focus === chosen ? null : extraPath(focus)), [pathTimes, focus, chosen, place.latitude, place.longitude])
+  const allPaths = paths && [...paths, ...(chosenPath ? [chosenPath] : []), ...(hoverPath ? [hoverPath] : [])]
+  // The paths picked out: the chosen one's, and the hovered one's
+  const litPaths = allPaths?.filter((p) => p.key === chosen || p.key === focus) ?? []
+  const colourOf = (key: string) => {
+    const st = key.startsWith('hip') ? sky.stars.find((x) => `hip${x.hip}` === key) : undefined
+    return st ? starColour(st.bv) : BODY_COLOUR[key]
+  }
+  /** Where on the map the thing a path belongs to is now */
+  const whereNow = (key: string) => {
+    const o = key.startsWith('hip') ? sky.stars.find((st) => `hip${st.hip}` === key) : sky.bodies.find((b) => b.key === key)
+    return o && shown(o.alt) ? at(o.az, o.alt) : null
+  }
   const up = sky.bodies.filter((b) => shown(b.alt))
   // The stars without a name, which are only looked at, as one path of dots per colour rather than
   // hundreds of elements: far less to redraw as the sky is dragged through time
@@ -375,19 +425,16 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     for (const st of sky.stars) {
       if (st.name) continue
       const [x, y] = at(st.az, st.alt)
-      const r = starRadius(st.mag).toFixed(2)
-      const dot = `M${(x - Number(r)).toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${(2 * Number(r)).toFixed(2)} 0a${r} ${r} 0 1 0 -${(2 * Number(r)).toFixed(2)} 0`
+      const r = (starRadius(st.mag) * dot).toFixed(2)
+      const mark = `M${(x - Number(r)).toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${(2 * Number(r)).toFixed(2)} 0a${r} ${r} 0 1 0 -${(2 * Number(r)).toFixed(2)} 0`
       const colour = starColour(st.bv)
       const list = groups.get(colour)
-      if (list) list.push(dot)
-      else groups.set(colour, [dot])
+      if (list) list.push(mark)
+      else groups.set(colour, [mark])
     }
     return [...groups].map(([fill, dots]) => ({ fill, d: dots.join('') }))
     // at follows below, as sky does
-  }, [sky])
-  // Map units per screen pixel (the map is drawn 400 units square, fitted to its frame), so that
-  // its text keeps its size on screen
-  const k = frame && Math.min(frame.width, frame.height) > 100 ? Math.round((400 / Math.min(frame.width, frame.height)) * 100) / 100 : 1
+  }, [sky, dot])
   const labels = useMemo(
     () =>
       placeLabels([
@@ -396,13 +443,13 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           .sort((a, b) => a.mag - b.mag)
           .map((b) => {
             const [x, y] = at(b.az, b.alt)
-            return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b), kind: 'body' as const }
+            return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b) * dot, kind: 'body' as const }
           }),
         ...sky.stars
           .filter((st) => st.name)
           .map((st) => {
             const [x, y] = at(st.az, st.alt)
-            return { key: `hip${st.hip}`, text: t(st.name!), x, y, r: starRadius(st.mag), kind: 'star' as const }
+            return { key: `hip${st.hip}`, text: t(st.name!), x, y, r: starRadius(st.mag) * dot, kind: 'star' as const }
           }),
         // The best-known figures (rank 1–2) are named, where there is room
         ...figureViews
@@ -413,7 +460,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           }),
       ], k),
     // t is new each render but changes only with the settings
-    [sky, figureViews, language, script, below, k, pickFigure?.id],
+    [sky, figureViews, language, script, below, k, dot, pickFigure?.id],
   )
 
 
@@ -421,6 +468,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // a faint altitude circle and azimuth line through it. Written straight into the page as the
   // pointer moves, without re-rendering the map.
   const svgRef = useRef<SVGSVGElement>(null)
+  const mapRef = useRef<SVGGElement>(null)
   const tipRef = useRef<HTMLDivElement>(null)
   const readoutRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<SVGGElement>(null)
@@ -439,7 +487,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     const readout = readoutRef.current
     const cursor = cursorRef.current
     if (!readout || !cursor) return
-    const m = e && svgRef.current?.getScreenCTM()
+    const m = e && mapRef.current?.getScreenCTM()
     const p = e && m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null
     const r = p ? Math.hypot(p.x - C, p.y - C) : Infinity
     if (!p || r > R) {
@@ -462,24 +510,66 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     cursor.classList.add('on')
   }
 
-  // Drag the sky sideways to turn the time; a press that does not move is a click
-  const drag = useRef<{ id: number; x: number; base: number; unit: number; moved: boolean } | null>(null)
+  // One pointer drags: at full size it turns the time (sideways), zoomed in it moves the map. Two
+  // pinch to zoom. A press that does not move is a click. The wheel zooms, except that rolling down
+  // at full size scrolls the page on to the footer, and rolling up scrolls it back first.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const drag = useRef<{ id: number; x: number; y: number; base: number; view: typeof view; time: boolean; moved: boolean } | null>(null)
+  const pinch = useRef<{ dist: number; mid: [number, number]; view: typeof view } | null>(null)
   const dragged = useRef(false)
   const dragFrame = useRef(0)
+  const later = (step: () => void) => {
+    cancelAnimationFrame(dragFrame.current)
+    dragFrame.current = requestAnimationFrame(step)
+  }
+  const pinchOf = () => {
+    const [a, b] = [...pointers.current.values()]
+    return { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: [(a.x + b.x) / 2, (a.y + b.y) / 2] as [number, number] }
+  }
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.button !== 0 || !svgRef.current) return
-    const box = svgRef.current.getBoundingClientRect()
-    drag.current = { id: e.pointerId, x: e.clientX, base: utc.getTime(), unit: Math.min(box.width, box.height) / 400, moved: false }
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size === 2) {
+      // A second finger: the drag becomes a pinch
+      if (drag.current?.moved) dragged.current = true
+      drag.current = null
+      pinch.current = { ...pinchOf(), view: viewRef.current }
+      return
+    }
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: viewRef.current.z <= Z_MIN, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const p = pinch.current
+    if (p && pointers.current.size === 2) {
+      const now = pinchOf()
+      const f = frameRef.current
+      if (!f) return
+      later(() => {
+        // Zoom about where the pinch began, then follow the fingers' midpoint
+        const z = Math.min(Z_MAX, Math.max(Z_MIN, (p.view.z * now.dist) / p.dist))
+        const wx = f.left + f.width / 2
+        const wy = f.top + f.height / 2
+        const grow = z / p.view.z
+        setView(
+          clampView({
+            z,
+            x: p.mid[0] - (p.mid[0] - (wx + p.view.x)) * grow - wx + (now.mid[0] - p.mid[0]),
+            y: p.mid[1] - (p.mid[1] - (wy + p.view.y)) * grow - wy + (now.mid[1] - p.mid[1]),
+          }),
+        )
+      })
+      return
+    }
     const d = drag.current
     if (!d || d.id !== e.pointerId) {
       if (e.pointerType === 'mouse') pointAt(e)
       return
     }
     const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
     if (!d.moved) {
-      if (Math.abs(dx) < 6) return
+      if (Math.hypot(d.time ? dx : dx, d.time ? 0 : dy) < 6) return
       d.moved = true
       try {
         svgRef.current?.setPointerCapture(e.pointerId)
@@ -489,22 +579,46 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       tipRef.current?.classList.remove('on')
       pointAt(null)
     }
-    const minutes = Math.round((dx / d.unit) * DRAG_MINUTES)
-    cancelAnimationFrame(dragFrame.current)
-    dragFrame.current = requestAnimationFrame(() => {
-      setDragShift(minutes)
-      setPicked(wallTime(new Date(d.base + minutes * 60_000), place.timeZone))
-    })
+    if (d.time) {
+      const minutes = Math.round((dx / scale) * DRAG_MINUTES)
+      later(() => {
+        setDragShift(minutes)
+        setPicked(wallTime(new Date(d.base + minutes * 60_000), place.timeZone))
+      })
+    } else later(() => setView(clampView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy })))
   }
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    pointers.current.delete(e.pointerId)
+    if (pinch.current) {
+      if (pointers.current.size < 2) {
+        pinch.current = null
+        dragged.current = true
+      }
+      return
+    }
     const d = drag.current
     if (!d || d.id !== e.pointerId) return
     drag.current = null
     if (!d.moved) return
     dragged.current = true
     // After the last step has landed
-    requestAnimationFrame(() => requestAnimationFrame(() => setDragShift(null)))
+    if (d.time) requestAnimationFrame(() => requestAnimationFrame(() => setDragShift(null)))
   }
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onWheel = (e: WheelEvent) => {
+      const zoomIn = e.deltaY < 0
+      // A trackpad pinch comes as the wheel with ctrl held: always a zoom
+      if (!e.ctrlKey && (zoomIn ? window.scrollY > 0 : viewRef.current.z <= Z_MIN)) return
+      e.preventDefault()
+      const step = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY
+      zoomAt(e.clientX, e.clientY, Math.exp(-step * (e.ctrlKey ? 0.01 : 0.0015)))
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+    // zoomAt uses refs and setView only
+  }, [])
   const shiftLabel = (minutes: number) => {
     const h = Math.floor(Math.abs(minutes) / 60)
     const m = Math.abs(minutes) % 60
@@ -516,8 +630,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const map = (
     <svg
       ref={svgRef}
-      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}`}
-      viewBox="0 0 400 400"
+      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
       style={{ '--k': k } as CSSProperties}
       // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
       role="group"
@@ -537,6 +650,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         tipRef.current?.classList.remove('on')
       }}
     >
+      <g ref={mapRef} transform={`translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`}>
       <circle className="sky-disc" cx={C} cy={C} r={R} />
       {(
         [
@@ -604,21 +718,24 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               star={s}
               tip={s.name && t('{name} · {direction} · 高 {altitude}°', { name: t(s.name), direction: azimuth(s.az), altitude: s.alt.toFixed(1) })}
               at={at}
+              size={dot}
+              hit={10 * k}
               on={chosen === `hip${s.hip}`}
-              chooseProps={chooseProps(`hip${s.hip}`)}
+              hover={focus === `hip${s.hip}`}
+              chooseProps={{ ...chooseProps(`hip${s.hip}`), ...focusProps(`hip${s.hip}`) }}
             />
           ))}
         </g>
-        {paths && (
-          <g className={`sky-paths${pathFocus ? ' has-focus' : ''}`} aria-hidden="true">
-            {(chosenPath ? [...paths, chosenPath] : paths).map((p) => (
-              <g key={p.key} className={`sky-path${pathFocus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] ?? pickColour }}>
+        {allPaths && (
+          <g className={`sky-paths${litPaths.length ? ' has-focus' : ''}`} aria-hidden="true">
+            {allPaths.map((p) => (
+              <g key={p.key} className={`sky-path${litPaths.includes(p) ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] ?? colourOf(p.key) }}>
                 <path className="past" d={p.past} />
                 <path className="future" d={p.future} />
                 {p.hours.map((h, i) => {
                   const [x, y] = at(h.az, h.alt)
                   // a 24-hour window has one hour twice
-                  return <circle key={i} className="hour" cx={x} cy={y} r={1.6} />
+                  return <circle key={i} className="hour" cx={x} cy={y} r={1.6 * dot} />
                 })}
               </g>
             ))}
@@ -630,9 +747,9 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               <path d={historyLine.d} />
               {historyLine.ticks.map((p) => {
                 const [x, y] = at(p.az, p.alt)
-                return <circle key={`${p.m}-${p.d}`} className="tick" cx={x} cy={y} r={1.8} />
+                return <circle key={`${p.m}-${p.d}`} className="tick" cx={x} cy={y} r={1.8 * dot} />
               })}
-              <circle className="start" cx={at(historyLine.start.az, historyLine.start.alt)[0]} cy={at(historyLine.start.az, historyLine.start.alt)[1]} r={3} />
+              <circle className="start" cx={at(historyLine.start.az, historyLine.start.alt)[0]} cy={at(historyLine.start.az, historyLine.start.alt)[1]} r={3 * dot} />
             </g>
             <g className="sky-history-labels" aria-hidden="true">
               {historyLine.ticks
@@ -640,7 +757,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 .map((p) => {
                   const [x, y] = at(p.az, p.alt)
                   return (
-                    <text key={`${p.m}-${p.d}`} x={x + 4} y={y + 3}>
+                    <text key={`${p.m}-${p.d}`} x={x + 5 * k} y={y + 4 * k}>
                       {dateLabel(p.m, p.d)}
                     </text>
                   )
@@ -655,42 +772,46 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             return (
               <g
                 key={b.key}
-                className={`sky-body sky-${b.key}${chosen === b.key ? ' on' : ''}`}
+                className={`sky-body sky-${b.key}${chosen === b.key ? ' on' : ''}${focus === b.key ? ' hover' : ''}`}
                 aria-label={tip}
                 data-tip={tip}
                 {...chooseProps(b.key)}
                 {...focusProps(b.key)}
               >
-                <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) + 3, 8)} />
-                <circle cx={x} cy={y} r={bodyRadius(b)} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
+                <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) * dot + 4 * k, 12 * k)} />
+                <circle cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
               </g>
             )
           })}
         </g>
-        {focused && (
+        {litPaths.length > 0 && (
           <g className="sky-hour-labels" aria-hidden="true">
-            {focused.hours.map((h, i) => {
-              const [x, y] = at(h.az, h.alt)
-              // None right on the body, where its name is
-              if (focusedAt && Math.hypot(x - focusedAt[0], y - focusedAt[1]) < 14) return null
-              return (
-                <text key={i} x={x + 4} y={y - 4}>
-                  {t('{h}时', { h: h.hour })}
-                </text>
-              )
+            {litPaths.map((path) => {
+              const here = whereNow(path.key)
+              return path.hours.map((h, i) => {
+                const [x, y] = at(h.az, h.alt)
+                // None right on the body, where its name is
+                if (here && Math.hypot(x - here[0], y - here[1]) < 24 * k) return null
+                return (
+                  <text key={`${path.key}-${i}`} x={x + 5 * k} y={y - 5 * k}>
+                    {t('{h}时', { h: h.hour })}
+                  </text>
+                )
+              })
             })}
           </g>
         )}
         <g className="sky-labels" aria-hidden="true">
           {labels.map((l) => {
             // The chosen one's name moves out past its ring
-            const push = l.key === chosen && spot ? pickRadius! * 0.4 + 3 : 0
+            const push = l.key === chosen && spot ? pickRadius! * dot * 0.4 + 6 * k : 0
             return (
               <text
                 key={l.key}
                 className={
                   (l.kind === 'body' ? 'sky-body-name' : l.kind === 'figure' ? `sky-figure-name sky-figure-name-${figures}` : 'sky-star-name') +
-                  (l.key === chosen ? ' on' : '')
+                  (l.key === chosen ? ' on' : '') +
+                  (l.key === focus ? ' hover' : '')
                 }
                 x={l.anchor === 'start' ? l.x + push : l.anchor === 'end' ? l.x - push : l.x}
                 y={l.anchor !== 'middle' || !spot ? l.y : l.y < spot[1] ? l.y - push : l.y + push}
@@ -723,10 +844,11 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       {/* The ring round the chosen one: it closes in on it (keyed, so it does again for the next) and pulses */}
       {spot && (
         <g key={chosen} className="sky-chosen" style={{ color: pickColour }} aria-hidden="true">
-          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 4} />
-          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 4} />
+          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
+          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
         </g>
       )}
+      </g>
     </svg>
   )
 
@@ -876,7 +998,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             {sky.bodies.map((b) => (
               <tr
                 key={b.key}
-                className={[b.alt < 0 && 'below', pathFocus === b.key && 'on', chosen === b.key && 'chosen'].filter(Boolean).join(' ') || undefined}
+                className={[b.alt < 0 && 'below', focus === b.key && 'on', chosen === b.key && 'chosen'].filter(Boolean).join(' ') || undefined}
                 {...focusProps(b.key)}
                 tabIndex={0}
                 aria-selected={chosen === b.key}
@@ -919,23 +1041,36 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       </aside>
 
       {createPortal(
-        <div
-          className={`sky-backdrop${dragging ? ' dragging' : ''}`}
-          style={frame ? { left: frame.left, top: frame.top, width: frame.width, height: frame.height } : { visibility: 'hidden' }}
-        >
+        <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
           {map}
           <div className="sky-tip" ref={tipRef} aria-hidden="true" />
-          {dragging ? (
-            <div className="sky-drag-chip" aria-live="polite">
-              {wall.date} {wall.time} · {shiftLabel(dragShift)}
-            </div>
-          ) : (
-            <>
-              <div className="sky-readout" ref={readoutRef} aria-hidden="true" />
-              <div className="sky-drag-hint" aria-hidden="true">
-                {t('⟷ 左右拖动星空，转动时间')}
+          {/* What sits on the sky's window and does not zoom: the readout or hint, and the zoom buttons */}
+          {frame && (
+            <div className="sky-frame" style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}>
+              {dragging ? (
+                <div className="sky-drag-chip" aria-live="polite">
+                  {wall.date} {wall.time} · {shiftLabel(dragShift)}
+                </div>
+              ) : (
+                <>
+                  <div className="sky-readout" ref={readoutRef} aria-hidden="true" />
+                  <div className="sky-drag-hint" aria-hidden="true">
+                    {view.z > Z_MIN ? t('拖动移动星图 · 缩回原大小后左右拖动可转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
+                  </div>
+                </>
+              )}
+              <div className="sky-zoom-buttons" role="group" aria-label={t('缩放')}>
+                <button type="button" aria-label={t('放大')} title={t('放大')} disabled={view.z >= Z_MAX} onClick={() => zoomBy(1.6)}>
+                  +
+                </button>
+                <button type="button" aria-label={t('缩小')} title={t('缩小')} disabled={view.z <= Z_MIN} onClick={() => zoomBy(1 / 1.6)}>
+                  −
+                </button>
+                <button type="button" aria-label={t('复原')} title={t('复原')} disabled={view.z <= Z_MIN} onClick={() => setView({ z: 1, x: 0, y: 0 })}>
+                  ⟲
+                </button>
               </div>
-            </>
+            </div>
           )}
         </div>,
         document.body,
@@ -949,7 +1084,10 @@ function Star({
   star: s,
   tip,
   at,
+  size,
+  hit,
   on,
+  hover,
   chooseProps,
 }: {
   star: SkyStar
@@ -957,16 +1095,21 @@ function Star({
   tip?: string
   /** The map's projection (it depends on which half of the sky is shown) */
   at: (az: number, alt: number) => [number, number]
-  /** Whether it is the chosen one */
+  /** How much of its size it keeps as the map zooms */
+  size: number
+  /** The least radius the pointer finds it in, in map units */
+  hit: number
+  /** Whether it is the chosen one, and whether it is under the pointer */
   on: boolean
+  hover: boolean
   /** To choose it */
   chooseProps: React.SVGProps<SVGGElement>
 }) {
   const [x, y] = at(s.az, s.alt)
-  const r = starRadius(s.mag)
+  const r = starRadius(s.mag) * size
   return (
-    <g className={`sky-star${on ? ' on' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
-      <circle className="hit" cx={x} cy={y} r={Math.max(r + 3, 6)} />
+    <g className={`sky-star${on ? ' on' : ''}${hover ? ' hover' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
+      <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
       <circle cx={x} cy={y} r={r} fill={starColour(s.bv)} />
     </g>
   )
