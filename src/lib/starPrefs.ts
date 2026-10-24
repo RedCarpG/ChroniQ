@@ -1,6 +1,6 @@
 // 星盘 preferences: 流派 (house system, node) and the birthplace. Kept apart
 // from astrology.ts so the app shell can load them without astronomy-engine.
-import { CITIES, type City } from './solarTime'
+import { cityPlace, toPlace, type Place } from './place'
 
 export interface StarSettings {
   /** 宫位制 */
@@ -84,48 +84,31 @@ export function saveStarSettings(settings: StarSettings): void {
   }
 }
 
-export interface StarPlace {
-  name: string
-  latitude: number
-  /** East positive */
-  longitude: number
-  /** IANA zone the birth time was recorded in */
-  timeZone: string
-}
+export type StarPlace = Place
+export { cityPlace }
 
-const SHANGHAI = 'Asia/Shanghai'
-
-export const cityPlace = (c: City): StarPlace => ({
-  name: c.name,
-  latitude: c.latitude,
-  longitude: c.longitude,
-  timeZone: c.timeZone ?? SHANGHAI,
-})
-
-const PLACE_KEY = 'chroniq-star-place'
-
-/** Saved birthplace, else the 八字 真太阳时 city if one is set, else 北京. */
-export function loadStarPlace(longitude?: number): StarPlace {
+/** A stored place, if it is well-formed. */
+function readPlace(key: string): Place | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(PLACE_KEY) ?? 'null') as StarPlace | null
-    if (
-      saved &&
-      typeof saved.name === 'string' &&
-      Number.isFinite(saved.latitude) &&
-      Number.isFinite(saved.longitude) &&
-      Math.abs(saved.latitude) <= 90 &&
-      typeof saved.timeZone === 'string'
-    )
-      return saved
+    return toPlace(JSON.parse(localStorage.getItem(key) ?? 'null'))
   } catch {
-    // fall through to the default
+    return null
   }
-  return cityPlace(CITIES.find((c) => c.longitude === longitude) ?? CITIES[0])
 }
 
-export function saveStarPlace(place: StarPlace): void {
+/**
+ * The 星盘 birthplace from before birthplaces lived on the chart (key
+ * chroniq-star-place), for carrying over to charts that have none.
+ */
+export const loadLegacyStarPlace = (): Place | null => readPlace('chroniq-star-place')
+
+const SKY_PLACE_KEY = 'chroniq-sky-place'
+
+/** Where 天象 looks up from: its own saved place, else the given one (the chart's birthplace). */
+export const loadSkyPlace = (fallback: Place): Place => readPlace(SKY_PLACE_KEY) ?? fallback
+export function saveSkyPlace(place: Place): void {
   try {
-    localStorage.setItem(PLACE_KEY, JSON.stringify(place))
+    localStorage.setItem(SKY_PLACE_KEY, JSON.stringify(place))
   } catch {
     // Storage unavailable: the place lasts for this visit only.
   }

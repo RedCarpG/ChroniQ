@@ -15,36 +15,9 @@ import type { StarPlace, StarSettings } from './starPrefs'
 
 export type { StarPlace, StarSettings } from './starPrefs'
 
-/* ---------- Time zone ---------- */
+import { toUtc, zoneOffset } from './timeZone'
 
-/** Offset of timeZone from UTC at a UTC instant, in minutes (Intl carries the historical rules, e.g. 1986–91 China DST). */
-function zoneOffset(utcMs: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-  }).formatToParts(new Date(utcMs))
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value)
-  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
-  return Math.round((asUtc - utcMs) / 60000)
-}
-
-/** Wall-clock time in a zone → UTC instant and the offset that applied. */
-export function toUtc(
-  wall: { year: number; month: number; day: number; hour: number; minute: number },
-  timeZone: string,
-): { date: Date; offsetMinutes: number } {
-  const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute)
-  let offset = zoneOffset(asUtc, timeZone)
-  // Re-check at the corrected instant, which matters right at a DST change.
-  offset = zoneOffset(asUtc - offset * 60000, timeZone)
-  return { date: new Date(asUtc - offset * 60000), offsetMinutes: offset }
-}
+export { toUtc }
 
 /* ---------- Bodies, signs, aspects ---------- */
 

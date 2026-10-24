@@ -113,4 +113,5 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const describe = (i: BaziInput) =>
-  `${i.year}-${pad(i.month)}-${pad(i.day)} ${pad(i.hour)}:${pad(i.minute)} ${i.gender === 1 ? '男' : '女'}`
+  `${i.year}-${pad(i.month)}-${pad(i.day)} ${pad(i.hour)}:${pad(i.minute)} ${i.gender === 1 ? '男' : '女'}` +
+  (i.place ? ` · ${i.place.name}${i.trueSolar ? '（真太阳时）' : ''}` : '')
