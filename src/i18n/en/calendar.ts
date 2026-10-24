@@ -45,4 +45,8 @@ export const CALENDAR: Record<string, string> = {
   '属{zodiac}': 'Year of the {zodiac}',
   '{term}第{n}天': '{term}, day {n}',
   '以此日排八字 →': 'Cast a 八字 chart for this day →',
+  // Other countries' days
+  公众假日: 'Public holiday',
+  地区假日: 'Regional holiday',
+  纪念日: 'Notable day',
 }

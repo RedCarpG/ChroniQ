@@ -1,5 +1,6 @@
 import type { SolarDay } from 'tyme4ts'
 import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
+import { REGIONS, type RegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] // tyme4ts index: 0 = Sunday
@@ -11,18 +12,24 @@ export function WeekView({
   selected,
   onSelect,
   showGanzhi,
+  regionOf,
 }: {
   days: WeekDay[]
   selected: SolarDay
   onSelect: (day: SolarDay) => void
   showGanzhi: boolean
+  /** The chosen country's days on a date (其他地区节日) */
+  regionOf: (day: SolarDay) => RegionDay[]
 }) {
   const term = useTerm()
   const t = useT()
-  const en = useSettings().language === 'en'
+  const { language, region } = useSettings()
+  const en = language === 'en'
   return (
     <div className="week-view">
-      {days.map((d) => (
+      {days.map((d) => {
+        const rd = regionOf(d.solar)
+        return (
         <button
           key={d.key}
           type="button"
@@ -41,9 +48,13 @@ export function WeekView({
               {en ? WEEKDAYS_EN[d.solar.getWeek().getIndex()] : `周${WEEKDAYS[d.solar.getWeek().getIndex()]}`}
             </span>
             {d.holiday && <span className={`badge ${d.holiday === '休' ? 'off' : 'work'}`}>{t(d.holiday)}</span>}
+            {region !== 'none' && rd.some((x) => x.kind !== 'observance') && (
+              <span className={`badge region${rd.some((x) => x.kind === 'public') ? '' : ' partial'}`}>{REGIONS[region].tag}</span>
+            )}
           </span>
           <span className="num">{d.day}</span>
           <span className={`sub ${d.subKind}`}>{term(d.sub)}</span>
+          {rd.length > 0 && <span className="sub region">{rd.map((x) => (en ? x.en : x.name)).join(' · ')}</span>}
           {showGanzhi && <span className="gz">{d.ganzhi}</span>}
           <span className="wd-duty">{term(d.duty)}日</span>
           <span className="wd-list">
@@ -55,7 +66,8 @@ export function WeekView({
             {d.avoids.slice(0, PREVIEW).map(term).join(' ') || '—'}
           </span>
         </button>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -66,22 +78,25 @@ export function YearView({
   weekStart,
   selected,
   onSelect,
+  regionOf,
   onOpenMonth,
 }: {
   months: MiniMonth[]
   weekStart: WeekStart
   selected: SolarDay
   onSelect: (day: SolarDay) => void
+  regionOf: (day: SolarDay) => RegionDay[]
   onOpenMonth: (month: number) => void
 }) {
   const term = useTerm()
   const t = useT()
   const en = useSettings().language === 'en'
+  const regionName = (x: RegionDay) => (en ? x.en : x.name)
   const titles = weekTitles(weekStart)
   return (
     <div className="year-view">
       {months.map((m) => {
-        const marks = m.days.filter((d) => d.termName || d.festival)
+        const marks = m.days.filter((d) => d.termName || d.festival || regionOf(d.solar).length > 0)
         return (
           <section key={m.month} className="mini-month">
             <button type="button" className="mini-title" onClick={() => onOpenMonth(m.month)}>
@@ -102,13 +117,14 @@ export function YearView({
                 <button
                   key={d.key}
                   type="button"
-                  title={[term(d.sub), d.ganzhi].join(' ')}
+                  title={[term(d.sub), d.ganzhi, ...regionOf(d.solar).map(regionName)].join(' ')}
                   className={[
                     'mini-day',
                     d.isWeekend && 'weekend',
                     d.holiday === '休' && 'off',
                     d.termName && 'term',
                     d.festival && 'festival',
+                    regionOf(d.solar).some((x) => x.kind === 'public') && 'region-off',
                     d.isToday && 'today',
                     sameDay(d.solar, selected) && 'selected',
                   ]
@@ -125,12 +141,15 @@ export function YearView({
                 {marks.map((d) => {
                   // 清明 + 清明节, 冬至 + 冬至节: show the festival only
                   const showTerm = d.termName && !d.festival?.startsWith(d.termName)
+                  const rd = regionOf(d.solar)
                   return (
                     <li key={d.key}>
                       <span className="muted">{t('{day}日', { day: d.day })}</span>{' '}
                       {showTerm && <span className="term">{term(d.termName!)}</span>}
                       {showTerm && d.festival && ' · '}
                       {d.festival && <span className="festival">{term(d.festival)}</span>}
+                      {(showTerm || d.festival) && rd.length > 0 && ' · '}
+                      {rd.length > 0 && <span className="region">{rd.map(regionName).join(' · ')}</span>}
                     </li>
                   )
                 })}

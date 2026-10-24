@@ -15,6 +15,7 @@ import {
   todaySolar,
   weekTitles,
 } from '../lib/calendar'
+import { REGIONS, regionDays, type RegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
@@ -34,10 +35,15 @@ export function CalendarView({ onPickBazi }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
-  const { weekStart, dayGanzhi, language } = useSettings()
+  const { weekStart, dayGanzhi, language, region } = useSettings()
   const term = useTerm()
   const t = useT()
   const en = language === 'en'
+  // 其他地区节日: the chosen country's holidays and notable days
+  const regionOf = (s: SolarDay) => regionDays(region, s.getYear(), s.getMonth(), s.getDay())
+  const regionTag = region === 'none' ? '' : REGIONS[region].tag
+  const dayName = (d: RegionDay) => (en ? d.en : d.name)
+  const regionPicked = regionOf(selected)
   const modeLabel: Record<ViewMode, string> = { month: t('月'), week: t('周'), year: t('年') }
   // aria-labels for « ‹ › » in each mode
   const navLabels: Record<ViewMode, [string, string, string, string]> = {
@@ -177,7 +183,11 @@ export function CalendarView({ onPickBazi }: Props) {
               ))}
             </div>
             <div className="grid days">
-              {cells.map((c) => (
+              {cells.map((c) => {
+                const rd = regionOf(c.solar)
+                // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
+                const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
+                return (
                 <button
                   key={c.key}
                   className={[
@@ -192,17 +202,25 @@ export function CalendarView({ onPickBazi }: Props) {
                   onClick={() => select(c.solar)}
                 >
                   {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
+                  {rd.some((d) => d.kind !== 'observance') && (
+                    <span className={`badge region${rd.some((d) => d.kind === 'public') ? '' : ' partial'}`}>{regionTag}</span>
+                  )}
                   <span className="num">{c.day}</span>
-                  <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
+                  {regionSub ? (
+                    <span className={`sub region ${regionSub.kind}`}>{dayName(regionSub)}</span>
+                  ) : (
+                    <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
+                  )}
                   {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
                 </button>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
 
         {mode === 'week' && (
-          <WeekView days={weekDays} selected={selected} onSelect={select} showGanzhi={dayGanzhi === 'show'} />
+          <WeekView days={weekDays} selected={selected} onSelect={select} showGanzhi={dayGanzhi === 'show'} regionOf={regionOf} />
         )}
 
         {mode === 'year' && (
@@ -211,6 +229,7 @@ export function CalendarView({ onPickBazi }: Props) {
             weekStart={weekStart}
             selected={selected}
             onSelect={select}
+            regionOf={regionOf}
             onOpenMonth={(month) => {
               setView((v) => ({ ...v, month }))
               setMode('month')
@@ -257,6 +276,24 @@ export function CalendarView({ onPickBazi }: Props) {
                 {term(f)}
               </span>
             ))}
+          </div>
+        )}
+        {regionPicked.length > 0 && region !== 'none' && (
+          <div className="region-days">
+            <span className="tag-title neutral">{t(REGIONS[region].name)}</span>
+            <ul>
+              {regionPicked.map((d) => (
+                <li key={d.local}>
+                  <span className={`tag region ${d.kind}`}>{dayName(d)}</span>
+                  <span className="muted">
+                    {d.local}
+                    {' · '}
+                    {d.kind === 'public' ? t('公众假日') : d.kind === 'regional' ? t('地区假日') : t('纪念日')}
+                    {d.note && ` · ${en ? d.noteEn : d.note}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         <dl className="kv">
