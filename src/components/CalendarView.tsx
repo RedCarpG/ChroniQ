@@ -30,7 +30,7 @@ import {
   type RegionCode,
   type RegionDay,
 } from '../lib/regionHolidays'
-import type { DayCell } from '../lib/calendar'
+import type { DayCell, WeekStart } from '../lib/calendar'
 import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { useSettings, useT, useTerm } from '../settingsContext'
@@ -46,11 +46,12 @@ const VIEW_MODES: ViewMode[] = ['month', 'week', 'year']
 
 interface Props {
   onPickBazi: (day: SolarDay) => void
-  /** 日历显示日干支, which is chosen in the calendar's own 显示 menu rather than the settings */
+  /** 日历显示日干支 and 每周起始, which are chosen in the calendar's own 显示 tab rather than the settings */
   onDayGanzhi: (show: boolean) => void
+  onWeekStart: (start: WeekStart) => void
 }
 
-export function CalendarView({ onPickBazi, onDayGanzhi }: Props) {
+export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
@@ -284,6 +285,25 @@ export function CalendarView({ onPickBazi, onDayGanzhi }: Props) {
                   />
                   {term('日干支')}
                 </label>
+              </fieldset>
+              <fieldset className="holiday-choice">
+                <legend>{t('每周起始')}</legend>
+                {(
+                  [
+                    ['mon', t('周一')],
+                    ['sun', t('周日')],
+                  ] as const
+                ).map(([start, label]) => (
+                  <label key={start}>
+                    <input
+                      type="radio"
+                      name="week-start"
+                      checked={weekStart === start}
+                      onChange={() => smoothUpdate('display', () => onWeekStart(start))}
+                    />
+                    {label}
+                  </label>
+                ))}
               </fieldset>
               <fieldset className="holiday-choice">
                 <legend>{t('节假日')}</legend>
