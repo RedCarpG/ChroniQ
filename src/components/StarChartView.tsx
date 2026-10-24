@@ -231,7 +231,7 @@ export function StarChartView({ input, onChange, place, onPlaceChange, settings,
           <TitleMark />
           相位
         </h3>
-        <AspectList aspects={chart.aspects} hl={hl} active={!!focus} />
+        <AspectList aspects={chart.aspects} hl={hl} hover={hover} active={!!focus} />
         <p className="muted row-note">
           容许度：合、冲 8°，刑、拱 7°，六合 5°，涉及日月再加 2°。星体位置由{' '}
           <a href="https://github.com/cosinekitty/astronomy">astronomy-engine</a> 计算（误差约 1′）·{' '}
@@ -300,13 +300,27 @@ function PointTable({
 }
 
 /** Aspect chips within one chart. */
-function AspectList({ aspects, hl, active }: { aspects: Aspect[]; hl: Highlight; active: boolean }) {
+function AspectList({
+  aspects,
+  hl,
+  hover,
+  active,
+}: {
+  aspects: Aspect[]
+  hl: Highlight
+  hover: (f: NonNullable<Focus>) => Record<string, unknown>
+  active: boolean
+}) {
   return aspects.length === 0 ? (
     <p className="muted">没有主要相位。</p>
   ) : (
     <div className={`aspect-list${active ? ' has-focus' : ''}`}>
       {aspects.map((a) => (
-        <span key={a.a.key + a.b.key} className={`aspect-chip tone-${a.type.tone}${hl.aspect(a) ? ' on' : ''}`}>
+        <span
+          key={a.a.key + a.b.key}
+          className={`aspect-chip tone-${a.type.tone}${hl.aspect(a) ? ' on' : ''}`}
+          {...hover({ aspect: a, cross: false })}
+        >
           {a.a.name}
           <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
             <span>{ASPECT_INFO[a.type.key]}</span>
@@ -365,7 +379,7 @@ function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; par
         <TitleMark />
         组合盘相位
       </h4>
-      <AspectList aspects={chart.aspects} hl={hl} active={!!focus} />
+      <AspectList aspects={chart.aspects} hl={hl} hover={hover} active={!!focus} />
     </section>
   )
 }
@@ -709,22 +723,27 @@ function StarWheel({
       {lines.map((a) => {
         const [x1, y1] = at(a.a.lon, R_ASPECT)
         const [x2, y2] = at(a.b.lon, R_ASPECT)
+        // A wide invisible stroke on top makes the thin line easy to hover.
         return (
-          <line
-            key={a.a.key + a.b.key}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            className={`aspect-line tone-${a.type.tone}${(overlay ? hl.cross(a) : hl.aspect(a)) ? ' on' : ''}`}
-            strokeOpacity={Math.max(0.25, 1 - a.orb / (!overlay ? 8 : overlay.kind === 'synastry' ? 7 : 2.5))}
-          >
-            <title>
-              {a.a.name}
-              {a.type.name}
-              {a.b.name}（{a.orb.toFixed(1)}°）
-            </title>
-          </line>
+          <g key={a.a.key + a.b.key} className="aspect" {...hover({ aspect: a, cross: !!overlay })}>
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              className={`aspect-line tone-${a.type.tone}${(overlay ? hl.cross(a) : hl.aspect(a)) ? ' on' : ''}`}
+              strokeOpacity={Math.max(0.25, 1 - a.orb / (!overlay ? 8 : overlay.kind === 'synastry' ? 7 : 2.5))}
+            />
+            <line x1={x1} y1={y1} x2={x2} y2={y2} className="aspect-hit">
+              <title>
+                {overlay ? OVERLAY_LABEL[overlay.kind] : ''}
+                {a.a.name}
+                {a.type.name}
+                {overlay ? (overlay.kind === 'synastry' ? '我的' : '本命') : ''}
+                {a.b.name}（{a.orb.toFixed(1)}°）
+              </title>
+            </line>
+          </g>
         )
       })}
       {planets.map((p, i) => {
@@ -903,7 +922,11 @@ function OverlayCard({
           ) : (
             <div className={`aspect-list${active ? ' has-focus' : ''}`}>
               {o.aspects.map((a) => (
-                <span key={a.a.key + a.b.key} className={`aspect-chip tone-${a.type.tone}${hl.cross(a) ? ' on' : ''}`}>
+                <span
+                  key={a.a.key + a.b.key}
+                  className={`aspect-chip tone-${a.type.tone}${hl.cross(a) ? ' on' : ''}`}
+                  {...hover({ aspect: a, cross: true })}
+                >
                   {label}
                   {a.a.name}
                   <InfoTip className="plain" label={`${a.type.glyph}${a.type.name}`} title={`${a.type.name}相`}>
@@ -942,8 +965,15 @@ function OverlayCard({
   )
 }
 
-/** What is highlighted: a house, or a planet of the natal chart or of the 行运 / 推运 overlay. */
-type Focus = { house: number } | { planet: string; layer: 'natal' | 'overlay' } | null
+/**
+ * What is highlighted: a house, a planet of the natal chart or of the overlay
+ * (行运 / 推运 / 合盘), or one aspect (within the chart, or overlay to natal).
+ */
+type Focus =
+  | { house: number }
+  | { planet: string; layer: 'natal' | 'overlay' }
+  | { aspect: Aspect; cross: boolean }
+  | null
 
 interface Highlight {
   active: boolean
@@ -980,6 +1010,23 @@ function highlight(chart: StarChart, overlay: Overlay | null, focus: Focus): Hig
       outerRow: (p) => p.house === h,
       cross: (a) => a.a.house === h || a.b.house === h,
     }
+  }
+  if ('aspect' in focus) {
+    // One aspect: its line or chip, and the two points at its ends.
+    const { a: from, b: to } = focus.aspect
+    const same = (x: Aspect) => x.a.key === from.key && x.b.key === to.key
+    if (focus.cross)
+      return {
+        active: true,
+        row: (p) => p.key === to.key,
+        planet: (p) => p.key === to.key,
+        aspect: none,
+        outer: (p) => p.key === from.key,
+        outerRow: (p) => p.key === from.key,
+        cross: same,
+      }
+    const ends = (p: ChartPoint) => p.key === from.key || p.key === to.key
+    return { active: true, row: ends, planet: ends, aspect: same, outer: none, outerRow: none, cross: none }
   }
   const key = focus.planet
   if (focus.layer === 'overlay') {
