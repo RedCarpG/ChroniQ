@@ -1097,6 +1097,35 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-body { cursor: default; }
 .sky-table td:first-child { display: flex; align-items: center; gap: 6px; }
 .sky-table tr.below td { color: var(--muted); opacity: 0.7; }
+/* Day paths: the stretch already gone is dashed and faint, the stretch to come
+   solid; dots mark whole hours. Hovering a body or its row picks out its path. */
+.sky-path { transition: opacity 0.25s; }
+.sky-path path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.sky-path .past { stroke-dasharray: 2 3; opacity: 0.35; }
+.sky-path .future { opacity: 0.6; }
+.sky-path .hour { fill: currentColor; opacity: 0.75; }
+.sky-paths.has-focus .sky-path:not(.on) { opacity: 0.15; }
+.sky-path.on path { stroke-width: 1.8; }
+.sky-path.on .past { opacity: 0.6; }
+.sky-path.on .future { opacity: 0.95; }
+.sky-hour-labels text { fill: rgb(255 255 255 / 0.85); font-size: 8.5px; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; }
+.sky-body[tabindex], .sky-table tr[tabindex] { outline: none; cursor: default; }
+/* Constellation figures, under the stars: pale blue for the Western ones, pale gold for the 星官 */
+.sky-options { margin: 0 0 12px; }
+.sky-option-title { font-size: 13px; color: var(--muted); }
+.sky-options select { height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.sky-figures path { fill: none; stroke-width: 0.8; stroke-linejoin: round; stroke-linecap: round; }
+.sky-figures-west path { stroke: rgb(150 180 240 / 0.38); }
+.sky-figures-china path { stroke: rgb(235 195 125 / 0.42); }
+.sky-figure-name { font-size: 9px; letter-spacing: 0.05em; }
+.sky-figure-name-west { fill: rgb(170 195 245 / 0.7); }
+.sky-figure-name-china { fill: rgb(240 205 140 / 0.75); }
+/* One body's way among the stars over the past days */
+.sky-history path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.9; }
+.sky-history .tick { fill: currentColor; }
+.sky-history .start { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.sky-history-labels text { fill: rgb(255 255 255 / 0.85); font-size: 8px; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; }
+.sky-table tr.on td { background: var(--accent-soft); }
 .sky-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15); }
 .sky-side .row-note { margin-top: 10px; }
 @media (max-width: 860px) {
