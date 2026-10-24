@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { WESTERN } from '../constellations'
-import { constellationsAt, formatAzimuth, galacticToEquatorial, historyTrack, milkyWayAt, skyAt, tracksAt } from '../sky'
+import { constellationsAt, formatAzimuth, galacticToEquatorial, historyTrack, milkyWayAt, milkyWayModel, skyAt, tracksAt } from '../sky'
 import { XINGGUAN } from '../xingguan'
 
 const BEIJING = [39.9, 116.4] as const
@@ -147,11 +147,34 @@ describe('the Milky Way', () => {
     expect(pdec).toBeCloseTo(27.13, 1)
   })
 
-  it('runs the band all round the sky, brightest towards the centre', () => {
-    const { band, rift } = milkyWayAt(new Date('2026-08-15T14:00:00Z'), ...BEIJING)
-    expect(band).toHaveLength(73)
-    expect(band[0].bright).toBe(1)
-    expect(band[36].bright).toBeLessThan(0.4) // the anticentre, l = 180°
-    expect(rift.length).toBeGreaterThan(10)
+  it('scatters it about the plane, thickest and brightest towards the centre, with the Great Rift', () => {
+    const { grain, glow, dust } = milkyWayModel()
+    expect(grain.length).toBe(1700)
+    expect(glow.length).toBe(130)
+    expect(dust.length).toBeGreaterThan(10)
+    expect(grain.every((p) => Math.abs(p.b) < 40)).toBe(true)
+    const near = (l: number, width: number) => grain.filter((p) => Math.abs(((p.l - l + 540) % 360) - 180) < width).length
+    // Many more towards Sagittarius than towards the anticentre
+    expect(near(0, 20)).toBeGreaterThan(3 * near(180, 20))
+    // Thinned in the Rift, just north of the plane between Cygnus and Sagittarius
+    const inRift = grain.filter((p) => p.l > 20 && p.l < 70 && Math.abs(p.b - 1.8) < 1).length
+    const beside = grain.filter((p) => p.l > 20 && p.l < 70 && Math.abs(p.b + 1.8) < 1).length
+    expect(inRift).toBeLessThan(beside / 2)
+  })
+
+  it('places it with one rotation, as astronomy-engine would', () => {
+    const at = new Date('2026-08-15T14:00:00Z')
+    const { grain } = milkyWayAt(at, ...BEIJING)
+    // The galactic centre's neighbourhood against skyAt's own reckoning for a star there: Kaus Australis
+    // (HIP 90185, RA 276.0°, Dec −34.4°) lies about 10° from the centre, so points near it are near it
+    const sky = skyAt(at, ...BEIJING, true)
+    const kaus = [...sky.stars, ...skyAt(at, ...BEIJING).stars].find((s) => s.hip === 90185)!
+    const centre = grain.filter((p) => Math.abs(p.l) < 2 || Math.abs(p.l - 360) < 2)
+    const sep = (a: { az: number; alt: number }, b: { az: number; alt: number }) => {
+      const r = Math.PI / 180
+      return Math.acos(Math.sin(a.alt * r) * Math.sin(b.alt * r) + Math.cos(a.alt * r) * Math.cos(b.alt * r) * Math.cos((a.az - b.az) * r)) / r
+    }
+    expect(centre.length).toBeGreaterThan(0)
+    for (const p of centre) expect(Math.abs(sep(p, kaus) - 9.3)).toBeLessThan(Math.abs(p.b) + 3)
   })
 })

@@ -498,30 +498,25 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   }
   const up = sky.bodies.filter((b) => shown(b.alt))
   const light = below ? 'below' : sky.light
-  // The Milky Way: a soft band along the galactic plane in three widths, its stretches grouped by
-  // how bright they are (so a few paths draw it all), and the dark Great Rift down part of it
+  // The Milky Way (lib/sky.ts milkyWayModel): its glow as soft patches that overlap into a haze,
+  // its dust as dark ones, and its grain as tiny dots in three brightnesses, one path each (a dot is
+  // a round cap on a line of next to no length)
   const galaxy = useMemo(() => milkyWayAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
   const milkyWay = useMemo(() => {
-    const levels: string[][] = [[], [], []]
-    const hidden = (alt: number) => (below ? alt > 15 : alt < -15)
-    for (let i = 0; i + 1 < galaxy.band.length; i++) {
-      const [a, b] = [galaxy.band[i], galaxy.band[i + 1]]
-      if (hidden(a.alt) && hidden(b.alt)) continue
-      const bright = (a.bright + b.bright) / 2
-      const [x1, y1] = at(a.az, a.alt)
-      const [x2, y2] = at(b.az, b.alt)
-      levels[bright > 0.75 ? 2 : bright > 0.5 ? 1 : 0].push(`M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`)
+    const seen = (alt: number) => (below ? alt < 4 : alt > -4)
+    const grain = ['', '', '']
+    for (const p of galaxy.grain) {
+      if (!seen(p.alt)) continue
+      const [x, y] = at(p.az, p.alt)
+      grain[p.weight] += `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
     }
-    const clouds = [
-      [0, 30],
-      [25, 18],
-      [75, 22],
-      [330, 16],
-    ]
-      .map(([l, size]) => ({ p: galaxy.band[l / 5], size }))
-      .filter(({ p }) => !hidden(p.alt))
-      .map(({ p, size }) => [...at(p.az, p.alt), size] as [number, number, number])
-    return { levels: levels.map((l) => l.join('')), rift: pathData(galaxy.rift, at), clouds }
+    // Sizes are in degrees: R / 90 map units to the degree
+    const patches = (list: typeof galaxy.glow) =>
+      list.filter((p) => seen(p.alt)).map((p) => {
+        const [x, y] = at(p.az, p.alt)
+        return { x, y, r: ((p.size ?? 4) * R) / 90, a: p.weight }
+      })
+    return { grain, glow: patches(galaxy.glow), dust: patches(galaxy.dust) }
     // at follows below
   }, [galaxy, below])
   // Sunlight low in the sky: at dusk and dawn a warm glow on the Sun's side of the horizon, by day a
@@ -853,6 +848,16 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <stop offset={0} stopColor="#e4ebff" stopOpacity={1} />
           <stop offset={1} stopColor="#e4ebff" stopOpacity={0} />
         </radialGradient>
+        <radialGradient id={`${clipId}-mw`}>
+          <stop offset={0} stopColor="#cdd6ff" stopOpacity={1} />
+          <stop offset={0.45} stopColor="#b7c4f5" stopOpacity={0.45} />
+          <stop offset={1} stopColor="#9fb0ea" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`${clipId}-dust`}>
+          <stop offset={0} stopColor="#03050d" stopOpacity={1} />
+          <stop offset={0.5} stopColor="#03050d" stopOpacity={0.6} />
+          <stop offset={1} stopColor="#03050d" stopOpacity={0} />
+        </radialGradient>
         <radialGradient id={`${clipId}-halo`}>
           <stop offset={0} stopColor="#ffffff" stopOpacity={0.55} />
           <stop offset={0.35} stopColor="#ffffff" stopOpacity={0.12} />
@@ -876,16 +881,15 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       </g>
       <g clipPath={`url(#${clipId})`}>
         <g className="sky-milkyway" aria-hidden="true">
-          {milkyWay.levels.map((d, level) =>
-            [56, 32, 14].map((width, i) => (
-              <path key={`${level}-${width}`} d={d} strokeWidth={width} opacity={[0.07, 0.1, 0.13][i] * [0.5, 0.78, 1][level]} />
-            )),
-          )}
-          {/* Its brightest star clouds: Sagittarius, Scutum, Cygnus, Norma */}
-          {milkyWay.clouds.map((c, i) => (
-            <circle key={i} className="cloud" cx={c[0]} cy={c[1]} r={c[2]} fill={`url(#${clipId}-halo)`} />
+          {milkyWay.glow.map((g, i) => (
+            <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a} />
           ))}
-          <path className="rift" d={milkyWay.rift} />
+          {milkyWay.dust.map((g, i) => (
+            <circle key={`dust-${i}`} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-dust)`} opacity={g.a} />
+          ))}
+          {milkyWay.grain.map((d, i) => (
+            <path key={`grain-${i}`} className={`grain grain-${i}`} d={d} />
+          ))}
         </g>
         {[30, 60].map((alt) => (
           <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
