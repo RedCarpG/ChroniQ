@@ -66,6 +66,25 @@ describe('tracksAt', () => {
   })
 })
 
+describe('the sky below the horizon', () => {
+  const winterEvening = new Date('2026-01-15T14:00:00Z') // 22:00 in Beijing
+
+  it('lists only stars under the horizon, among them Canopus, which never rises in Beijing', () => {
+    const below = skyAt(winterEvening, ...BEIJING, true)
+    expect(below.stars.every((s) => s.alt < 0)).toBe(true)
+    expect(below.stars.some((s) => s.name === '老人星')).toBe(true)
+    expect(below.stars.some((s) => s.name === '北极星')).toBe(false)
+    // above and below together are the whole catalogue
+    expect(below.stars.length + skyAt(winterEvening, ...BEIJING).stars.length).toBe(1627)
+  })
+
+  it('keeps the figures under the horizon, e.g. Scorpius on a winter evening', () => {
+    const below = constellationsAt(WESTERN, winterEvening, ...BEIJING, true)
+    expect(below.find((c) => c.name === '天蝎座')).toBeDefined()
+    expect(below.find((c) => c.name === '小熊座')).toBeUndefined() // circumpolar: always up in Beijing
+  })
+})
+
 describe('constellationsAt', () => {
   const winterEvening = new Date('2026-01-15T14:00:00Z') // 22:00 in Beijing
 

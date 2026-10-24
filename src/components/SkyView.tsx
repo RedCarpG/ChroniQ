@@ -100,8 +100,8 @@ type FigureSet = 'none' | 'west' | 'china'
 const FIGURES_KEY = 'chroniq-sky-figures'
 
 /** SVG path data through the projected points */
-const pathData = (points: { az: number; alt: number }[]) =>
-  points.map((p, i) => `${i ? 'L' : 'M'}${project(p.az, p.alt).map((v) => v.toFixed(1)).join(' ')}`).join('')
+const pathData = (points: { az: number; alt: number }[], pt: (az: number, alt: number) => [number, number] = project) =>
+  points.map((p, i) => `${i ? 'L' : 'M'}${pt(p.az, p.alt).map((v) => v.toFixed(1)).join(' ')}`).join('')
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (date: string) => {
@@ -152,7 +152,12 @@ export function SkyView({ place }: { place: StarPlace }) {
     const [hh, mm] = picked.time.split(':').map(Number)
     return toUtc({ year: y, month: m, day: d, hour: hh || 0, minute: mm || 0 }, place.timeZone).date
   }, [picked, now, place.timeZone])
-  const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+  // 头顶 / 脚下: the half of the sky above the horizon, or the half beneath one's feet, seen as if
+  // through the Earth: the nadir in the middle, and east and west swapped (looking down, east is right).
+  const [below, setBelow] = useState(false)
+  const shown = (alt: number) => (below ? alt < 0 : alt >= 0)
+  const at = (az: number, alt: number) => (below ? project((360 - az) % 360, -alt) : project(az, alt))
+  const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
   const [showPaths, setShowPaths] = useState(() => {
@@ -204,8 +209,8 @@ export function SkyView({ place }: { place: StarPlace }) {
     () =>
       figures === 'none'
         ? []
-        : constellationsAt(figures === 'west' ? WESTERN : XINGGUAN, utc, place.latitude, place.longitude),
-    [figures, utc, place.latitude, place.longitude],
+        : constellationsAt(figures === 'west' ? WESTERN : XINGGUAN, utc, place.latitude, place.longitude, below),
+    [figures, utc, place.latitude, place.longitude, below],
   )
   // 星官 names stay Chinese in English, as proper nouns; both sets follow the 繁體 / 简体 setting
   const figureName = (c: { name: string; trad: string; en: string }) =>
@@ -224,7 +229,7 @@ export function SkyView({ place }: { place: StarPlace }) {
       const [, m, d] = wallTime(points[i].utc, place.timeZone).date.split('-').map(Number)
       ticks.push({ ...points[i], m, d })
     }
-    return { key: history.body, d: pathData(points), start: points[0], ticks }
+    return { key: history.body, d: pathData(points, at), start: points[0], ticks }
   }, [history, utc, place.latitude, place.longitude, place.timeZone])
   const dateLabel = (m: number, d: number) =>
     en ? new Date(Date.UTC(2000, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : `${m}/${d}`
@@ -248,44 +253,44 @@ export function SkyView({ place }: { place: StarPlace }) {
       const line = track.slice(0, times.length)
       return {
         key,
-        past: pathData(line.slice(0, nowAt + 1)),
-        future: pathData(line.slice(nowAt)),
+        past: pathData(line.slice(0, nowAt + 1), at),
+        future: pathData(line.slice(nowAt), at),
         hours: track
           .slice(times.length)
           .map((p, i) => ({ ...p, hour: Number(wallTime(hours[i], place.timeZone).time.slice(0, 2)) }))
-          .filter((p) => p.alt >= 0),
+          .filter((p) => shown(p.alt)),
       }
     })
   }, [showPaths, utc, place.latitude, place.longitude, place.timeZone])
   const clipId = useId()
   const focused = paths?.find((p) => p.key === focus)
-  const up = sky.bodies.filter((b) => b.alt >= 0)
+  const up = sky.bodies.filter((b) => shown(b.alt))
   const labels = useMemo(
     () =>
       placeLabels([
         ...sky.bodies
-          .filter((b) => b.alt >= 0)
+          .filter((b) => shown(b.alt))
           .sort((a, b) => a.mag - b.mag)
           .map((b) => {
-            const [x, y] = project(b.az, b.alt)
+            const [x, y] = at(b.az, b.alt)
             return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b), kind: 'body' as const }
           }),
         ...sky.stars
           .filter((st) => st.name)
           .map((st) => {
-            const [x, y] = project(st.az, st.alt)
+            const [x, y] = at(st.az, st.alt)
             return { key: `hip${st.hip}`, text: t(st.name!), x, y, r: starRadius(st.mag), kind: 'star' as const }
           }),
         // The best-known figures (rank 1–2) are named, where there is room
         ...figureViews
-          .filter((c) => c.rank <= 2 && c.label.alt > 3)
+          .filter((c) => c.rank <= 2 && (below ? c.label.alt < -3 : c.label.alt > 3))
           .map((c) => {
-            const [x, y] = project(c.label.az, c.label.alt)
+            const [x, y] = at(c.label.az, c.label.alt)
             return { key: `fig${c.id}`, text: figureName(c), x, y, r: 0, kind: 'figure' as const }
           }),
       ]),
     // t is new each render but changes only with the settings
-    [sky, figureViews, language, script],
+    [sky, figureViews, language, script, below],
   )
 
   const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
@@ -331,6 +336,19 @@ export function SkyView({ place }: { place: StarPlace }) {
         {t('上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。')}
       </p>
       <div className="overlay-bar sky-options">
+        <span className="sky-option-title">{t('视角')}</span>
+        <div className="seg small" role="group" aria-label={t('视角')}>
+          {(
+            [
+              [false, t('头顶')],
+              [true, t('脚下')],
+            ] as const
+          ).map(([v, label]) => (
+            <button key={label} type="button" className={below === v ? 'on' : undefined} aria-pressed={below === v} onClick={() => setBelow(v)}>
+              {label}
+            </button>
+          ))}
+        </div>
         <span className="sky-option-title">{t('星座')}</span>
         <div className="seg small" role="group" aria-label={t('星座')}>
           {(
@@ -382,7 +400,7 @@ export function SkyView({ place }: { place: StarPlace }) {
       </div>
 
       <div className="sky-layout">
-        <svg className={`sky-map sky-${sky.light}`} viewBox="0 0 400 400" role="img" aria-label={t('此刻天空星图')}>
+        <svg className={`sky-map sky-${below ? 'below' : sky.light}`} viewBox="0 0 400 400" role="img" aria-label={t('此刻天空星图')}>
           <circle className="sky-disc" cx={C} cy={C} r={R} />
           {[30, 60].map((alt) => (
             <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
@@ -397,7 +415,7 @@ export function SkyView({ place }: { place: StarPlace }) {
               ['西', 'W', 270],
             ] as const
           ).map(([label, labelEn, az]) => {
-            const [x, y] = project(az, -9)
+            const [x, y] = project(below ? (360 - az) % 360 : az, -9)
             return (
               <text key={label} className="sky-compass" x={x} y={y} textAnchor="middle" dominantBaseline="central">
                 {en ? labelEn : label}
@@ -413,13 +431,13 @@ export function SkyView({ place }: { place: StarPlace }) {
           {figureViews.length > 0 && (
             <g className={`sky-figures sky-figures-${figures}`} clipPath={`url(#${clipId})`} aria-hidden="true">
               {figureViews.map((c) => (
-                <path key={c.id} d={c.lines.map(pathData).join('')} />
+                <path key={c.id} d={c.lines.map((l) => pathData(l, at)).join('')} />
               ))}
             </g>
           )}
           <g className="sky-stars">
             {sky.stars.map((s) => (
-              <Star key={s.hip} star={s} name={s.name && t(s.name)} azimuth={azimuth} />
+              <Star key={s.hip} star={s} name={s.name && t(s.name)} azimuth={azimuth} at={at} />
             ))}
           </g>
           {paths && (
@@ -430,7 +448,7 @@ export function SkyView({ place }: { place: StarPlace }) {
                     <path className="past" d={p.past} />
                     <path className="future" d={p.future} />
                     {p.hours.map((h) => {
-                      const [x, y] = project(h.az, h.alt)
+                      const [x, y] = at(h.az, h.alt)
                       return <circle key={h.hour} className="hour" cx={x} cy={y} r={1.6} />
                     })}
                   </g>
@@ -443,16 +461,16 @@ export function SkyView({ place }: { place: StarPlace }) {
               <g className="sky-history" style={{ color: BODY_COLOUR[historyLine.key] }} clipPath={`url(#${clipId})`} aria-hidden="true">
                 <path d={historyLine.d} />
                 {historyLine.ticks.map((p) => {
-                  const [x, y] = project(p.az, p.alt)
+                  const [x, y] = at(p.az, p.alt)
                   return <circle key={`${p.m}-${p.d}`} className="tick" cx={x} cy={y} r={1.8} />
                 })}
-                <circle className="start" cx={project(historyLine.start.az, historyLine.start.alt)[0]} cy={project(historyLine.start.az, historyLine.start.alt)[1]} r={3} />
+                <circle className="start" cx={at(historyLine.start.az, historyLine.start.alt)[0]} cy={at(historyLine.start.az, historyLine.start.alt)[1]} r={3} />
               </g>
               <g className="sky-history-labels" aria-hidden="true">
                 {historyLine.ticks
-                  .filter((p) => p.alt > 0)
+                  .filter((p) => (below ? p.alt < 0 : p.alt > 0))
                   .map((p) => {
-                    const [x, y] = project(p.az, p.alt)
+                    const [x, y] = at(p.az, p.alt)
                     return (
                       <text key={`${p.m}-${p.d}`} x={x + 4} y={y + 3}>
                         {dateLabel(p.m, p.d)}
@@ -464,7 +482,7 @@ export function SkyView({ place }: { place: StarPlace }) {
           )}
           <g className="sky-bodies">
             {up.map((b) => {
-              const [x, y] = project(b.az, b.alt)
+              const [x, y] = at(b.az, b.alt)
               return (
                 <g key={b.key} className={`sky-body sky-${b.key}`} {...focusProps(b.key)}>
                   <title>{t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })}</title>
@@ -476,7 +494,7 @@ export function SkyView({ place }: { place: StarPlace }) {
           {focused && (
             <g className="sky-hour-labels" aria-hidden="true">
               {focused.hours.map((h) => {
-                const [x, y] = project(h.az, h.alt)
+                const [x, y] = at(h.az, h.alt)
                 return (
                   <text key={h.hour} x={x + 4} y={y - 4}>
                     {t('{h}时', { h: h.hour })}
@@ -526,9 +544,11 @@ export function SkyView({ place }: { place: StarPlace }) {
             </tbody>
           </table>
           <p className="muted row-note">
-            {lightNote && <>{lightNote}</>}
-            {lightNote && en && ' '}
-            {t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+            {below ? t('脚下：地平线以下、被地球挡住的那半边天空，像透过地球往下看；中心是天底，东西因此左右互换。') : lightNote}
+            {(below || lightNote) && en && ' '}
+            {below
+              ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
+              : t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
             {paths && en && ' '}
             {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
             {historyLine && en && ' '}
@@ -547,9 +567,20 @@ export function SkyView({ place }: { place: StarPlace }) {
   )
 }
 
-function Star({ star: s, name, azimuth }: { star: SkyStar; name?: string; azimuth: (az: number) => string }) {
+function Star({
+  star: s,
+  name,
+  azimuth,
+  at,
+}: {
+  star: SkyStar
+  name?: string
+  azimuth: (az: number) => string
+  /** The map's projection (it depends on which half of the sky is shown) */
+  at: (az: number, alt: number) => [number, number]
+}) {
   const t = useT()
-  const [x, y] = project(s.az, s.alt)
+  const [x, y] = at(s.az, s.alt)
   return (
     <circle cx={x} cy={y} r={starRadius(s.mag)} fill={starColour(s.bv)}>
       {name && <title>{t('{name} · {direction} · 高 {altitude}°', { name, direction: azimuth(s.az), altitude: s.alt.toFixed(1) })}</title>}

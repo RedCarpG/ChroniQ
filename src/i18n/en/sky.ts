@@ -103,6 +103,13 @@ export const SKY: Record<string, string> = {
     'Distances are in astronomical units (AU; the mean Sun–Earth distance, about 150 million km). Light time is how long a planet’s light takes to reach Earth. Retrograde is a planet seeming to move backwards among the stars as seen from Earth: in fact Earth overtaking an outer planet on its inner track (or an inner planet passing between Earth and the Sun). Hover over a planet to see Earth’s line of sight to it. Positions computed by astronomy-engine.',
   // Day paths
   轨迹: 'Paths',
+  // The half of the sky under the horizon
+  视角: 'View',
+  头顶: 'Overhead',
+  脚下: 'Underfoot',
+  '脚下：地平线以下、被地球挡住的那半边天空，像透过地球往下看；中心是天底，东西因此左右互换。':
+    'Underfoot: the half of the sky below the horizon, hidden by the Earth, as if looking down through it. The nadir is in the middle, so east and west swap sides.',
+  '地平线下有 {n} 颗 5 等以内的亮星。': '{n} stars to magnitude 5 are below the horizon.',
   // Constellations and history track
   星座: 'Constellations',
   不显示: 'Off',

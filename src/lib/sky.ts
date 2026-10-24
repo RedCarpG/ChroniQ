@@ -84,7 +84,8 @@ export const STAR_NAMES: Record<number, string> = {
   67301: '摇光',
 }
 
-export function skyAt(utc: Date, latitude: number, longitude: number): Sky {
+/** below: list the stars under the horizon instead (the half of the sky beneath one's feet) */
+export function skyAt(utc: Date, latitude: number, longitude: number, below = false): Sky {
   const time = A.MakeTime(utc)
   const observer = new A.Observer(latitude, longitude, 0)
 
@@ -108,7 +109,7 @@ export function skyAt(utc: Date, latitude: number, longitude: number): Sky {
     const [hip, ra, dec, mag, bv] = BRIGHT_STARS.slice(i, i + STAR_FIELDS)
     const j2000 = A.VectorFromSphere(new A.Spherical(dec, ra, 1), time)
     const hor = A.HorizonFromVector(A.RotateVector(toHorizon, j2000), 'normal')
-    if (hor.lat < 0) continue
+    if (hor.lat < 0 !== below) continue
     stars.push({ hip, name: STAR_NAMES[hip], az: hor.lon, alt: hor.lat, mag, bv })
   }
 
@@ -155,8 +156,15 @@ function horizonOf(utc: Date, latitude: number, longitude: number) {
   }
 }
 
-/** Constellation figures as they stand in the sky; those wholly below the horizon are left out */
-export function constellationsAt(set: Constellation[], utc: Date, latitude: number, longitude: number): ConstellationView[] {
+/** Constellation figures as they stand in the sky; those wholly on the other side of the horizon are left out */
+export function constellationsAt(
+  set: Constellation[],
+  utc: Date,
+  latitude: number,
+  longitude: number,
+  /** keep the figures under the horizon instead */
+  below = false,
+): ConstellationView[] {
   const toHorizon = horizonOf(utc, latitude, longitude)
   const out: ConstellationView[] = []
   for (const c of set) {
@@ -165,7 +173,7 @@ export function constellationsAt(set: Constellation[], utc: Date, latitude: numb
       for (let i = 0; i < line.length; i += 2) pts.push(toHorizon(line[i], line[i + 1]))
       return pts
     })
-    if (!lines.some((l) => l.some((p) => p.alt > 0))) continue
+    if (!lines.some((l) => l.some((p) => (below ? p.alt < 0 : p.alt > 0)))) continue
     out.push({ id: c.id, name: c.name, trad: c.trad, en: c.en, rank: c.rank, label: toHorizon(...c.label), lines })
   }
   return out
