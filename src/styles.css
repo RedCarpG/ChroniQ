@@ -1422,6 +1422,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-milkyway { transition: opacity 0.8s ease; }
 /* Its grain: tiny dots, a screen pixel or so whatever the zoom */
 .sky-milkyway .grain { fill: none; stroke: #d6defc; stroke-linecap: round; }
+.sky-milkyway :is(.mw-haze, .mw-body, .mw-core, .mw-rift) path { fill: none; stroke-linecap: butt; }
+.sky-milkyway .mw-haze path { stroke: #8496d8; }
+.sky-milkyway .mw-body path { stroke: #b9c5f2; }
+.sky-milkyway .mw-core path { stroke: #f1eedf; }
+.sky-milkyway .mw-rift path { stroke: #070b1c; stroke-linecap: round; stroke-linejoin: round; }
 .sky-milkyway .grain-0 { stroke-width: calc(1.1px * var(--k, 1)); opacity: 0.22; }
 .sky-milkyway .grain-1 { stroke-width: calc(1.3px * var(--k, 1)); opacity: 0.34; }
 .sky-milkyway .grain-2 { stroke-width: calc(1.5px * var(--k, 1)); opacity: 0.48; }

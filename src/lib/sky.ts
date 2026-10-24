@@ -301,7 +301,13 @@ interface MilkyWayPoint {
   /** glow and dust: radius in degrees */
   size?: number
 }
-let model: { grain: MilkyWayPoint[]; glow: MilkyWayPoint[]; dust: MilkyWayPoint[] } | null = null
+let model: {
+  grain: MilkyWayPoint[]
+  glow: MilkyWayPoint[]
+  dust: MilkyWayPoint[]
+  spine: MilkyWayPoint[]
+  rift: MilkyWayPoint[]
+} | null = null
 
 /**
  * The Milky Way as a scatter of faint points about the galactic plane, made once: fine grain (as
@@ -349,7 +355,20 @@ export function milkyWayModel() {
   const dust: MilkyWayPoint[] = []
   for (let l = 10; l <= 82; l += 4.5) dust.push({ v: vector(l, 1.8 + (rand() - 0.5) * 1.2), l, b: 1.8, weight: 0.45, size: 2.2 + rand() * 1.4 })
   dust.push({ v: vector(303, -0.5), l: 303, b: -0.5, weight: 0.5, size: 3 })
-  model = { grain, glow, dust }
+  // The band itself, drawn as one continuous stroke: its centre line every 1.5° of galactic
+  // longitude, with its brightness (weight) and half-width in degrees (size), the line wandering a
+  // little off the plane as the real one does; and the Great Rift's dark lane, Cygnus to Sagittarius
+  const spine: MilkyWayPoint[] = []
+  for (let l = 0; l < 360; l += 1.5) {
+    const b = 0.6 * Math.sin(l * 0.05 + phase[3]) * (1 - ((Math.cos(l * RAD) + 1) / 2) ** 2)
+    spine.push({ v: vector(l, b), l, b, weight: bandBrightness(l) * (0.75 + 0.5 * clumps(l, b)), size: bandSpread(l) })
+  }
+  const rift: MilkyWayPoint[] = []
+  for (let l = 4; l <= 88; l += 1.5) {
+    const depth = Math.min(1, Math.min(l - 4, 88 - l) / 14) * (0.7 + 0.3 * Math.sin(l * 0.4 + phase[1]))
+    rift.push({ v: vector(l, 1.6 + 0.5 * Math.sin(l * 0.23 + phase[2])), l, b: 1.6, weight: depth, size: 1.3 + 0.9 * depth })
+  }
+  model = { grain, glow, dust, spine, rift }
   return model
 }
 
@@ -367,7 +386,13 @@ export function milkyWayAt(utc: Date, latitude: number, longitude: number) {
     return { ...rest, az: (360 - ((Math.atan2(hy, hx) / RAD + 360) % 360)) % 360, alt: Math.atan2(hz, Math.hypot(hx, hy)) / RAD }
   }
   const m = milkyWayModel()
-  return { grain: m.grain.map(place), glow: m.glow.map(place), dust: m.dust.map(place) }
+  return {
+    grain: m.grain.map(place),
+    glow: m.glow.map(place),
+    dust: m.dust.map(place),
+    spine: m.spine.map(place),
+    rift: m.rift.map(place),
+  }
 }
 
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
