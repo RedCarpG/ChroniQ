@@ -129,6 +129,19 @@ describe('SkyView constellations and paths', () => {
   })
 })
 
+describe('SkyView with the paths off', () => {
+  it('offers the chosen one’s path in its line in the panel', () => {
+    localStorage.setItem('chroniq-sky-paths', 'off')
+    const { map, row, container } = setUp()
+    fireEvent.click(row('月亮'))
+    expect(map.querySelectorAll('.sky-path')).toHaveLength(0)
+    fireEvent.click(container.querySelector('.sky-show-path')!)
+    expect(map.querySelector('.sky-path.on')).not.toBeNull()
+    expect(container.querySelector('.sky-show-path')).toBeNull()
+    localStorage.removeItem('chroniq-sky-paths')
+  })
+})
+
 describe('SkyView zoomed', () => {
   it('zooms the map alone with its buttons, within limits, and comes back to full size', () => {
     const { map } = setUp()

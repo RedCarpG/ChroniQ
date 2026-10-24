@@ -991,6 +991,12 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             <span className="muted">
               {azimuth(pick.az)} · {t('高 {altitude}°', { altitude: pick.alt.toFixed(1) })} · {t('星等 {mag}', { mag: pick.mag.toFixed(1) })}
             </span>
+            {/* With the paths off, the chosen one's is a click away */}
+            {!showPaths && (
+              <button type="button" className="ghost sky-show-path" onClick={togglePaths}>
+                {t('显示轨迹')}
+              </button>
+            )}
             <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
               ✕
             </button>
