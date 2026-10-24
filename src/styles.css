@@ -307,16 +307,19 @@ footer {
   stroke: color-mix(in srgb, var(--accent) 55%, var(--border)); stroke-width: 1.5;
 }
 
-/* Changing month / week / year: the new one slides in from its side; changing view fades (CalendarView) */
+/* Changing month / week / year: the new one slides in from below (later) or above (earlier);
+   changing view fades. The month just before or after scrolls instead (CalendarView). */
 .cal-slide.next { animation: cal-in-next 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
 .cal-slide.back { animation: cal-in-back 0.32s cubic-bezier(0.33, 1, 0.68, 1) both; }
 .cal-slide.fade { animation: cal-fade 0.25s ease both; }
-@keyframes cal-in-next { from { opacity: 0; transform: translateX(32px); } }
-@keyframes cal-in-back { from { opacity: 0; transform: translateX(-32px); } }
+@keyframes cal-in-next { from { opacity: 0; transform: translateY(28px); } }
+@keyframes cal-in-back { from { opacity: 0; transform: translateY(-28px); } }
 @keyframes cal-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cal-slide.next, .cal-slide.back, .cal-slide.fade { animation: none; } }
-/* Clip the sideways slide only, so the year / month picker can still drop below the card */
-.calendar { overflow-x: clip; }
+/* While scrolling to the next or last month the window shows six rows of the longer strip */
+.month-window.scrolling { overflow: clip; overflow-clip-margin: 4px; }
+/* Days fade in and out of the month as it scrolls */
+.grid.days .day { transition: opacity 0.35s ease; }
 
 /* Legend under the month and week views */
 .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 2px 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
