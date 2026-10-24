@@ -1416,9 +1416,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
    ground beyond (SkyView; the colours by sunlight are its SKY_STOPS and HORIZON_GLOW) */
 .sky-airglow, .sky-light, .sky-halos, .sky-milkyway, .sky-ground, .sky-ticks { pointer-events: none; }
 .sky-milkyway { transition: opacity 0.8s ease; }
-.sky-milkyway path { fill: none; stroke: #c9d4ff; stroke-linecap: round; stroke-linejoin: round; }
-.sky-milkyway .rift { stroke: #04060f; stroke-width: 7; opacity: 0.5; }
-.sky-milkyway .cloud { opacity: 0.32; }
+/* Its grain: tiny dots, a screen pixel or so whatever the zoom */
+.sky-milkyway .grain { fill: none; stroke: #d6defc; stroke-linecap: round; }
+.sky-milkyway .grain-0 { stroke-width: calc(1.1px * var(--k, 1)); opacity: 0.22; }
+.sky-milkyway .grain-1 { stroke-width: calc(1.3px * var(--k, 1)); opacity: 0.34; }
+.sky-milkyway .grain-2 { stroke-width: calc(1.5px * var(--k, 1)); opacity: 0.48; }
 .sky-twilight .sky-milkyway { opacity: 0.35; }
 .sky-day .sky-milkyway, .sky-day .sky-halos { opacity: 0; }
 .sky-below .sky-milkyway { opacity: 0.7; }
