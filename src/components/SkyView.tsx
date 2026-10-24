@@ -45,6 +45,8 @@ export const BODY_COLOUR: Record<string, string> = {
   neptune: '#8ea9f3',
 }
 const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 : Math.min(5, Math.max(2.4, 3.6 - 0.35 * b.mag)))
+/** How far the map zooms in on a chosen body or star */
+const ZOOM = 1.5
 
 interface Label {
   key: string
@@ -188,6 +190,31 @@ export function SkyView({ place }: { place: StarPlace }) {
           onBlur: () => setFocus(null),
         }
       : {}
+  // The body or named star picked out (click it, its name or a body's row; the key is its label's):
+  // ringed, the rest dimmed and the map zoomed in on it. Click it again, the empty sky or press Esc to let go.
+  const [chosen, setChosen] = useState<string | null>(null)
+  const choose = (key: string) => setChosen((c) => (c === key ? null : key))
+  const chooseKeys = (key: string) => (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    choose(key)
+  }
+  const chooseProps = (key: string) => ({
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': chosen === key,
+    onClick: (e: React.MouseEvent) => {
+      e.stopPropagation()
+      choose(key)
+    },
+    onKeyDown: chooseKeys(key),
+  })
+  useEffect(() => {
+    if (!chosen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setChosen(null)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [chosen])
   // Constellation figures (remembered in this browser)
   const [figures, setFigures] = useState<FigureSet>(() => {
     try {
@@ -263,7 +290,29 @@ export function SkyView({ place }: { place: StarPlace }) {
     })
   }, [showPaths, utc, place.latitude, place.longitude, place.timeZone])
   const clipId = useId()
-  const focused = paths?.find((p) => p.key === focus)
+  const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
+  // A star that has set, or is on the other half of the sky now, lets go
+  useEffect(() => {
+    if (chosen && !pick) setChosen(null)
+  }, [chosen, pick])
+  const pickName = pick && ('key' in pick ? t(pick.name) : t(pick.name!))
+  const pickColour = pick && ('key' in pick ? BODY_COLOUR[pick.key] : starColour(pick.bv))
+  const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
+  // Zoomed in on the chosen point: centred on it, as far as the sky still fills the disc
+  const zoom = (() => {
+    if (!pick || !shown(pick.alt)) return undefined
+    const [x, y] = at(pick.az, pick.alt)
+    const max = ((ZOOM - 1) * R) / ZOOM
+    const f = Math.min(1, max / (Math.hypot(C - x, C - y) || 1))
+    const tx = C - ZOOM * (C - (C - x) * f)
+    const ty = C - ZOOM * (C - (C - y) * f)
+    return { x, y, style: { transform: `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${ZOOM})` } }
+  })()
+  // The path picked out: the one hovered, else the chosen body's
+  const pathFocus = focus ?? (chosen && PATH_BODIES.includes(chosen as SkyBody['key']) ? chosen : null)
+  const focused = paths?.find((p) => p.key === pathFocus)
+  const focusedBody = focused && sky.bodies.find((b) => b.key === focused.key)
+  const focusedAt = focusedBody && shown(focusedBody.alt) ? at(focusedBody.az, focusedBody.alt) : null
   const up = sky.bodies.filter((b) => shown(b.alt))
   const labels = useMemo(
     () =>
@@ -400,13 +449,15 @@ export function SkyView({ place }: { place: StarPlace }) {
       </div>
 
       <div className="sky-layout">
-        <svg className={`sky-map sky-${below ? 'below' : sky.light}`} viewBox="0 0 400 400" role="img" aria-label={t('此刻天空星图')}>
+        <svg
+          className={`sky-map sky-${below ? 'below' : sky.light}${zoom ? ' has-chosen' : ''}`}
+          viewBox="0 0 400 400"
+          // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
+          role="group"
+          aria-label={t('此刻天空星图')}
+          onClick={() => setChosen(null)}
+        >
           <circle className="sky-disc" cx={C} cy={C} r={R} />
-          {[30, 60].map((alt) => (
-            <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
-          ))}
-          <line className="sky-grid" x1={C} y1={C - R} x2={C} y2={C + R} />
-          <line className="sky-grid" x1={C - R} y1={C} x2={C + R} y2={C} />
           {(
             [
               ['北', 'N', 0],
@@ -428,100 +479,164 @@ export function SkyView({ place }: { place: StarPlace }) {
               <circle cx={C} cy={C} r={R} />
             </clipPath>
           </defs>
-          {figureViews.length > 0 && (
-            <g className={`sky-figures sky-figures-${figures}`} clipPath={`url(#${clipId})`} aria-hidden="true">
-              {figureViews.map((c, i) => (
-                // Serpens comes in two parts with the same id
-                <path key={`${c.id}-${i}`} d={c.lines.map((l) => pathData(l, at)).join('')} />
+          {/* Everything on the sky zooms together; the disc and the compass stay put */}
+          <g clipPath={`url(#${clipId})`}>
+            <g className="sky-zoom" style={zoom?.style}>
+              {[30, 60].map((alt) => (
+                <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
               ))}
-            </g>
-          )}
-          <g className="sky-stars">
-            {sky.stars.map((s) => (
-              <Star key={s.hip} star={s} name={s.name && t(s.name)} azimuth={azimuth} at={at} />
-            ))}
-          </g>
-          {paths && (
-            <>
-              <g className={`sky-paths${focus ? ' has-focus' : ''}`} clipPath={`url(#${clipId})`} aria-hidden="true">
-                {paths.map((p) => (
-                  <g key={p.key} className={`sky-path${focus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] }}>
-                    <path className="past" d={p.past} />
-                    <path className="future" d={p.future} />
-                    {p.hours.map((h, i) => {
-                      const [x, y] = at(h.az, h.alt)
-                      // a 24-hour window has one hour twice
-                      return <circle key={i} className="hour" cx={x} cy={y} r={1.6} />
-                    })}
-                  </g>
+              <line className="sky-grid" x1={C} y1={C - R} x2={C} y2={C + R} />
+              <line className="sky-grid" x1={C - R} y1={C} x2={C + R} y2={C} />
+              {figureViews.length > 0 && (
+                <g className={`sky-figures sky-figures-${figures}`} clipPath={`url(#${clipId})`} aria-hidden="true">
+                  {figureViews.map((c, i) => (
+                    // Serpens comes in two parts with the same id
+                    <path key={`${c.id}-${i}`} d={c.lines.map((l) => pathData(l, at)).join('')} />
+                  ))}
+                </g>
+              )}
+              <g className="sky-stars">
+                {sky.stars.map((s) => (
+                  <Star
+                    key={s.hip}
+                    star={s}
+                    name={s.name && t(s.name)}
+                    azimuth={azimuth}
+                    at={at}
+                    on={chosen === `hip${s.hip}`}
+                    chooseProps={s.name ? chooseProps(`hip${s.hip}`) : undefined}
+                  />
                 ))}
               </g>
-            </>
-          )}
-          {historyLine && (
-            <>
-              <g className="sky-history" style={{ color: BODY_COLOUR[historyLine.key] }} clipPath={`url(#${clipId})`} aria-hidden="true">
-                <path d={historyLine.d} />
-                {historyLine.ticks.map((p) => {
-                  const [x, y] = at(p.az, p.alt)
-                  return <circle key={`${p.m}-${p.d}`} className="tick" cx={x} cy={y} r={1.8} />
+              {paths && (
+                <>
+                  <g className={`sky-paths${pathFocus ? ' has-focus' : ''}`} clipPath={`url(#${clipId})`} aria-hidden="true">
+                    {paths.map((p) => (
+                      <g key={p.key} className={`sky-path${pathFocus === p.key ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] }}>
+                        <path className="past" d={p.past} />
+                        <path className="future" d={p.future} />
+                        {p.hours.map((h, i) => {
+                          const [x, y] = at(h.az, h.alt)
+                          // a 24-hour window has one hour twice
+                          return <circle key={i} className="hour" cx={x} cy={y} r={1.6} />
+                        })}
+                      </g>
+                    ))}
+                  </g>
+                </>
+              )}
+              {historyLine && (
+                <>
+                  <g className="sky-history" style={{ color: BODY_COLOUR[historyLine.key] }} clipPath={`url(#${clipId})`} aria-hidden="true">
+                    <path d={historyLine.d} />
+                    {historyLine.ticks.map((p) => {
+                      const [x, y] = at(p.az, p.alt)
+                      return <circle key={`${p.m}-${p.d}`} className="tick" cx={x} cy={y} r={1.8} />
+                    })}
+                    <circle className="start" cx={at(historyLine.start.az, historyLine.start.alt)[0]} cy={at(historyLine.start.az, historyLine.start.alt)[1]} r={3} />
+                  </g>
+                  <g className="sky-history-labels" aria-hidden="true">
+                    {historyLine.ticks
+                      .filter((p) => (below ? p.alt < 0 : p.alt > 0))
+                      .map((p) => {
+                        const [x, y] = at(p.az, p.alt)
+                        return (
+                          <text key={`${p.m}-${p.d}`} x={x + 4} y={y + 3}>
+                            {dateLabel(p.m, p.d)}
+                          </text>
+                        )
+                      })}
+                  </g>
+                </>
+              )}
+              <g className="sky-bodies">
+                {up.map((b) => {
+                  const [x, y] = at(b.az, b.alt)
+                  const on = chosen === b.key
+                  return (
+                    <g key={b.key} className={`sky-body sky-${b.key}${on ? ' on' : ''}`} {...chooseProps(b.key)} {...focusProps(b.key)}>
+                      <title>{t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })}</title>
+                      <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) + 3, 8)} />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={bodyRadius(b) * (on ? 1.25 : 1)}
+                        fill={BODY_COLOUR[b.key]}
+                        opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1}
+                      />
+                    </g>
+                  )
                 })}
-                <circle className="start" cx={at(historyLine.start.az, historyLine.start.alt)[0]} cy={at(historyLine.start.az, historyLine.start.alt)[1]} r={3} />
               </g>
-              <g className="sky-history-labels" aria-hidden="true">
-                {historyLine.ticks
-                  .filter((p) => (below ? p.alt < 0 : p.alt > 0))
-                  .map((p) => {
-                    const [x, y] = at(p.az, p.alt)
+              {focused && (
+                <g className="sky-hour-labels" aria-hidden="true">
+                  {focused.hours.map((h, i) => {
+                    const [x, y] = at(h.az, h.alt)
+                    // None right on the body, where its name is
+                    if (focusedAt && Math.hypot(x - focusedAt[0], y - focusedAt[1]) < 14) return null
                     return (
-                      <text key={`${p.m}-${p.d}`} x={x + 4} y={y + 3}>
-                        {dateLabel(p.m, p.d)}
+                      <text key={i} x={x + 4} y={y - 4}>
+                        {t('{h}时', { h: h.hour })}
                       </text>
                     )
                   })}
-              </g>
-            </>
-          )}
-          <g className="sky-bodies">
-            {up.map((b) => {
-              const [x, y] = at(b.az, b.alt)
-              return (
-                <g key={b.key} className={`sky-body sky-${b.key}`} {...focusProps(b.key)}>
-                  <title>{t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })}</title>
-                  <circle cx={x} cy={y} r={bodyRadius(b)} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
                 </g>
-              )
-            })}
-          </g>
-          {focused && (
-            <g className="sky-hour-labels" aria-hidden="true">
-              {focused.hours.map((h, i) => {
-                const [x, y] = at(h.az, h.alt)
-                return (
-                  <text key={i} x={x + 4} y={y - 4}>
-                    {t('{h}时', { h: h.hour })}
-                  </text>
-                )
-              })}
+              )}
+              <g className="sky-labels" aria-hidden="true">
+                {labels.map((l) => {
+                  // The chosen one's name moves out past its ring
+                  const push = l.key === chosen && zoom ? pickRadius! * 0.25 + 3 : 0
+                  return (
+                    <text
+                      key={l.key}
+                      className={
+                        (l.kind === 'body' ? 'sky-body-name' : l.kind === 'figure' ? `sky-figure-name sky-figure-name-${figures}` : 'sky-star-name') +
+                        (l.key === chosen ? ' on' : '')
+                      }
+                      x={l.anchor === 'start' ? l.x + push : l.anchor === 'end' ? l.x - push : l.x}
+                      y={l.anchor !== 'middle' ? l.y : l.y < (zoom?.y ?? 0) ? l.y - push : l.y + push}
+                      textAnchor={l.anchor}
+                      dominantBaseline="central"
+                      onClick={
+                        l.kind === 'figure'
+                          ? undefined
+                          : (e) => {
+                              e.stopPropagation()
+                              choose(l.key)
+                            }
+                      }
+                    >
+                      {l.text}
+                    </text>
+                  )
+                })}
+              </g>
             </g>
-          )}
-          <g className="sky-labels" aria-hidden="true">
-            {labels.map((l) => (
-              <text
-                key={l.key}
-                className={l.kind === 'body' ? 'sky-body-name' : l.kind === 'figure' ? `sky-figure-name sky-figure-name-${figures}` : 'sky-star-name'}
-                x={l.x}
-                y={l.y}
-                textAnchor={l.anchor}
-                dominantBaseline="central"
-              >
-                {l.text}
-              </text>
-            ))}
+          </g>
+          {/* The ring round the chosen point, zoomed with the sky but not cut off at the horizon */}
+          <g className="sky-zoom sky-rings" style={zoom?.style} aria-hidden="true">
+            {zoom && (
+              <g className="sky-chosen" style={{ color: pickColour }}>
+                <circle cx={zoom.x} cy={zoom.y} r={pickRadius! * 1.25 + 4} />
+                <circle className="pulse" cx={zoom.x} cy={zoom.y} r={pickRadius! * 1.25 + 4} />
+              </g>
+            )}
           </g>
         </svg>
 
         <div className="sky-side">
+          {pick && (
+            <div className="sky-chosen-info">
+              <span className="sky-dot" style={{ background: pickColour }} />
+              <strong>{pickName}</strong>
+              <span className="muted">
+                {azimuth(pick.az)} · {t('高 {altitude}°', { altitude: pick.alt.toFixed(1) })} · {t('星等 {mag}', { mag: pick.mag.toFixed(1) })}
+              </span>
+              <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+                ✕
+              </button>
+            </div>
+          )}
           <table className="star-table sky-table">
             <thead>
               <tr>
@@ -533,7 +648,15 @@ export function SkyView({ place }: { place: StarPlace }) {
             </thead>
             <tbody>
               {sky.bodies.map((b) => (
-                <tr key={b.key} className={[b.alt < 0 && 'below', focus === b.key && 'on'].filter(Boolean).join(' ') || undefined} {...focusProps(b.key)}>
+                <tr
+                  key={b.key}
+                  className={[b.alt < 0 && 'below', pathFocus === b.key && 'on', chosen === b.key && 'chosen'].filter(Boolean).join(' ') || undefined}
+                  {...focusProps(b.key)}
+                  tabIndex={0}
+                  aria-selected={chosen === b.key}
+                  onClick={() => choose(b.key)}
+                  onKeyDown={chooseKeys(b.key)}
+                >
                   <td>
                     <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
                     {t(b.name)}
@@ -551,6 +674,8 @@ export function SkyView({ place }: { place: StarPlace }) {
             {below
               ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
               : t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+            {en && ' '}
+            {t('点一下天体、有名字的亮星或表格里的一行，可把它圈出并放大；再点一次、点空白处或按 Esc 取消。')}
             {paths && en && ' '}
             {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
             {historyLine && en && ' '}
@@ -574,18 +699,28 @@ function Star({
   name,
   azimuth,
   at,
+  on,
+  chooseProps,
 }: {
   star: SkyStar
   name?: string
   azimuth: (az: number) => string
   /** The map's projection (it depends on which half of the sky is shown) */
   at: (az: number, alt: number) => [number, number]
+  /** Whether it is the chosen one */
+  on: boolean
+  /** For a star that can be chosen (the named ones) */
+  chooseProps?: React.SVGProps<SVGGElement>
 }) {
   const t = useT()
   const [x, y] = at(s.az, s.alt)
+  const r = starRadius(s.mag)
+  if (!chooseProps) return <circle cx={x} cy={y} r={r} fill={starColour(s.bv)} />
   return (
-    <circle cx={x} cy={y} r={starRadius(s.mag)} fill={starColour(s.bv)}>
+    <g className={`sky-star${on ? ' on' : ''}`} {...chooseProps}>
       {name && <title>{t('{name} · {direction} · 高 {altitude}°', { name, direction: azimuth(s.az), altitude: s.alt.toFixed(1) })}</title>}
-    </circle>
+      <circle className="hit" cx={x} cy={y} r={Math.max(r + 3, 6)} />
+      <circle cx={x} cy={y} r={on ? r * 1.25 : r} fill={starColour(s.bv)} />
+    </g>
   )
 }

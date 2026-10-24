@@ -126,6 +126,12 @@ export const SKY: Record<string, string> = {
   '中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。':
     'Chinese 星官 from Stellarium’s Chinese sky culture (CC BY-SA 4.0), via d3-celestial.',
   '{h}时': '{h}:00',
+  // Choosing a body or star on the map
+  '高 {altitude}°': 'altitude {altitude}°',
+  '星等 {mag}': 'magnitude {mag}',
+  取消选中: 'Clear selection',
+  '点一下天体、有名字的亮星或表格里的一行，可把它圈出并放大；再点一次、点空白处或按 Esc 取消。':
+    'Click a body, a named star or a row of the table to ring it and zoom in; click it again, click the empty sky or press Esc to let go.',
   '彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。':
     'The coloured arcs are the paths of the Sun, Moon and naked-eye planets across the sky over 12 hours either side: dashed where they have been, solid where they are going, with a dot on each hour. Hover a body or its row to see the hours.',
 }
