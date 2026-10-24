@@ -62,7 +62,29 @@ export function sameDay(a: SolarDay, b: SolarDay): boolean {
   return a.getYear() === b.getYear() && a.getMonth() === b.getMonth() && a.getDay() === b.getDay()
 }
 
+type DayBase = Omit<DayCell, 'inMonth' | 'isToday'>
+const bases = new Map<string, DayBase>()
+
+/**
+ * A cell's calendar facts depend only on its date, and working them out
+ * (getLunarDay and the festival look-ups) is the costly part of a cell, so
+ * they are kept per date: paging through months reuses the days already done.
+ */
+function dayBase(solar: SolarDay): DayBase {
+  const key = solar.toString()
+  let base = bases.get(key)
+  if (!base) {
+    if (bases.size > 4000) bases.clear()
+    bases.set(key, (base = computeDayBase(solar, key)))
+  }
+  return base
+}
+
 function makeCell(solar: SolarDay, month: number, today: SolarDay): DayCell {
+  return { ...dayBase(solar), inMonth: solar.getMonth() === month, isToday: sameDay(solar, today) }
+}
+
+function computeDayBase(solar: SolarDay, key: string): DayBase {
   // getLunarDay() is the expensive call; compute it once per cell.
   const lunar = solar.getLunarDay()
   const termDay = solar.getTermDay()
@@ -78,11 +100,9 @@ function makeCell(solar: SolarDay, month: number, today: SolarDay): DayCell {
     ? { sub: festival.getName(), subKind: 'festival' }
     : { sub: plain.plainSub, subKind: plain.plainKind }
   return {
-    key: solar.toString(),
+    key,
     solar,
     day: solar.getDay(),
-    inMonth: solar.getMonth() === month,
-    isToday: sameDay(solar, today),
     isWeekend: solar.getWeek().getIndex() % 6 === 0,
     holiday: holiday ? (holiday.isWork() ? '班' : '休') : undefined,
     ganzhi: lunar.getSixtyCycle().getName(),
