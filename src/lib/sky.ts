@@ -262,23 +262,112 @@ export function galacticToEquatorial(l: number, b: number): [number, number] {
   return [((ra / RAD) % 360 + 360) % 360, dec / RAD]
 }
 
+/** A small seeded random generator (mulberry32): the same Milky Way every time */
+function seeded(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
+  }
+}
+/** Roughly normal, mean 0, spread 1 */
+const gaussian = (rand: () => number) => (rand() + rand() + rand() + rand() + rand() + rand() - 3) * 1.41
+/** Degrees between two galactic longitudes */
+const apart = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180)
+const bump = (l: number, at: number, width: number) => Math.exp(-((apart(l, at) / width) ** 2))
+
+/** How bright the Milky Way is along its length: most towards the centre (Sagittarius), with Cygnus, Carina and Norma */
+const bandBrightness = (l: number) =>
+  0.2 + 0.8 * ((Math.cos(l * RAD) + 1) / 2) ** 1.8 + 0.45 * bump(l, 78, 14) + 0.35 * bump(l, 287, 16) + 0.25 * bump(l, 330, 14)
+/** How far it spreads from the plane (degrees): thickest in the central bulge */
+const bandSpread = (l: number) => 2.6 + 6.5 * ((Math.cos(l * RAD) + 1) / 2) ** 2.5
+/** Its dust: the Great Rift (Cygnus to Sagittarius, just north of the plane), the Coalsack, a lane through the centre */
+function dustAt(l: number, b: number) {
+  let clear = 1
+  if (l > 6 && l < 86 && Math.abs(b - 1.8) < 2.4) clear *= 0.15 + 0.85 * (Math.abs(b - 1.8) / 2.4) ** 2
+  if (apart(l, 303) < 4 && Math.abs(b + 0.5) < 3) clear *= 0.2
+  if (apart(l, 0) < 22 && Math.abs(b) < 0.9) clear *= 0.45
+  return clear
+}
+
+interface MilkyWayPoint {
+  /** J2000 unit vector */
+  v: [number, number, number]
+  l: number
+  b: number
+  /** grain: brightness level 0–2; glow: opacity */
+  weight: number
+  /** glow and dust: radius in degrees */
+  size?: number
+}
+let model: { grain: MilkyWayPoint[]; glow: MilkyWayPoint[]; dust: MilkyWayPoint[] } | null = null
+
 /**
- * The Milky Way as it stands in the sky: points along the galactic equator every few degrees of
- * galactic longitude, with how bright the band is there (1 towards the centre in Sagittarius and
- * in Cygnus, about a third towards the anticentre), and the dark Great Rift that splits it from
- * Cygnus to Sagittarius, a little north of the plane.
+ * The Milky Way as a scatter of faint points about the galactic plane, made once: fine grain (as
+ * many tiny stars), larger soft patches for its glow, and dark patches for its dust. Points are
+ * drawn where the band is bright and wide, thinned where faint drifting waves make gaps and where
+ * the dust lies, so it comes out patchy, with star clouds and lanes, as it looks.
+ */
+export function milkyWayModel() {
+  if (model) return model
+  const rand = seeded(1938)
+  const phase = [rand(), rand(), rand(), rand()].map((x) => x * Math.PI * 2)
+  // Slow waves along and across the band: star clouds and gaps
+  const clumps = (l: number, b: number) =>
+    0.5 +
+    0.5 * (0.45 * Math.sin(l * 0.105 + phase[0]) + 0.3 * Math.sin(l * 0.29 + b * 0.35 + phase[1]) + 0.25 * Math.sin(l * 0.71 - b * 0.8 + phase[2]))
+  const vector = (l: number, b: number): [number, number, number] => {
+    const [ra, dec] = galacticToEquatorial(l, b)
+    const cd = Math.cos(dec * RAD)
+    return [cd * Math.cos(ra * RAD), cd * Math.sin(ra * RAD), Math.sin(dec * RAD)]
+  }
+  const sample = (count: number, widen: number, keep: (l: number, b: number) => number) => {
+    const out: { l: number; b: number; p: number }[] = []
+    while (out.length < count) {
+      const l = rand() * 360
+      const b = gaussian(rand) * bandSpread(l) * widen
+      const p = keep(l, b)
+      if (rand() < p) out.push({ l, b, p })
+    }
+    return out
+  }
+  const peak = 1.6
+  const grain = sample(1700, 1, (l, b) => (bandBrightness(l) / peak) * (0.3 + 0.7 * clumps(l, b)) * dustAt(l, b)).map(({ l, b }) => ({
+    v: vector(l, b),
+    l,
+    b,
+    weight: Math.min(2, Math.floor(bandBrightness(l) * (0.4 + clumps(l, b)) * 1.6)),
+  }))
+  const glow = sample(130, 1.15, (l, b) => (bandBrightness(l) / peak) * (0.45 + 0.55 * clumps(l, b))).map(({ l, b }) => ({
+    v: vector(l, b),
+    l,
+    b,
+    weight: 0.09 + 0.17 * Math.min(1, bandBrightness(l) / 1.1) * dustAt(l, b),
+    size: 4 + rand() * 3.5 + bandSpread(l) * 0.5,
+  }))
+  const dust: MilkyWayPoint[] = []
+  for (let l = 10; l <= 82; l += 4.5) dust.push({ v: vector(l, 1.8 + (rand() - 0.5) * 1.2), l, b: 1.8, weight: 0.45, size: 2.2 + rand() * 1.4 })
+  dust.push({ v: vector(303, -0.5), l: 303, b: -0.5, weight: 0.5, size: 3 })
+  model = { grain, glow, dust }
+  return model
+}
+
+/**
+ * The Milky Way as it stands in the sky at a moment and place: its points' azimuths and altitudes,
+ * by one rotation applied to every point (as astronomy-engine's RotateVector and HorizonFromVector,
+ * without refraction, which a soft glow does not need).
  */
 export function milkyWayAt(utc: Date, latitude: number, longitude: number) {
-  const toHorizon = horizonOf(utc, latitude, longitude)
-  const band = []
-  for (let l = 0; l <= 360; l += 5) {
-    const centre = (Math.cos(l * RAD) + 1) / 2
-    const cygnus = Math.exp(-((((l - 78 + 540) % 360) - 180) ** 2) / 400)
-    band.push({ l, ...toHorizon(...galacticToEquatorial(l, 0)), bright: Math.min(1, 0.32 + 0.68 * centre ** 1.5 + 0.35 * cygnus) })
+  const r = A.Rotation_EQJ_HOR(A.MakeTime(utc), new A.Observer(latitude, longitude, 0)).rot
+  const place = <T extends MilkyWayPoint>({ v: [x, y, z], ...rest }: T) => {
+    const hx = r[0][0] * x + r[1][0] * y + r[2][0] * z
+    const hy = r[0][1] * x + r[1][1] * y + r[2][1] * z
+    const hz = r[0][2] * x + r[1][2] * y + r[2][2] * z
+    return { ...rest, az: (360 - ((Math.atan2(hy, hx) / RAD + 360) % 360)) % 360, alt: Math.atan2(hz, Math.hypot(hx, hy)) / RAD }
   }
-  const rift = []
-  for (let l = 8; l <= 80; l += 4) rift.push(toHorizon(...galacticToEquatorial(l, 2.5)))
-  return { band, rift }
+  const m = milkyWayModel()
+  return { grain: m.grain.map(place), glow: m.glow.map(place), dust: m.dust.map(place) }
 }
 
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
