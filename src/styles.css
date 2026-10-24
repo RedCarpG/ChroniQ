@@ -169,6 +169,8 @@
   .starfield-twinkles { display: none; }
 }
 @media print { .starfield { display: none; } }
+/* Set aside on the 天象 page, where the real sky is the backdrop: only the night colours stay */
+.starfield.aside canvas, .starfield.aside .starfield-twinkles { display: none; }
 
 body {
   margin: 0;
