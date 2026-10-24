@@ -474,21 +474,6 @@ footer {
 .holiday-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .region-days li .tag-title { margin-right: 2px; }
 .holiday-hint { flex-basis: 100%; font-size: 11px; }
-.cal-display { position: relative; }
-.cal-display-btn {
-  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
-  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px;
-}
-.cal-display-btn:hover, .cal-display-btn[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
-.cal-display-panel {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 340px; padding: 4px 14px 14px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.16); animation: tip-in 0.15s ease-out;
-}
-.cal-display-panel .holiday-choice:first-child { border-top: 0; margin-top: 0; }
-@media (max-width: 600px) {
-  .cal-display-panel { position: fixed; top: auto; left: 16px; right: 16px; width: auto; margin-top: 8px; }
-}
 /* 命盘: the saved charts' dates, in purple */
 .day .mine-line, .week-day .mine-line {
   display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -759,7 +744,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   box-shadow: 2px 3px 14px color-mix(in srgb, var(--accent) 45%, transparent);
   transition: padding 0.2s, filter 0.2s;
 }
-.drawer-handle:hover, .drawer.open .drawer-handle { filter: brightness(1.1); padding-left: 10px; }
+.drawer-handle:hover, .drawer-handle[aria-expanded='true'] { filter: brightness(1.1); padding-left: 10px; }
+/* A page's own tab under it (the calendar's 显示): there, but quiet beside 命盘 */
+.drawer-handle.quiet {
+  padding: 10px 5px; border: 1px solid var(--border); border-left: 0;
+  background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 500; box-shadow: none;
+}
+.drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { filter: none; padding-left: 8px; color: var(--accent); }
+.drawer-handle.quiet .drawer-count { background: var(--surface-2); color: var(--muted); font-weight: 600; }
+/* The drawer's panel shows one tab at a time: 命盘, or the page's own */
+.drawer-section { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.drawer-section[hidden] { display: none; }
+.drawer-rail-slot { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#drawer-page-panel .holiday-choice { margin: 0; padding: 14px 0 0; }
+#drawer-page-panel .holiday-choice legend { float: none; width: auto; margin: 0 0 8px; color: var(--text); font-weight: 600; font-size: 14px; }
 .drawer-handle-text { width: 1em; line-height: 1.15; word-break: break-all; }
 .drawer-count {
   min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; box-sizing: border-box;
