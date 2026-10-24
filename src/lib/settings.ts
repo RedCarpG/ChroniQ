@@ -13,9 +13,11 @@ export interface Settings {
   ziweiColor: 'element' | 'luck'
   /** 显示大小: auto grows the page on large screens */
   uiScale: 'auto' | '100' | '115' | '130'
+  /** 音效: the little interface sounds (sound.ts) */
+  sound: 'on' | 'off'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -68,6 +70,13 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
       { value: '100', label: '标准' },
       { value: '115', label: '大' },
       { value: '130', label: '特大' },
+    ],
+  },
+  sound: {
+    title: '音效',
+    options: [
+      { value: 'on', label: '开' },
+      { value: 'off', label: '关' },
     ],
   },
 }

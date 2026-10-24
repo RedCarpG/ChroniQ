@@ -18,6 +18,7 @@ import { XINGGUAN } from '../lib/xingguan'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
+import { play } from '../sound'
 
 // The map: the horizon is the rim, the zenith the centre, altitude falling off
 // evenly outwards. North is up and east is LEFT, as when looking up at the sky.
@@ -354,6 +355,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     role: 'button',
     tabIndex: 0,
     'aria-pressed': chosen === key,
+    'data-sound': chosen === key ? 'unpick' : 'pick',
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation()
       choose(key)
@@ -637,7 +639,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // pinch to zoom. A press that does not move is a click. The wheel zooms, except that rolling down
   // at full size scrolls the page on to the footer, and rolling up scrolls it back first.
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const drag = useRef<{ id: number; x: number; y: number; base: number; view: typeof view; time: boolean; moved: boolean } | null>(null)
+  const drag = useRef<{ id: number; x: number; y: number; base: number; view: typeof view; time: boolean; moved: boolean; hour?: number } | null>(null)
   const pinch = useRef<{ dist: number; mid: [number, number]; view: typeof view } | null>(null)
   const dragged = useRef(false)
   const dragFrame = useRef(0)
@@ -707,6 +709,9 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     }
     if (d.time) {
       const minutes = Math.round((dx / scale) * DRAG_MINUTES)
+      const hour = Math.floor((d.base + minutes * 60_000) / HOUR)
+      if (d.hour !== undefined && hour !== d.hour) play('tick')
+      d.hour = hour
       later(() => {
         setDragShift(minutes)
         setPicked(wallTime(new Date(d.base + minutes * 60_000), place.timeZone))
@@ -905,6 +910,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <g
                   key={`${c.id}-${part}`}
                   className={`sky-figure${on ? ' on' : ''}`}
+                  data-sound={on ? 'unpick' : 'sparkle'}
                   data-tip={figureTip(c)}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -1062,6 +1068,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 x={l.anchor === 'start' ? l.x + push : l.anchor === 'end' ? l.x - push : l.x}
                 y={l.anchor !== 'middle' || !spot ? l.y : l.y < spot[1] ? l.y - push : l.y + push}
                 textAnchor={l.anchor}
+                data-sound={l.key === chosen ? 'unpick' : l.kind === 'figure' ? 'sparkle' : 'pick'}
                 dominantBaseline="central"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1116,6 +1123,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             type="button"
             className={`ghost toggle${picked ? '' : ' on'}`}
             aria-pressed={!picked}
+            // Already following the clock: pressing again only refreshes it
+            data-sound={picked ? 'on' : 'tap'}
             onClick={() => {
               setNow(new Date())
               setPicked(null)
@@ -1214,7 +1223,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               {' · '}
               {azimuth(pickFigure.label.az)} · {t('高 {altitude}°', { altitude: pickFigure.label.alt.toFixed(1) })}
             </span>
-            <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+            <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
               ✕
             </button>
           </div>
@@ -1228,11 +1237,11 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             </span>
             {/* With the paths off, the chosen one's is a click away */}
             {!showPaths && (
-              <button type="button" className="ghost sky-show-path" onClick={togglePaths}>
+              <button type="button" className="ghost sky-show-path" data-sound="on" onClick={togglePaths}>
                 {t('显示轨迹')}
               </button>
             )}
-            <button type="button" className="ghost sky-unchoose" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+            <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
               ✕
             </button>
           </div>
@@ -1256,6 +1265,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 aria-selected={chosen === b.key}
                 onClick={() => choose(b.key)}
                 onKeyDown={chooseKeys(b.key)}
+                data-sound={chosen === b.key ? 'unpick' : 'pick'}
               >
                 <td>
                   <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
@@ -1330,13 +1340,13 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 </>
               )}
               <div className="sky-zoom-buttons" role="group" aria-label={t('缩放')}>
-                <button type="button" aria-label={t('放大')} title={t('放大')} disabled={view.z >= Z_MAX} onClick={() => zoomBy(1.6)}>
+                <button type="button" data-sound="zoomIn" aria-label={t('放大')} title={t('放大')} disabled={view.z >= Z_MAX} onClick={() => zoomBy(1.6)}>
                   +
                 </button>
-                <button type="button" aria-label={t('缩小')} title={t('缩小')} disabled={view.z <= Z_MIN} onClick={() => zoomBy(1 / 1.6)}>
+                <button type="button" data-sound="zoomOut" aria-label={t('缩小')} title={t('缩小')} disabled={view.z <= Z_MIN} onClick={() => zoomBy(1 / 1.6)}>
                   −
                 </button>
-                <button type="button" aria-label={t('复原')} title={t('复原')} disabled={view.z <= Z_MIN} onClick={() => setView({ z: 1, x: 0, y: 0 })}>
+                <button type="button" data-sound="zoomOut" aria-label={t('复原')} title={t('复原')} disabled={view.z <= Z_MIN} onClick={() => setView({ z: 1, x: 0, y: 0 })}>
                   ⟲
                 </button>
               </div>

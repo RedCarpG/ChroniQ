@@ -82,7 +82,7 @@ export function PageMenu({ page, onPick }: { page: Page; onPick: (page: Page) =>
         </span>
       </button>
       {open && (
-        <div id="page-menu" className="page-menu-panel" role="menu" aria-label={t('页面')} onKeyDown={onKey}>
+        <div id="page-menu" className="page-menu-panel" role="menu" aria-label={t('页面')} onKeyDown={onKey} data-sounds="page">
           {PAGE_GROUPS.map((g) => (
             <div key={g.title} className="page-menu-group" role="group" aria-label={tr(g.title)}>
               <div className="page-menu-title">{tr(g.title)}</div>
