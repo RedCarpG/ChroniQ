@@ -16,6 +16,7 @@
   "dependencies": {
     "astronomy-engine": "^2.1.19",
     "iztro": "^2.6.3",
+    "modern-screenshot": "^4.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tyme4ts": "^1.5.3"

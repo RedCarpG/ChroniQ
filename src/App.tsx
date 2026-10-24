@@ -7,6 +7,7 @@ import { PageMenu, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
 import { useOnline } from './pwa'
+import { ExportButton } from './components/ExportButton'
 import { ShareButton } from './components/ShareButton'
 import { smoothUpdate } from './components/smoothUpdate'
 import { SPLASH_FADE_IN_MS, SplashOverlay, SplashSignal, holdSplash } from './components/Splash'
@@ -125,7 +126,10 @@ export function App() {
           <div className="topbar-right">
             <PageMenu page={tab} onPick={goTab} />
             {tab !== 'calendar' && tab !== 'sky' && (
-              <ShareButton chart={{ tab, input: baziInput }} />
+              <>
+                <ExportButton chart={{ tab, input: baziInput }} />
+                <ShareButton chart={{ tab, input: baziInput }} />
+              </>
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
