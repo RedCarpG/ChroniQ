@@ -527,7 +527,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: [(a.x + b.x) / 2, (a.y + b.y) / 2] as [number, number] }
   }
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
+    // The middle button turns the time at any zoom (and is kept from starting the browser's autoscroll)
+    const middle = e.pointerType === 'mouse' && e.button === 1
+    if (middle) e.preventDefault()
+    else if (e.pointerType === 'mouse' && e.button !== 0) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (pointers.current.size === 2) {
       // A second finger: the drag becomes a pinch
@@ -536,7 +539,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       pinch.current = { ...pinchOf(), view: viewRef.current }
       return
     }
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: viewRef.current.z <= Z_MIN, moved: false }
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: middle || viewRef.current.z <= Z_MIN, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -1055,7 +1058,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <>
                   <div className="sky-readout" ref={readoutRef} aria-hidden="true" />
                   <div className="sky-drag-hint" aria-hidden="true">
-                    {view.z > Z_MIN ? t('拖动移动星图 · 缩回原大小后左右拖动可转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
+                    {view.z > Z_MIN ? t('拖动移动星图 · 中键左右拖动转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
                   </div>
                 </>
               )}

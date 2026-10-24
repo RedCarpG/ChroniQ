@@ -136,7 +136,7 @@ export const SKY: Record<string, string> = {
   '指向 {direction} · 高 {altitude}°': 'Pointing {direction} · altitude {altitude}°',
   // Zooming the sky
   '滚轮或双指缩放 · 左右拖动转动时间': 'Wheel or pinch to zoom · drag sideways to turn time',
-  '拖动移动星图 · 缩回原大小后左右拖动可转动时间': 'Drag to move the map · back at full size, drag sideways to turn time',
+  '拖动移动星图 · 中键左右拖动转动时间': 'Drag to move the map · drag sideways with the middle button to turn time',
   缩放: 'Zoom',
   放大: 'Zoom in',
   缩小: 'Zoom out',

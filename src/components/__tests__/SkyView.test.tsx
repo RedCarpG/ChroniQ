@@ -168,6 +168,24 @@ describe('SkyView hovered while one is chosen', () => {
 })
 
 describe('SkyView dragged through time', () => {
+  it('turns the time with the middle button also when zoomed in, where the left button moves the map', () => {
+    const { map, time } = setUp()
+    fireEvent.click(document.querySelector('.sky-zoom-buttons [aria-label="放大"]')!)
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+    const transform = () => map.querySelector('g')!.getAttribute('transform')
+    const before = transform()
+    fireEvent.pointerDown(map, { pointerId: 2, pointerType: 'mouse', button: 1, clientX: 100, clientY: 200 })
+    fireEvent.pointerMove(map, { pointerId: 2, pointerType: 'mouse', clientX: 372, clientY: 200 })
+    flush()
+    // 272 px at 1.6 times is 170 map units: three hours, and the map has not moved
+    expect(time()).toBe('05:57')
+    expect(transform()).toBe(before)
+    fireEvent.pointerUp(map, { pointerId: 2, pointerType: 'mouse', clientX: 372, clientY: 200 })
+  })
+
   it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
     const { map, row, info, time } = setUp()
     fireEvent.click(row('木星'))
