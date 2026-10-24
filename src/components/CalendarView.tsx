@@ -15,7 +15,7 @@ import {
   todaySolar,
   weekTitles,
 } from '../lib/calendar'
-import { REGIONS, regionDays, type RegionDay } from '../lib/regionHolidays'
+import { REGIONS, loadRegion, regionDays, saveRegion, type Region, type RegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
@@ -35,11 +35,16 @@ export function CalendarView({ onPickBazi }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
-  const { weekStart, dayGanzhi, language, region } = useSettings()
+  const { weekStart, dayGanzhi, language } = useSettings()
   const term = useTerm()
   const t = useT()
   const en = language === 'en'
-  // 其他地区节日: the chosen country's holidays and notable days
+  // 其他地区节日: another country's holidays and notable days, picked on this page
+  const [region, setRegion] = useState<Region>(loadRegion)
+  const pickRegion = (next: Region) => {
+    setRegion(next)
+    saveRegion(next)
+  }
   const regionOf = (s: SolarDay) => regionDays(region, s.getYear(), s.getMonth(), s.getDay())
   const regionTag = region === 'none' ? '' : REGIONS[region].tag
   const dayName = (d: RegionDay) => (en ? d.en : d.name)
@@ -136,6 +141,17 @@ export function CalendarView({ onPickBazi }: Props) {
                 zodiac: term(lunarYear.getEarthBranch().getZodiac().getName()),
               })}
             </span>
+            <label className="cal-region">
+              <span className="muted">{t('其他地区节日')}</span>
+              <select value={region} onChange={(e) => pickRegion(e.target.value as Region)}>
+                <option value="none">{t('不显示')}</option>
+                {(Object.keys(REGIONS) as (keyof typeof REGIONS)[]).map((code) => (
+                  <option key={code} value={code}>
+                    {t(REGIONS[code].name)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="cal-tools">
             <div className="seg small" role="group" aria-label={t('视图')}>
@@ -220,7 +236,14 @@ export function CalendarView({ onPickBazi }: Props) {
         )}
 
         {mode === 'week' && (
-          <WeekView days={weekDays} selected={selected} onSelect={select} showGanzhi={dayGanzhi === 'show'} regionOf={regionOf} />
+          <WeekView
+            days={weekDays}
+            selected={selected}
+            onSelect={select}
+            showGanzhi={dayGanzhi === 'show'}
+            regionOf={regionOf}
+            regionTag={regionTag}
+          />
         )}
 
         {mode === 'year' && (
