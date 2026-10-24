@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { SETTING_OPTIONS, type Settings } from '../lib/settings'
+import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 /** Gear button in the top bar opening display settings. */
 export function SettingsMenu({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -14,7 +16,7 @@ export function SettingsMenu({ settings, onChange }: { settings: Settings; onCha
       <button
         type="button"
         className="icon-btn"
-        aria-label="设置"
+        aria-label={t('设置')}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -27,11 +29,11 @@ export function SettingsMenu({ settings, onChange }: { settings: Settings; onCha
         </svg>
       </button>
       {open && (
-        <div className="settings-panel" role="dialog" aria-label="设置">
+        <div className="settings-panel" role="dialog" aria-label={t('设置')}>
           {(Object.keys(SETTING_OPTIONS) as (keyof Settings)[]).map((key) => (
             <div key={key} className="setting-row">
-              <span className="setting-title">{SETTING_OPTIONS[key].title}</span>
-              <div className="seg small" role="group" aria-label={SETTING_OPTIONS[key].title}>
+              <span className="setting-title">{t(SETTING_OPTIONS[key].title)}</span>
+              <div className="seg small" role="group" aria-label={t(SETTING_OPTIONS[key].title)}>
                 {SETTING_OPTIONS[key].options.map((o) => (
                   <button
                     key={o.value}
@@ -40,7 +42,7 @@ export function SettingsMenu({ settings, onChange }: { settings: Settings; onCha
                     aria-pressed={settings[key] === o.value}
                     onClick={() => onChange({ ...settings, [key]: o.value })}
                   >
-                    {o.label}
+                    {t(o.label)}
                   </button>
                 ))}
               </div>

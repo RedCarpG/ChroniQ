@@ -112,6 +112,9 @@ export function App() {
     saveSettings(next)
   }
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  useEffect(() => {
+    document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
+  }, [settings.language])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
 
   return (

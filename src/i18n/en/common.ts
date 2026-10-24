@@ -1,0 +1,30 @@
+// English for text shared across the app: the top bar, settings, menus and
+// buttons used on several pages.
+export const COMMON: Record<string, string> = {
+  // Settings
+  设置: 'Settings',
+  语言: 'Language',
+  中文: '中文',
+  English: 'English',
+  颜色模式: 'Colour mode',
+  跟随系统: 'System',
+  浅色: 'Light',
+  深色: 'Dark',
+  专有名词: 'Chinese terms',
+  繁體: '繁體',
+  简体: '简体',
+  每周起始: 'Week starts on',
+  周一: 'Monday',
+  周日: 'Sunday',
+  日历显示日干支: 'Day 干支 in calendar',
+  显示: 'Show',
+  隐藏: 'Hide',
+  紫微星曜配色: '紫微 star colours',
+  按五行: 'By element',
+  按吉凶: 'By fortune',
+  显示大小: 'Display size',
+  自动: 'Auto',
+  标准: 'Standard',
+  大: 'Large',
+  特大: 'Extra large',
+}
