@@ -131,7 +131,10 @@ export function CalendarView({ onPickBazi }: Props) {
   const monthCells = scroll.current ? scroll.current.cells.map(withChina) : cells
 
   // The scroll: hold the window at six rows, run the strip from the old month's rows to the
-  // new month's, then show the plain grid again (it lines up with the strip's last frame).
+  // new month's, then show the plain grid again. The strip keeps its last frame (fill) until
+  // the plain grid has rendered, and only then is the animation dropped, in the same layout
+  // pass, before anything is painted: the plain grid lines up with that frame, so nothing
+  // moves or flashes at the swap.
   const windowRef = useRef<HTMLDivElement>(null)
   const gridHeight = useRef(0)
   const running = useRef<{ id: number; anim: Animation } | null>(null)
@@ -141,27 +144,32 @@ export function CalendarView({ onPickBazi }: Props) {
     const s = scroll.current
     if (!win || !grid) return
     if (!s) {
-      gridHeight.current = grid.offsetHeight
+      if (running.current) {
+        running.current.anim.cancel()
+        running.current = null
+        win.style.height = ''
+        win.classList.remove('scrolling')
+      }
+      gridHeight.current = grid.getBoundingClientRect().height / zoomOf(grid)
       return
     }
     if (running.current?.id === s.id) return
     running.current?.anim.cancel()
+    // Exact (fractional) offsets of the two months' first rows, so the last frame lines up
+    // with the plain grid to the sub-pixel; measured sizes include the page zoom (显示大小)
     const days = grid.querySelectorAll<HTMLElement>('.day')
-    const row = days[7].offsetTop - days[0].offsetTop
-    win.style.height = `${gridHeight.current || row * 6}px`
+    const zoom = zoomOf(grid)
+    const top = (rowIndex: number) => (days[rowIndex * 7].getBoundingClientRect().top - days[0].getBoundingClientRect().top) / zoom
+    win.style.height = `${gridHeight.current || top(6)}px`
     win.classList.add('scrolling')
     const anim = grid.animate(
-      [{ transform: `translateY(${-s.fromRow * row}px)` }, { transform: `translateY(${-s.toRow * row}px)` }],
-      { duration: 420, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+      [{ transform: `translateY(${-top(s.fromRow)}px)` }, { transform: `translateY(${-top(s.toRow)}px)` }],
+      { duration: 420, easing: 'cubic-bezier(0.33, 1, 0.68, 1)', fill: 'forwards' },
     )
     running.current = { id: s.id, anim }
     const finish = () => {
       if (scroll.current !== s) return
       scroll.current = null
-      running.current = null
-      win.style.height = ''
-      win.classList.remove('scrolling')
-      anim.cancel()
       scrolled((n) => n + 1)
     }
     anim.onfinish = finish
@@ -561,6 +569,9 @@ export function CalendarView({ onPickBazi }: Props) {
     </div>
   )
 }
+
+/** How much the page's CSS zoom (显示大小) scales what getBoundingClientRect measures */
+const zoomOf = (el: HTMLElement) => (el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth : 1)
 
 /** The branch of the 干支 year that most of a Gregorian year falls in (from 立春) */
 const yearBranch = (year: number) => SolarDay.fromYmd(year, 6, 1).getSixtyCycleDay().getYear().getEarthBranch().getName()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SolarDay } from 'tyme4ts'
 import { CHART_ITEMS, chartYear, pillarDays, taiSui, type ChartDay, type ChartItem } from '../lib/chartDays'
 import { loadSchools } from '../lib/schools'
@@ -8,6 +8,7 @@ import { useCalendarHidden, useSavedCharts } from './chartStore'
 type Western = typeof import('../lib/chartWestern')
 
 const ITEMS_KEY = 'chroniq-calendar-chart-items'
+const BRANCHES = '子丑寅卯辰巳午未申酉戌亥'
 
 function loadItems(): ChartItem[] {
   try {
@@ -50,16 +51,58 @@ export function useChartDays() {
     if (wantWestern && !western) import('../lib/chartWestern').then((m) => setWestern(() => m))
   }, [wantWestern, western])
 
+  // A year of 星盘 dates takes a while to work out (daily planet positions), so it is done
+  // just after the year is first shown, when the page is idle, not while the calendar moves
+  const westernDone = useRef(new Map<string, Map<string, ChartDay[]>>())
+  const westernQueued = useRef(new Set<string>())
+  const [westernVersion, setWesternVersion] = useState(0)
+  const westernOf = (c: (typeof shown)[number], year: number) => {
+    if (!western) return undefined
+    const key = JSON.stringify([c.id, c.name, c.input, year])
+    const done = westernDone.current.get(key)
+    if (done || westernQueued.current.has(key)) return done
+    westernQueued.current.add(key)
+    const run = () => {
+      westernDone.current.set(key, western.westernYear(c, year))
+      setWesternVersion((v) => v + 1)
+    }
+    if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 })
+    else setTimeout(run, 50)
+    return undefined
+  }
+
+  // Looked up per day cell, so built once: each year's dates for all shown charts (as each
+  // year is first needed), and the 冲 / 合 / 刑 for each of the twelve day branches
+  const index = useMemo(() => {
+    const years = new Map<number, Map<string, ChartDay[]>>()
+    const byBranch = new Map<string, ChartDay[]>()
+    if (items.includes('clash')) for (const b of BRANCHES) byBranch.set(b, shown.flatMap((c) => pillarDays(c, b, schools)))
+    const yearDays = (year: number) => {
+      let days = years.get(year)
+      if (!days) {
+        days = new Map()
+        const add = (from: Map<string, ChartDay[]>) => {
+          for (const [k, v] of from) days!.set(k, [...(days!.get(k) ?? []), ...v])
+        }
+        for (const c of shown) {
+          add(chartYear(c, year, items, schools))
+          const west = items.includes('western') ? westernOf(c, year) : undefined
+          if (west) add(west)
+        }
+        years.set(year, days)
+      }
+      return days
+    }
+    return { yearDays, byBranch }
+    // westernOf reads refs; westernVersion re-runs this once a 星盘 year is ready
+  }, [shown, items, schools, western, westernVersion])
+
   /** The shown charts' dates on a day (its 干支 gives the day's branch) */
   const daysOf = (solar: SolarDay, ganzhi: string): ChartDay[] => {
     if (shown.length === 0 || items.length === 0) return []
-    const y = solar.getYear()
-    const key = `${solar.getMonth()}-${solar.getDay()}`
-    return shown.flatMap((c) => [
-      ...(chartYear(c, y, items, schools).get(key) ?? []),
-      ...(western && items.includes('western') ? (western.westernYear(c, y).get(key) ?? []) : []),
-      ...(items.includes('clash') ? pillarDays(c, ganzhi[1], schools) : []),
-    ])
+    const dated = index.yearDays(solar.getYear()).get(`${solar.getMonth()}-${solar.getDay()}`) ?? []
+    const branch = index.byBranch.get(ganzhi[1]) ?? []
+    return branch.length ? [...dated, ...branch] : dated
   }
   /** 本命年 / 冲太岁 of the shown charts in a 干支 year (by its branch) */
   const taiSuiOf = (yearBranch: string) =>
