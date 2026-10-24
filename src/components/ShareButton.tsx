@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { shareUrl, type SharedChart } from '../lib/shareLink'
-import { useTerm } from '../settingsContext'
+import { useT, useTerm } from '../settingsContext'
 
 /**
  * Top-bar button that shares a link to the chart on screen: the system share
@@ -8,18 +8,19 @@ import { useTerm } from '../settingsContext'
  */
 export function ShareButton({ chart }: { chart: SharedChart }) {
   const term = useTerm()
+  const t = useT()
   const [note, setNote] = useState<string | null>(null)
   useEffect(() => {
     if (!note) return
-    const t = setTimeout(() => setNote(null), 2200)
-    return () => clearTimeout(t)
+    const id = setTimeout(() => setNote(null), 2200)
+    return () => clearTimeout(id)
   }, [note])
 
   const share = async () => {
     const url = shareUrl(chart)
     if (navigator.share && matchMedia('(pointer: coarse)').matches) {
       try {
-        await navigator.share({ title: '星曆 ChroniQ 命盘', url })
+        await navigator.share({ title: t('星曆 ChroniQ 命盘'), url })
         return
       } catch (e) {
         if ((e as Error).name === 'AbortError') return
@@ -27,16 +28,16 @@ export function ShareButton({ chart }: { chart: SharedChart }) {
     }
     try {
       await navigator.clipboard.writeText(url)
-      setNote('链接已复制，打开即是这张命盘')
+      setNote(t('链接已复制，打开即是这张命盘'))
     } catch {
       // No clipboard access (plain http, old browsers): show the link to copy by hand.
-      window.prompt('复制这个链接分享命盘：', url)
+      window.prompt(t('复制这个链接分享命盘：'), url)
     }
   }
 
   return (
     <div className="share">
-      <button type="button" className="icon-btn" aria-label="分享命盘链接" title="分享命盘链接" onClick={share}>
+      <button type="button" className="icon-btn" aria-label={t('分享命盘链接')} title={t('分享命盘链接')} onClick={share}>
         <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <path
             fill="none"

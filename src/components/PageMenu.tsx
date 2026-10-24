@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTerm } from '../settingsContext'
+import { useT, useTerm } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 export type Page = 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky'
 
-/** The pages, grouped as the menu lists them */
+/** The pages, grouped as the menu lists them (shown through t(): src/i18n/__tests__/calendar.test.ts checks the English) */
 export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; desc: string }[] }[] = [
   {
     title: '历法',
@@ -31,6 +31,9 @@ const ALL = PAGE_GROUPS.flatMap((g) => g.pages)
  */
 export function PageMenu({ page, onPick }: { page: Page; onPick: (page: Page) => void }) {
   const term = useTerm()
+  const t = useT()
+  // Page names and notes are interface text; term() still turns the 干支 etc. in them to 繁體
+  const tr = (text: string) => term(t(text))
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -72,16 +75,16 @@ export function PageMenu({ page, onPick }: { page: Page; onPick: (page: Page) =>
           }
         }}
       >
-        <span>{term(current.name)}</span>
+        <span>{tr(current.name)}</span>
         <span className="chev" aria-hidden="true">
           ▾
         </span>
       </button>
       {open && (
-        <div id="page-menu" className="page-menu-panel" role="menu" aria-label="页面" onKeyDown={onKey}>
+        <div id="page-menu" className="page-menu-panel" role="menu" aria-label={t('页面')} onKeyDown={onKey}>
           {PAGE_GROUPS.map((g) => (
-            <div key={g.title} className="page-menu-group" role="group" aria-label={g.title}>
-              <div className="page-menu-title">{term(g.title)}</div>
+            <div key={g.title} className="page-menu-group" role="group" aria-label={tr(g.title)}>
+              <div className="page-menu-title">{tr(g.title)}</div>
               {g.pages.map((p) => (
                 <button
                   key={p.page}
@@ -95,8 +98,8 @@ export function PageMenu({ page, onPick }: { page: Page; onPick: (page: Page) =>
                     onPick(p.page)
                   }}
                 >
-                  <b>{term(p.name)}</b>
-                  <small>{term(p.desc)}</small>
+                  <b>{tr(p.name)}</b>
+                  <small>{tr(p.desc)}</small>
                 </button>
               ))}
             </div>

@@ -458,6 +458,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 .settings { position: relative; }
 .share { position: relative; }
+.export-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; display: grid; min-width: 132px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgb(0 0 0 / 0.16);
+  animation: tip-in 0.15s ease-out;
+}
+.export-menu button { padding: 8px 12px; border: 0; border-radius: 8px; background: none; text-align: left; font-size: 14px; }
+.export-menu button:hover, .export-menu button:focus-visible { background: var(--surface-2); color: var(--accent); }
 .share-note {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; white-space: nowrap; padding: 8px 12px;
   font-size: 13px; background: var(--text); color: var(--surface); border-radius: 8px; animation: tip-in 0.2s ease-out;
@@ -679,6 +686,12 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .section-nav-tabs { position: relative; display: flex; flex-direction: column; margin: 2px 0; }
 .section-nav-tabs button { height: var(--tab-h); }
 .section-nav-text { display: block; width: 1em; line-height: 1.15; word-break: break-all; }
+/* English labels run sideways down the tab instead of one letter per line
+   (Chinese characters stay upright); the tabs grow to fit them. */
+:root:lang(en) .section-nav { --tab-h: 74px; }
+:root:lang(en) .section-nav-text, :root:lang(en) .drawer-handle-text {
+  width: auto; writing-mode: vertical-rl; word-break: normal; white-space: nowrap; line-height: 1;
+}
 .section-nav-thumb {
   position: absolute; top: 0; left: 0; right: 0; height: var(--tab-h); border-radius: 8px;
   background: var(--accent-soft); transform: translateY(calc(var(--active, 0) * var(--tab-h)));
@@ -948,6 +961,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .overlay-bar .date-parts .year-input { width: 76px; }
 .overlay-bar .date-parts select { padding-right: 26px; }
 .overlay-bar .ghost { margin-left: 0; height: 32px; font-size: 13px; }
+.overlay-bar .seg button { white-space: nowrap; }
 .star-wheel.with-transit { --overlay: var(--ly-yearly); }
 .star-wheel.with-progressed { --overlay: var(--ly-decadal); }
 .star-wheel.with-synastry { --overlay: var(--ly-monthly); }
@@ -1142,3 +1156,27 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .about-install { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0; font-size: 13px; }
 .about-install .ghost { margin: 0; height: 32px; font-size: 13px; }
 .offline-badge { padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); }
+
+/* ---------- 打印 ---------- */
+/* Print the charts, not the app around them: light palette whatever the colour
+   mode, no controls, drawer, nav or birth form (the cards carry the birth data),
+   rows laid out in full instead of scrolling, and cards kept whole. */
+@media print {
+  html:root:root {
+    --bg: #ffffff; --surface: #ffffff; --surface-2: #f1ece4; --text: #2b2724; --muted: #6f665f;
+    --border: #ddd5ca; --accent: #b23a2e; --accent-soft: #f6e3df; --good: #2f7d4f; --bad: #b23a2e;
+    --wood: #3f8f4f; --fire: #d1452f; --earth: #a9772a; --metal: #b08a1a; --water: #2d6cb5; --weekend: #fcf5f2;
+    --logo-line: #b48a4c; --logo-star: #d7a765; --shadow: none; --ui-zoom: 1;
+    --ly-decadal: #23838a; --ly-yearly: #c0661a; --ly-monthly: #5a62c2; --ly-daily: #b0407a; --ly-hourly: #5d7a1e;
+    color-scheme: light;
+  }
+  body { background: #fff; }
+  .app { max-width: none; padding: 0; }
+  .topbar-right, .drawer, .splash, footer, .bazi-form, .side-handle, .fortune-side, .zw-toolbar, .overlay-bar,
+  .sky-controls, .fortunes-head .ghost, .fortunes-head .seg { display: none !important; }
+  .card { box-shadow: none; break-inside: avoid; }
+  .fortune-combo { display: block; }
+  .fortune-row, .table-scroll, .ziwei-scroll { overflow: visible !important; mask-image: none !important; }
+  .table-scroll .pillars { min-width: 0; }
+  * { animation: none !important; transition: none !important; }
+}

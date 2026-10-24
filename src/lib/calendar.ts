@@ -25,14 +25,30 @@ export type WeekStart = 'mon' | 'sun'
 
 const WEEKDAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'] // tyme4ts index: 0 = Sunday
 
-/** Column headers starting from the given weekday, with weekend flags. */
-export function weekTitles(weekStart: WeekStart = 'mon'): { name: string; weekend: boolean }[] {
+/** Short English weekday names, for the calendar in English (tyme4ts index: 0 = Sunday) */
+export const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** Column headers starting from the given weekday, with weekend flags and the weekday index (0 = Sunday). */
+export function weekTitles(weekStart: WeekStart = 'mon'): { name: string; weekend: boolean; index: number }[] {
   const offset = weekStart === 'mon' ? 1 : 0
   return Array.from({ length: 7 }, (_, i) => {
     const index = (i + offset) % 7
-    return { name: WEEKDAY_NAMES[index], weekend: index === 0 || index === 6 }
+    return { name: WEEKDAY_NAMES[index], weekend: index === 0 || index === 6, index }
   })
 }
+
+/**
+ * A calendar date in English (British style, e.g. 24 October 2026), from the
+ * date's own year, month and day: no time zone comes into it.
+ */
+export function enDate(year: number, month: number, day: number, options: Intl.DateTimeFormatOptions): string {
+  const d = new Date(Date.UTC(2000, month - 1, day))
+  d.setUTCFullYear(year)
+  return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(d)
+}
+
+/** English month name, e.g. October / Oct */
+export const enMonth = (month: number, style: 'long' | 'short' = 'long') => enDate(2000, month, 1, { month: style })
 
 export function todaySolar(): SolarDay {
   const d = new Date()
@@ -139,7 +155,12 @@ export interface DayDetail {
   /** 年、月、日三柱，供竖排显示 */
   pillars: { label: string; stem: Glyph; branch: Glyph }[]
   zodiac: string
+  /** 节气 and the day within it, e.g. 霜降第1天 */
   term: string
+  /** The 节气 of term, e.g. 霜降 */
+  termName: string
+  /** The day within it, from 1 */
+  termDay: number
   festivals: string[]
   duty: string
   twelveStar: string
@@ -176,6 +197,8 @@ export function buildDayDetail(solar: SolarDay): DayDetail {
     ],
     zodiac: lunar.getYearSixtyCycle().getEarthBranch().getZodiac().getName(),
     term: `${term.getSolarTerm().getName()}第${term.getDayIndex() + 1}天`,
+    termName: term.getSolarTerm().getName(),
+    termDay: term.getDayIndex() + 1,
     festivals: [...new Set(festivals)],
     duty: lunar.getDuty().getName(),
     twelveStar: lunar.getTwelveStar().getName(),

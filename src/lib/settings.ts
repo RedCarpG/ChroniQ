@@ -1,6 +1,8 @@
 // App-wide display settings, kept per viewer in localStorage.
 
 export interface Settings {
+  /** 界面语言 (proper nouns stay Chinese) */
+  language: 'zh' | 'en'
   theme: 'system' | 'light' | 'dark'
   /** 专有名词字形 */
   script: 'trad' | 'simp'
@@ -13,9 +15,16 @@ export interface Settings {
   uiScale: 'auto' | '100' | '115' | '130'
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
+  language: {
+    title: '语言',
+    options: [
+      { value: 'zh', label: '中文' },
+      { value: 'en', label: 'English' },
+    ],
+  },
   theme: {
     title: '颜色模式',
     options: [

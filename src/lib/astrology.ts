@@ -121,7 +121,6 @@ export interface StarChart {
   aspects: Aspect[]
 }
 
-/** "白羊 12°34′" */
 /** "UTC+8", "UTC+5:30", "UTC−4" */
 export function formatOffset(minutes: number): string {
   const h = Math.floor(Math.abs(minutes) / 60)
@@ -133,7 +132,8 @@ export function formatOffset(minutes: number): string {
 export const formatCoords = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`
 
-export function formatLon(lon: number): string {
+/** "白羊 12°34′"; signName renames the sign (e.g. into English), by default as in SIGNS. */
+export function formatLon(lon: number, signName: (sign: string) => string = (s) => s): string {
   const inSign = norm(lon) % 30
   let deg = Math.floor(inSign)
   let min = Math.round((inSign - deg) * 60)
@@ -141,7 +141,7 @@ export function formatLon(lon: number): string {
     deg += 1
     min = 0
   }
-  return `${SIGNS[Math.floor(norm(lon) / 30)]} ${deg}°${String(min).padStart(2, '0')}′`
+  return `${signName(SIGNS[Math.floor(norm(lon) / 30)])} ${deg}°${String(min).padStart(2, '0')}′`
 }
 
 /* ---------- Computation ---------- */

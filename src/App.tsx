@@ -7,6 +7,7 @@ import { PageMenu, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
 import { useOnline } from './pwa'
+import { ExportButton } from './components/ExportButton'
 import { ShareButton } from './components/ShareButton'
 import { smoothUpdate } from './components/smoothUpdate'
 import { SPLASH_FADE_IN_MS, SplashOverlay, SplashSignal, holdSplash } from './components/Splash'
@@ -19,6 +20,7 @@ import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/sta
 import { DEFAULT_PLACE } from './lib/place'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
+import { translate, type Vars } from './i18n'
 
 type Tab = Page
 /** Order of the pages, which sets the way a page switch slides. */
@@ -110,7 +112,13 @@ export function App() {
     setSettings(next)
     saveSettings(next)
   }
+  // App sits outside the settings context it provides, so it reads the language itself
+  const t = (text: string, vars?: Vars) => translate(settings.language, text, vars)
+  const [creditBefore, creditAfter] = t('历法数据由 {lib} 提供 · 仅供参考').split('{lib}')
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  useEffect(() => {
+    document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
+  }, [settings.language])
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
 
   return (
@@ -125,7 +133,10 @@ export function App() {
           <div className="topbar-right">
             <PageMenu page={tab} onPick={goTab} />
             {tab !== 'calendar' && tab !== 'sky' && (
-              <ShareButton chart={{ tab, input: baziInput }} />
+              <>
+                <ExportButton chart={{ tab, input: baziInput }} />
+                <ShareButton chart={{ tab, input: baziInput }} />
+              </>
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
@@ -173,9 +184,11 @@ export function App() {
           )}
         </main>
         <footer className="muted">
-          {!online && <span className="offline-badge">离线中 · 排盘与天象照常可用</span>}
+          {!online && <span className="offline-badge">{t('离线中 · 排盘与天象照常可用')}</span>}
           <span>
-            历法数据由 <a href="https://github.com/6tail/tyme4ts">tyme4ts</a> 提供 · 仅供参考
+            {creditBefore}
+            <a href="https://github.com/6tail/tyme4ts">tyme4ts</a>
+            {creditAfter}
           </span>
           <AboutBadges />
         </footer>

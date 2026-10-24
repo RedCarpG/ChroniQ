@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useT } from '../settingsContext'
 
 /** A loading screen stays at least this long, so a quick load fades in and out instead of flashing. */
 export const SPLASH_MIN_MS = 900
@@ -69,8 +70,9 @@ export function SplashOverlay() {
  * until the app first mounts), whose inline <style> styles both.
  */
 function Splash({ leaving }: { leaving: boolean }) {
+  const t = useT()
   return (
-    <div className={`splash fade-in${leaving ? ' done' : ''}`} role="status" aria-label="正在加载">
+    <div className={`splash fade-in${leaving ? ' done' : ''}`} role="status" aria-label={t('正在加载')}>
       <svg className="splash-mark" viewBox="0 0 64 64" aria-hidden="true">
         <g className="splash-ring">
           <circle cx="32" cy="32" r="23" fill="none" stroke="var(--splash-line)" strokeWidth="1.2" />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toUtc, type StarPlace } from '../lib/astrology'
 import { formatAzimuth, skyAt, type SkyBody, type SkyStar } from '../lib/sky'
+import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 
@@ -54,7 +55,8 @@ function placeLabels(points: { key: string; text: string; x: number; y: number; 
   const labels: Label[] = []
   for (const p of points) {
     const size = p.kind === 'body' ? 10 : 8.5
-    const w = [...p.text].length * size
+    // A Chinese character is about one em wide, a Latin letter about 0.6 of that
+    const w = [...p.text].reduce((sum, ch) => sum + (ch.charCodeAt(0) < 0x2e80 ? 0.62 : 1), 0) * size
     const h = size + 2
     const spots: [number, number, Label['anchor'], number][] = [
       [p.x + p.r + 3, p.y, 'start', p.x + p.r + 3],
@@ -74,11 +76,6 @@ function placeLabels(points: { key: string; text: string; x: number; y: number; 
   return labels
 }
 
-const LIGHT_NOTE = {
-  day: '太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。',
-  twilight: '晨昏蒙影中，只有最亮的星和行星可见。',
-  night: '',
-}
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (date: string) => {
@@ -110,6 +107,10 @@ function wallTime(d: Date, timeZone: string) {
  * moment until a date or time is picked (read in the place's time zone).
  */
 export function SkyView({ place }: { place: StarPlace }) {
+  const t = useT()
+  const { language } = useSettings()
+  const en = language === 'en'
+  const azimuth = (az: number) => formatAzimuth(az, language)
   const [now, setNow] = useState(() => new Date())
   const [picked, setPicked] = useState<{ date: string; time: string } | null>(null)
   useEffect(() => {
@@ -135,34 +136,36 @@ export function SkyView({ place }: { place: StarPlace }) {
           .sort((a, b) => a.mag - b.mag)
           .map((b) => {
             const [x, y] = project(b.az, b.alt)
-            return { key: b.key, text: b.name, x, y, r: bodyRadius(b), kind: 'body' as const }
+            return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b), kind: 'body' as const }
           }),
         ...sky.stars
           .filter((st) => st.name)
           .map((st) => {
             const [x, y] = project(st.az, st.alt)
-            return { key: `hip${st.hip}`, text: st.name!, x, y, r: starRadius(st.mag), kind: 'star' as const }
+            return { key: `hip${st.hip}`, text: t(st.name!), x, y, r: starRadius(st.mag), kind: 'star' as const }
           }),
       ]),
-    [sky],
+    // t is new each render but changes only with the language
+    [sky, language],
   )
 
+  const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
   return (
     <section className="card" id="sky-now">
       <div className="fortunes-head sky-head">
         <h3 className="section-title">
           <TitleMark />
-          此刻天空
+          {t('此刻天空')}
         </h3>
         <div className="overlay-bar sky-controls">
           <DateParts
-            label="日期"
+            label={t('日期')}
             value={ymd(wall.date)}
             onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
           />
           <input
             type="time"
-            aria-label="时间"
+            aria-label={t('时间')}
             value={wall.time}
             onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })}
           />
@@ -175,17 +178,19 @@ export function SkyView({ place }: { place: StarPlace }) {
               setPicked(null)
             }}
           >
-            现在
+            {t('现在')}
           </button>
         </div>
       </div>
       <p className="muted row-note">
-        {place.name}上空 · 当地时间 {wall.date} {wall.time}
-        {picked ? '' : '（随时间更新）'} · 上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。
+        {t('{place}上空 · 当地时间 {date} {time}', { place: t(place.name), date: wall.date, time: wall.time })}
+        {picked ? '' : t('（随时间更新）')}
+        {' · '}
+        {t('上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。')}
       </p>
 
       <div className="sky-layout">
-        <svg className={`sky-map sky-${sky.light}`} viewBox="0 0 400 400" role="img" aria-label="此刻天空星图">
+        <svg className={`sky-map sky-${sky.light}`} viewBox="0 0 400 400" role="img" aria-label={t('此刻天空星图')}>
           <circle className="sky-disc" cx={C} cy={C} r={R} />
           {[30, 60].map((alt) => (
             <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
@@ -194,23 +199,23 @@ export function SkyView({ place }: { place: StarPlace }) {
           <line className="sky-grid" x1={C - R} y1={C} x2={C + R} y2={C} />
           {(
             [
-              ['北', 0],
-              ['东', 90],
-              ['南', 180],
-              ['西', 270],
+              ['北', 'N', 0],
+              ['东', 'E', 90],
+              ['南', 'S', 180],
+              ['西', 'W', 270],
             ] as const
-          ).map(([label, az]) => {
+          ).map(([label, labelEn, az]) => {
             const [x, y] = project(az, -9)
             return (
               <text key={label} className="sky-compass" x={x} y={y} textAnchor="middle" dominantBaseline="central">
-                {label}
+                {en ? labelEn : label}
               </text>
             )
           })}
 
           <g className="sky-stars">
             {sky.stars.map((s) => (
-              <Star key={s.hip} star={s} />
+              <Star key={s.hip} star={s} name={s.name && t(s.name)} azimuth={azimuth} />
             ))}
           </g>
           <g className="sky-bodies">
@@ -218,9 +223,7 @@ export function SkyView({ place }: { place: StarPlace }) {
               const [x, y] = project(b.az, b.alt)
               return (
                 <g key={b.key} className={`sky-body sky-${b.key}`}>
-                  <title>
-                    {b.name} · {formatAzimuth(b.az)} · 高 {b.alt.toFixed(1)}°
-                  </title>
+                  <title>{t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })}</title>
                   <circle cx={x} cy={y} r={bodyRadius(b)} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
                 </g>
               )
@@ -246,10 +249,10 @@ export function SkyView({ place }: { place: StarPlace }) {
           <table className="star-table sky-table">
             <thead>
               <tr>
-                <th>天体</th>
-                <th>方位</th>
-                <th>高度</th>
-                <th>星等</th>
+                <th>{t('天体')}</th>
+                <th>{t('方位')}</th>
+                <th>{t('高度')}</th>
+                <th>{t('星等')}</th>
               </tr>
             </thead>
             <tbody>
@@ -257,18 +260,19 @@ export function SkyView({ place }: { place: StarPlace }) {
                 <tr key={b.key} className={b.alt < 0 ? 'below' : undefined}>
                   <td>
                     <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
-                    {b.name}
+                    {t(b.name)}
                   </td>
-                  <td>{formatAzimuth(b.az)}</td>
-                  <td>{b.alt < 0 ? '地平线下' : `${b.alt.toFixed(1)}°`}</td>
+                  <td>{azimuth(b.az)}</td>
+                  <td>{b.alt < 0 ? t('地平线下') : `${b.alt.toFixed(1)}°`}</td>
                   <td>{b.mag.toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="muted row-note">
-            {LIGHT_NOTE[sky.light] && <>{LIGHT_NOTE[sky.light]}</>}
-            地平线上有 {sky.stars.length} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。
+            {lightNote && <>{lightNote}</>}
+            {lightNote && en && ' '}
+            {t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
           </p>
         </div>
       </div>
@@ -276,15 +280,12 @@ export function SkyView({ place }: { place: StarPlace }) {
   )
 }
 
-function Star({ star: s }: { star: SkyStar }) {
+function Star({ star: s, name, azimuth }: { star: SkyStar; name?: string; azimuth: (az: number) => string }) {
+  const t = useT()
   const [x, y] = project(s.az, s.alt)
   return (
     <circle cx={x} cy={y} r={starRadius(s.mag)} fill={starColour(s.bv)}>
-      {s.name && (
-        <title>
-          {s.name} · {formatAzimuth(s.az)} · 高 {s.alt.toFixed(1)}°
-        </title>
-      )}
+      {name && <title>{t('{name} · {direction} · 高 {altitude}°', { name, direction: azimuth(s.az), altitude: s.alt.toFixed(1) })}</title>}
     </circle>
   )
 }

@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import type { BaziInput } from '../lib/bazi'
 import { loadCharts, sameInput, saveCharts, upsertChart, type SavedChart } from '../lib/savedCharts'
+import { translate, type Lang } from '../i18n'
+import { useSettings, useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 import { TitleMark } from './Logo'
 
@@ -13,6 +15,8 @@ export const DRAWER_RAIL_SLOT = 'drawer-rail-slot'
  * moves). Loading a chart closes it again.
  */
 export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad: (input: BaziInput) => void }) {
+  const t = useT()
+  const { language } = useSettings()
   const [charts, setCharts] = useState<SavedChart[]>(loadCharts)
   const active = charts.find((c) => sameInput(c.input, input))
   const [name, setName] = useState('')
@@ -26,20 +30,20 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
     saveCharts(next)
   }
   const save = () => {
-    const finalName = name.trim() || active?.name || `命盘${charts.length + 1}`
+    const finalName = name.trim() || active?.name || t('命盘{n}', { n: charts.length + 1 })
     update(upsertChart(charts, finalName, input))
     setName('')
   }
 
   return (
     <div className={`drawer${open ? ' open' : ''}`} ref={ref}>
-      <aside id="saved-charts" className="drawer-panel" aria-label="已保存的命盘" inert={!open}>
+      <aside id="saved-charts" className="drawer-panel" aria-label={t('已保存的命盘')} inert={!open}>
         <div className="drawer-head">
           <h3>
             <TitleMark />
-            已保存的命盘
+            {t('已保存的命盘')}
           </h3>
-          <button type="button" className="chip-x" aria-label="收起" onClick={close}>
+          <button type="button" className="chip-x" aria-label={t('收起')} onClick={close}>
             ×
           </button>
         </div>
@@ -51,14 +55,14 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
           }}
         >
           <input
-            aria-label="命盘名称"
-            placeholder={active ? `已保存为「${active.name}」` : '为当前命盘命名（可选）'}
+            aria-label={t('命盘名称')}
+            placeholder={active ? t('已保存为「{name}」', { name: active.name }) : t('为当前命盘命名（可选）')}
             maxLength={20}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <button type="submit" className="ghost">
-            {name.trim() && charts.some((c) => c.name === name.trim()) ? '更新' : '保存'}
+            {name.trim() && charts.some((c) => c.name === name.trim()) ? t('更新') : t('保存')}
           </button>
         </form>
         {charts.length > 0 ? (
@@ -74,12 +78,12 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
                   }}
                 >
                   <span className="saved-name">{c.name}</span>
-                  <small className="muted">{describe(c.input)}</small>
+                  <small className="muted">{describe(c.input, language)}</small>
                 </button>
                 <button
                   type="button"
                   className="chip-x"
-                  aria-label={`删除${c.name}`}
+                  aria-label={t('删除{name}', { name: c.name })}
                   onClick={() => update(charts.filter((x) => x !== c))}
                 >
                   ×
@@ -88,9 +92,9 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
             ))}
           </ul>
         ) : (
-          <p className="muted saved-empty">还没有保存的命盘。填好出生信息后，在上面命名并保存。</p>
+          <p className="muted saved-empty">{t('还没有保存的命盘。填好出生信息后，在上面命名并保存。')}</p>
         )}
-        <small className="muted">命盘只保存在本机浏览器中，不会上传。</small>
+        <small className="muted">{t('命盘只保存在本机浏览器中，不会上传。')}</small>
       </aside>
       <div className="drawer-rail">
         <button
@@ -98,10 +102,10 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
           className="drawer-handle"
           aria-expanded={open}
           aria-controls="saved-charts"
-          title="已保存的命盘"
+          title={t('已保存的命盘')}
           onClick={() => setOpen((o) => !o)}
         >
-          <span className="drawer-handle-text">命盘</span>
+          <span className="drawer-handle-text">{t('命盘')}</span>
           {charts.length > 0 && <span className="drawer-count">{charts.length}</span>}
         </button>
         {/* Pages can portal their own tabs in here, below the 命盘 tab. */}
@@ -112,6 +116,10 @@ export function SavedChartsDrawer({ input, onLoad }: { input: BaziInput; onLoad:
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
-const describe = (i: BaziInput) =>
-  `${i.year}-${pad(i.month)}-${pad(i.day)} ${pad(i.hour)}:${pad(i.minute)} ${i.gender === 1 ? '男' : '女'}` +
-  (i.place ? ` · ${i.place.name}${i.trueSolar ? '（真太阳时）' : ''}` : '')
+const describe = (i: BaziInput, lang: Lang) => {
+  const t = (text: string) => translate(lang, text)
+  return (
+    `${i.year}-${pad(i.month)}-${pad(i.day)} ${pad(i.hour)}:${pad(i.minute)} ${i.gender === 1 ? t('男') : t('女')}` +
+    (i.place ? ` · ${t(i.place.name)}${i.trueSolar ? t('（真太阳时）') : ''}` : '')
+  )
+}

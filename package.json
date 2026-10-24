@@ -16,15 +16,19 @@
   "dependencies": {
     "astronomy-engine": "^2.1.19",
     "iztro": "^2.6.3",
+    "modern-screenshot": "^4.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tyme4ts": "^1.5.3"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.20.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^30.1.3",
     "opencc-js": "^1.4.2",
     "typescript": "^5.9.0",
     "vite": "^7.1.0",

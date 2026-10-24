@@ -1,24 +1,30 @@
 import { InfoTip } from './InfoTip'
 import { SCHOOLS, optionLabel, type SchoolKey, type SchoolSettings } from '../lib/schools'
+import { useT } from '../settingsContext'
 
 /** Small "!" that explains a result depends on a 流派 choice. Opens on hover / tap. */
 export function SchoolMark({ school, settings }: { school: SchoolKey; settings: SchoolSettings }) {
+  const t = useT()
   const info = SCHOOLS[school]
+  // The chosen option goes in bold between the words around it.
+  const [before, after] = t('当前：{option}（可在「流派设置」中更改）').split('{option}')
   // Same portalled bubble as the glossary tips, so table cells (nowrap) and
   // scrolling containers (岁运盘) can neither squeeze nor clip it.
   return (
     <InfoTip
       className="plain school-mark"
       label={
-        <span className="school-dot" aria-label={`流派差异：${info.title}`}>
+        <span className="school-dot" aria-label={t('流派差异：{title}', { title: t(info.title) })}>
           !
         </span>
       }
-      title={info.title}
+      title={t(info.title)}
     >
-      <span>{info.summary}</span>
+      <span>{t(info.summary)}</span>
       <span>
-        当前：<b>{optionLabel(school, settings)}</b>（可在「流派设置」中更改）
+        {before}
+        <b>{t(optionLabel(school, settings))}</b>
+        {after}
       </span>
     </InfoTip>
   )
@@ -43,6 +49,7 @@ export function SchoolSettingsPanel<S extends { [K in keyof S]: string }>({
   onChange: (settings: S) => void
   registry?: Record<keyof S, SchoolRegistryEntry>
 }) {
+  const t = useT()
   return (
     <div className="school-panel">
       {(Object.keys(registry) as (keyof S & string)[]).map((key) => {
@@ -50,19 +57,19 @@ export function SchoolSettingsPanel<S extends { [K in keyof S]: string }>({
         const current = info.options.find((o) => o.value === settings[key])
         return (
           <label key={key} className="school-item">
-            <span className="school-title">{info.title}</span>
+            <span className="school-title">{t(info.title)}</span>
             <select
               value={settings[key]}
               onChange={(e) => onChange({ ...settings, [key]: e.target.value })}
             >
               {info.options.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.label)}
                 </option>
               ))}
             </select>
-            <small className="muted">{info.summary}</small>
-            {current && <small className="school-source">出处：{current.source}</small>}
+            <small className="muted">{t(info.summary)}</small>
+            {current && <small className="school-source">{t('出处：{source}', { source: t(current.source) })}</small>}
           </label>
         )
       })}

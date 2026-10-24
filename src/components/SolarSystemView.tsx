@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { enDate } from '../lib/calendar'
 import { PLANETS, lightTime, orbits, planetsAt, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
+import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 import { BODY_COLOUR } from './SkyView'
@@ -10,19 +12,14 @@ const DAY = 86400000
 
 type Scale = 'inner' | 'all'
 /** inner: true distances out to Mars; all: square-root distances out to Pluto, so the inner planets still show */
-const SCALE: Record<Scale, { max: number; r: (au: number) => number; label: string }> = {
-  inner: { max: 1.75, r: (au) => (R * au) / 1.75, label: '内太阳系' },
-  all: { max: 50, r: (au) => R * Math.sqrt(au / 50), label: '全太阳系' },
+const SCALE: Record<Scale, { max: number; r: (au: number) => number }> = {
+  inner: { max: 1.75, r: (au) => (R * au) / 1.75 },
+  all: { max: 50, r: (au) => R * Math.sqrt(au / 50) },
 }
 const INNER: PlanetKey[] = ['mercury', 'venus', 'earth', 'mars']
 
 /** Days of simulated time per second of playback */
-const SPEEDS = [
-  { days: 1, label: '1 天/秒' },
-  { days: 7, label: '1 周/秒' },
-  { days: 30, label: '1 月/秒' },
-  { days: 365, label: '1 年/秒' },
-]
+const SPEEDS = [1, 7, 30, 365]
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -32,6 +29,11 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * picked date, with playback to watch them move.
  */
 export function SolarSystemView() {
+  const t = useT()
+  const { language } = useSettings()
+  const en = language === 'en'
+  const scaleLabel: Record<Scale, string> = { inner: t('内太阳系'), all: t('全太阳系') }
+  const speedLabel: Record<number, string> = { 1: t('1 天/秒'), 7: t('1 周/秒'), 30: t('1 月/秒'), 365: t('1 年/秒') }
   const [time, setTime] = useState(() => Date.now())
   const [live, setLive] = useState(true)
   const [playing, setPlaying] = useState(false)
@@ -94,11 +96,11 @@ export function SolarSystemView() {
       <div className="fortunes-head sky-head">
         <h3 className="section-title">
           <TitleMark />
-          太阳系
+          {t('太阳系')}
         </h3>
         <div className="overlay-bar sky-controls">
           <DateParts
-            label="日期"
+            label={t('日期')}
             value={ymd}
             onChange={(d) => {
               const keep = new Date(time)
@@ -116,7 +118,7 @@ export function SolarSystemView() {
               setTime(Date.now())
             }}
           >
-            现在
+            {t('现在')}
           </button>
           <button
             type="button"
@@ -127,34 +129,39 @@ export function SolarSystemView() {
               setPlaying((p) => !p)
             }}
           >
-            {playing ? '❚❚ 暂停' : '▶ 播放'}
+            {playing ? t('❚❚ 暂停') : t('▶ 播放')}
           </button>
-          <select aria-label="播放速度" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-            {SPEEDS.map((x) => (
-              <option key={x.days} value={x.days}>
-                {x.label}
+          <select aria-label={t('播放速度')} value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+            {SPEEDS.map((days) => (
+              <option key={days} value={days}>
+                {speedLabel[days]}
               </option>
             ))}
           </select>
         </div>
       </div>
       <p className="muted row-note">
-        {ymd.year}年{ymd.month}月{ymd.day}日 {pad(date.getHours())}:{pad(date.getMinutes())}
-        {live && !playing ? '（随时间更新）' : ''} · 从黄道北极俯视，行星都沿逆时针方向公转；右方是春分点方向（黄经
-        0°）。
-        {scale === 'inner' ? '距离按真实比例。' : '为了让内行星也看得见，距离按平方根压缩。'}
+        {en
+          ? enDate(ymd.year, ymd.month, ymd.day, { day: 'numeric', month: 'short', year: 'numeric' })
+          : `${ymd.year}年${ymd.month}月${ymd.day}日`}{' '}
+        {pad(date.getHours())}:{pad(date.getMinutes())}
+        {live && !playing ? t('（随时间更新）') : ''}
+        {' · '}
+        {t('从黄道北极俯视，行星都沿逆时针方向公转；右方是春分点方向（黄经 0°）。')}
+        {en && ' '}
+        {scale === 'inner' ? t('距离按真实比例。') : t('为了让内行星也看得见，距离按平方根压缩。')}
       </p>
 
       <div className="sky-layout">
         <div>
-          <div className="seg small orrery-scale" role="group" aria-label="范围">
+          <div className="seg small orrery-scale" role="group" aria-label={t('范围')}>
             {(Object.keys(SCALE) as Scale[]).map((k) => (
               <button key={k} className={scale === k ? 'on' : undefined} onClick={() => setScale(k)}>
-                {SCALE[k].label}
+                {scaleLabel[k]}
               </button>
             ))}
           </div>
-          <svg className={`orrery${focus ? ' has-focus' : ''}`} viewBox="0 0 400 400" role="img" aria-label="太阳系行星位置">
+          <svg className={`orrery${focus ? ' has-focus' : ''}`} viewBox="0 0 400 400" role="img" aria-label={t('太阳系行星位置')}>
             <rect className="orrery-bg" x="0" y="0" width="400" height="400" rx="16" />
             {scale === 'inner' &&
               [0.5, 1, 1.5].map((au) => (
@@ -177,7 +184,7 @@ export function SolarSystemView() {
                 </g>
               ))}
             <text className="orrery-equinox" x={394} y={C + 14} textAnchor="end">
-              ♈︎ 春分点 →
+              {t('♈︎ 春分点 →')}
             </text>
             {PLANETS.filter((p) => scale === 'all' || INNER.includes(p.key)).map((p) => (
               <polygon
@@ -203,7 +210,8 @@ export function SolarSystemView() {
               return (
                 <g key={p.key} className={`orrery-planet pl-${p.key}${focus === p.key ? ' on' : ''}`} {...hover(p.key)}>
                   <title>
-                    {p.name} · 距太阳 {p.sun.toFixed(2)} AU{p.key !== 'earth' && ` · 距地球 ${p.earth.toFixed(2)} AU`}
+                    {t('{name} · 距太阳 {sun} AU', { name: t(p.name), sun: p.sun.toFixed(2) })}
+                    {p.key !== 'earth' && ` · ${t('距地球 {earth} AU', { earth: p.earth.toFixed(2) })}`}
                   </title>
                   <circle cx={x} cy={y} r={11} className="orrery-hit" />
                   <circle cx={x} cy={y} r={p.key === 'jupiter' || p.key === 'saturn' ? 5.5 : 4.2} fill={BODY_COLOUR[p.key]} />
@@ -211,7 +219,7 @@ export function SolarSystemView() {
                   {/* On the whole-system map the inner planets crowd the Sun: only Earth keeps its name. */}
                   {(scale === 'inner' || !INNER.includes(p.key) || p.key === 'earth') && (
                     <text x={x} y={y - 9} textAnchor="middle" className="orrery-name">
-                      {p.name}
+                      {t(p.name)}
                     </text>
                   )}
                 </g>
@@ -223,7 +231,7 @@ export function SolarSystemView() {
               return (
                 <g key={p.key} className={`orrery-beyond${focus === p.key ? ' on' : ''}`} {...hover(p.key)}>
                   <title>
-                    {p.name}在这个方向，距太阳 {p.sun.toFixed(1)} AU
+                    {t('{name}在这个方向，距太阳 {sun} AU', { name: t(p.name), sun: p.sun.toFixed(1) })}
                   </title>
                   <circle cx={x} cy={y} r={3} fill={BODY_COLOUR[p.key]} />
                   <text
@@ -233,7 +241,7 @@ export function SolarSystemView() {
                     dominantBaseline="central"
                     className="orrery-beyond-name"
                   >
-                    {p.name.slice(0, 1)}
+                    {t(p.name).slice(0, 1)}
                   </text>
                 </g>
               )
@@ -245,11 +253,11 @@ export function SolarSystemView() {
           <table className="star-table sky-table orrery-table">
             <thead>
               <tr>
-                <th>行星</th>
-                <th>距太阳</th>
-                <th>距地球</th>
-                <th>光行时</th>
-                <th>视运动</th>
+                <th>{t('行星')}</th>
+                <th>{t('距太阳')}</th>
+                <th>{t('距地球')}</th>
+                <th>{t('光行时')}</th>
+                <th>{t('视运动')}</th>
               </tr>
             </thead>
             <tbody>
@@ -259,8 +267,7 @@ export function SolarSystemView() {
             </tbody>
           </table>
           <p className="muted row-note">
-            距离以天文单位（AU，日地平均距离约 1.5 亿千米）计；光行时是行星的光到达地球所需的时间。「逆行」是从地球看行星在星座间倒退，
-            其实是地球在内圈超过外行星（或内行星从地球与太阳之间经过）造成的视觉效果：悬停行星可看地球到它的视线。行星位置由 astronomy-engine 计算。
+            {t('距离以天文单位（AU，日地平均距离约 1.5 亿千米）计；光行时是行星的光到达地球所需的时间。「逆行」是从地球看行星在星座间倒退， 其实是地球在内圈超过外行星（或内行星从地球与太阳之间经过）造成的视觉效果：悬停行星可看地球到它的视线。行星位置由 astronomy-engine 计算。')}
           </p>
         </div>
       </div>
@@ -269,16 +276,18 @@ export function SolarSystemView() {
 }
 
 function PlanetRow({ p, on, hover }: { p: PlanetPosition; on: boolean; hover: Record<string, unknown> }) {
+  const t = useT()
+  const { language } = useSettings()
   return (
     <tr className={on ? 'on' : undefined} {...hover}>
       <td>
         <span className="sky-dot" style={{ background: BODY_COLOUR[p.key] }} />
-        {p.name}
+        {t(p.name)}
       </td>
       <td>{p.sun.toFixed(2)} AU</td>
       <td>{p.key === 'earth' ? '—' : `${p.earth.toFixed(2)} AU`}</td>
-      <td>{p.key === 'earth' ? '—' : lightTime(p.earth)}</td>
-      <td className={p.retrograde ? 'retro' : undefined}>{p.key === 'earth' ? '—' : p.retrograde ? '逆行' : '顺行'}</td>
+      <td>{p.key === 'earth' ? '—' : lightTime(p.earth, language)}</td>
+      <td className={p.retrograde ? 'retro' : undefined}>{p.key === 'earth' ? '—' : p.retrograde ? t('逆行') : t('顺行')}</td>
     </tr>
   )
 }

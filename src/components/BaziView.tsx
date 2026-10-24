@@ -17,12 +17,12 @@ import {
 import type { Relation } from '../lib/relations'
 import type { SchoolSettings } from '../lib/schools'
 import { Char } from './Char'
-import { BirthForm } from './BirthForm'
+import { BirthForm, dateText, dateTimeText, monthDayText } from './BirthForm'
 import { SchoolMark, SchoolSettingsPanel } from './Schools'
 import { HighlightScope, useHighlight, useTrigger } from './highlight'
 import { ConceptTip } from './GlossaryTips'
 import { PillarTable } from './PillarTable'
-import { useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm } from '../settingsContext'
 
 interface Props {
   input: BaziInput
@@ -34,6 +34,10 @@ interface Props {
 export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
   const chart = useMemo(() => buildBazi(input, schools), [input, schools])
   const term = useTerm()
+  const t = useT()
+  const { language } = useSettings()
+  const unpicked = t('未选 · 不入盘')
+  const ageText = (age: number) => t('{age}岁', { age })
   const thisYear = new Date().getFullYear()
   const currentDecade = Math.max(
     0,
@@ -106,9 +110,13 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
 
   // 流日 → 大运, the usual 岁运盘 order (finest first), then the natal chart.
   const levels: [FortuneLevel | 'decade', FortuneColumn, string][] = [
-    ['day', { label: '流日', ganzhi: day.ganzhi }, `${day.month}月${day.day}日`],
+    ['day', { label: '流日', ganzhi: day.ganzhi }, monthDayText(language, day.month, day.day)],
     ['month', { label: '流月', ganzhi: month.ganzhi }, `${month.ganzhi}月`],
-    ['year', { label: '流年', ganzhi: fortuneYear.ganzhi }, `${fortuneYear.year}${fortuneYear.ganzhi}年`],
+    [
+      'year',
+      { label: '流年', ganzhi: fortuneYear.ganzhi },
+      t('{year}{ganzhi}年', { year: fortuneYear.year, ganzhi: fortuneYear.ganzhi }),
+    ],
     ['decade', { label: '大运', ganzhi: decade.ganzhi }, `${decade.ganzhi}${term('运')}`],
   ]
   const shown = levels.filter(([level]) => level === 'decade' || !off[level])
@@ -174,13 +182,16 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       <section className="card" id="bazi-natal">
         <div className="chart-meta">
           <div>
-            <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong> · 属{term(chart.zodiac)}
+            <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong> ·{' '}
+            {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
           </div>
-          <div className="muted">阳历 {chart.solarText}</div>
+          <div className="muted">{t('阳历 {date}', { date: dateTimeText(language, input) })}</div>
           {chart.trueSolar && (
             <div className="muted">
-              真太阳时 {chart.trueSolar.text}（{chart.trueSolar.offsetMinutes >= 0 ? '+' : '−'}
-              {Math.abs(Math.round(chart.trueSolar.offsetMinutes))}分）
+              {t('真太阳时 {time}（{offset}分）', {
+                time: dateTimeText(language, chart.trueSolar.time),
+                offset: `${chart.trueSolar.offsetMinutes >= 0 ? '+' : '−'}${Math.abs(Math.round(chart.trueSolar.offsetMinutes))}`,
+              })}
             </div>
           )}
           <div className="muted">
@@ -241,7 +252,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           aria-expanded={sideOpen}
           aria-controls="fortune-side"
           onClick={toggleSide}
-          title={sideOpen ? '收起岁运' : '展开岁运'}
+          title={sideOpen ? t('收起岁运') : t('展开岁运')}
         >
           <span className="side-handle-title">{term('岁运')}</span>
           <span className="side-handle-sub">
@@ -257,20 +268,26 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               {term('岁运')}
             </h3>
             <button type="button" className="ghost" onClick={toggleAll}>
-              {Object.values(open).every(Boolean) ? '全部收起' : '全部展开'}
+              {Object.values(open).every(Boolean) ? t('全部收起') : t('全部展开')}
             </button>
-            <button type="button" className="ghost side-close" aria-expanded onClick={toggleSide} title="收起岁运">
-              ‹ 收起
+            <button type="button" className="ghost side-close" aria-expanded onClick={toggleSide} title={t('收起岁运')}>
+              ‹ {t('收起')}
             </button>
           </div>
           <FortuneRow
             title={term('大运')}
-            summary={`${decade.ganzhi} · ${decade.startAge}–${decade.endAge}岁 · ${decade.startYear}–${decade.endYear}`}
+            summary={`${decade.ganzhi} · ${t('{from}–{to}岁', { from: decade.startAge, to: decade.endAge })} · ${decade.startYear}–${decade.endYear}`}
             open={open.decade}
             onToggle={() => toggle('decade')}
           >
             <p className="muted row-note">
-              {chart.startText}
+              {t('出生后{years}年{months}个月{days}天起运（{date}交运），{direction}', {
+                years: chart.start.years,
+                months: chart.start.months,
+                days: chart.start.days,
+                date: dateText(language, chart.start),
+                direction: chart.start.forward ? t('顺排') : t('逆排'),
+              })}
               <SchoolMark school="childLimit" settings={schools} />
             </p>
             <div className="fortune-row">
@@ -282,7 +299,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
                     .join(' ')}
                   onClick={() => pickDecade(i)}
                 >
-                  <small>{d.startAge}岁</small>
+                  <small>{ageText(d.startAge)}</small>
                   <small className="muted">{d.startYear}</small>
                   <Char g={d.stem} small />
                   <Char g={d.branch} small />
@@ -293,7 +310,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </FortuneRow>
           <FortuneRow
             title={term('流年')}
-            summary={off.year ? UNPICKED : `${fortuneYear.year} ${fortuneYear.ganzhi} · ${fortuneYear.age}岁`}
+            summary={off.year ? unpicked : `${fortuneYear.year} ${fortuneYear.ganzhi} · ${ageText(fortuneYear.age)}`}
             open={open.year}
             onToggle={() => toggle('year')}
           >
@@ -306,7 +323,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
                   onClick={() => pickYear(y.year)}
                 >
                   <small>{y.year}</small>
-                  <small className="muted">{y.age}岁</small>
+                  <small className="muted">{ageText(y.age)}</small>
                   <Char g={y.stem} small />
                   <Char g={y.branch} small />
                   <small>{term(y.stem.tenStar ?? '')}</small>
@@ -316,7 +333,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </FortuneRow>
           <FortuneRow
             title={term('流月')}
-            summary={off.month ? UNPICKED : `${month.ganzhi} · ${month.start}起`}
+            summary={off.month ? unpicked : `${month.ganzhi} · ${t('{date}起', { date: month.start })}`}
             open={open.month}
             onToggle={() => toggle('month')}
           >
@@ -338,7 +355,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </FortuneRow>
           <FortuneRow
             title={term('流日')}
-            summary={off.day ? UNPICKED : `${day.month}/${day.day} ${day.ganzhi}`}
+            summary={off.day ? unpicked : `${day.month}/${day.day} ${day.ganzhi}`}
             open={open.day}
             onToggle={() => toggle('day')}
           >
@@ -374,13 +391,13 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               aria-pressed={withNatal}
               onClick={() => setWithNatal((v) => !v)}
             >
-              合参{term('原局')}
+              {t('合参{natal}', { natal: term('原局') })}
             </button>
           </div>
           <p className="muted row-note">
             {shown.length > 0
-              ? `${shown.map(([, , note]) => note).join(' · ')}，合参命主原局`
-              : `未选中${term('岁运')}，在${term('岁运')}中点选大运、流年、流月或流日`}
+              ? t('{picks}，合参命主原局', { picks: shown.map(([, , note]) => note).join(' · ') })
+              : t('未选中{fortune}，在{fortune}中点选大运、流年、流月或流日', { fortune: term('岁运') })}
           </p>
           <HighlightScope pillars={[...combined, ...chart.pillars]} relations={fortuneRels}>
             <div className={`table-scroll${natalShown ? '' : ' fortune-only'}`} ref={tableRef}>
@@ -396,7 +413,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               title={term('岁运刑冲合会')}
               items={fortuneRels}
               schools={schools}
-              empty="与原局无明显刑冲合会"
+              empty={t('与原局无明显刑冲合会')}
             />
           </HighlightScope>
         </div>
@@ -409,13 +426,14 @@ function Relations({
   title,
   items,
   schools,
-  empty = '无',
+  empty,
 }: {
   title: string
   items: Relation[]
   schools: SchoolSettings
   empty?: string
 }) {
+  const t = useT()
   return (
     <div className="relations">
       <h4>
@@ -423,7 +441,7 @@ function Relations({
         {title}
       </h4>
       {items.length === 0 ? (
-        <p className="muted">{empty}</p>
+        <p className="muted">{empty ?? t('无')}</p>
       ) : (
         <div className="tags">
           {items.map((r, i) => (
@@ -449,7 +467,6 @@ function RelationChip({ relation: r, index, schools }: { relation: Relation; ind
 }
 
 const SIDE_KEY = 'chroniq-fortune-side'
-const UNPICKED = '未选 · 不入盘'
 
 /** The 岁运 levels that can be left out of the 岁运盘 (the 大运 cannot). */
 type FortuneLevel = 'year' | 'month' | 'day'
