@@ -1,6 +1,6 @@
 # 旧版：Web-JavaScript-Calendar（2021–2022）
 
-这里保存的是本项目重写成「星曆 ChroniQ」（曾名「时契」）之前的实现，只作参考，不再维护。原版的最后一次提交是 [`6b2dac9`](https://github.com/RedCarpG/web-paipan-ChroniQ/tree/6b2dac9)（2022 年 1 月 11 日，合并 PR #1 `dev_calendar`）。
+这里保存的是本项目重写成「星曆 ChroniQ」（曾名「时契」）之前的实现，只作参考，不再维护。原版的最后一次提交是 [`6b2dac9`](https://github.com/RedCarpG/ChroniQ/tree/6b2dac9)（2022 年 1 月 11 日，合并 PR #1 `dev_calendar`）。
 
 ## 当时的样子
 

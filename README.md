@@ -4,7 +4,7 @@
 
 中国传统历法与命理排盘工具：万年历、天象、八字排盘、紫微斗数，以及西洋占星星盘。
 
-在线访问：<https://redcarpg.github.io/web-paipan-ChroniQ/>
+在线访问：<https://redcarpg.github.io/ChroniQ/>（2026 年 10 月起；原地址 redcarpg.github.io/web-paipan-ChroniQ/ 已停用，装到桌面或主屏幕的旧版需从新地址重新安装）
 
 一个纯前端的中国传统历法应用：
 
