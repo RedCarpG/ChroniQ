@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 /**
  * Rounds a closed polygon's corners: each corner becomes a quadratic curve
@@ -76,7 +77,9 @@ export function MonthOutline({ layoutKey }: { layoutKey: string }) {
       setShape({ d, w: el.offsetWidth, h: el.offsetHeight })
     }
     measure()
-    const ro = new ResizeObserver(measure)
+    // A resize is seen after layout and before paint: apply the new shape in that same frame,
+    // or the old one is painted once at the new size
+    const ro = new ResizeObserver(() => flushSync(measure))
     ro.observe(el)
     return () => ro.disconnect()
   }, [layoutKey])
