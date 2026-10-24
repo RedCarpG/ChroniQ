@@ -1,11 +1,12 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
 import { MonthOutline } from './MonthOutline'
 import { SmoothHeight } from './SmoothHeight'
-import { useDismiss } from './useDismiss'
+import { DrawerPageTab } from './SavedCharts'
+import { smoothUpdate } from './smoothUpdate'
 import {
   WEEKDAYS_EN,
   buildDayDetail,
@@ -45,9 +46,11 @@ const VIEW_MODES: ViewMode[] = ['month', 'week', 'year']
 
 interface Props {
   onPickBazi: (day: SolarDay) => void
+  /** 日历显示日干支, which is chosen in the calendar's own 显示 menu rather than the settings */
+  onDayGanzhi: (show: boolean) => void
 }
 
-export function CalendarView({ onPickBazi }: Props) {
+export function CalendarView({ onPickBazi, onDayGanzhi }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
@@ -264,20 +267,37 @@ export function CalendarView({ onPickBazi }: Props) {
 
           </div>
           <div className="cal-tools">
-            <DisplayMenu>
+            {/* What the calendar shows: a quiet 显示 tab in the left drawer, under 命盘. A change fades the
+                calendar from what it showed to what it shows (styles.css [data-vt='display']). */}
+            <DrawerPageTab
+              label={t('显示')}
+              title={t('日历上显示')}
+              count={(dayGanzhi === 'show' ? 1 : 0) + (holidays.china ? 1 : 0) + holidays.regions.length + chartDays.items.length}
+            >
+              <fieldset className="holiday-choice">
+                <legend>{t('日历')}</legend>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={dayGanzhi === 'show'}
+                    onChange={() => smoothUpdate('display', () => onDayGanzhi(dayGanzhi !== 'show'))}
+                  />
+                  {term('日干支')}
+                </label>
+              </fieldset>
               <fieldset className="holiday-choice">
                 <legend>{t('节假日')}</legend>
                 <label>
                   <input
                     type="checkbox"
                     checked={holidays.china}
-                    onChange={() => updateHolidays({ ...holidays, china: !holidays.china })}
+                    onChange={() => smoothUpdate('display', () => updateHolidays({ ...holidays, china: !holidays.china }))}
                   />
                   {t('中国')}
                 </label>
                 {(Object.keys(REGIONS) as RegionCode[]).map((code) => (
                   <label key={code}>
-                    <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => toggleRegion(code)} />
+                    <input type="checkbox" checked={holidays.regions.includes(code)} onChange={() => smoothUpdate('display', () => toggleRegion(code))} />
                     {t(REGIONS[code].name)}
                   </label>
                 ))}
@@ -293,7 +313,7 @@ export function CalendarView({ onPickBazi }: Props) {
                   ] as const
                 ).map(([item, label]) => (
                   <label key={item}>
-                    <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => chartDays.toggleItem(item)} />
+                    <input type="checkbox" checked={chartDays.items.includes(item)} onChange={() => smoothUpdate('display', () => chartDays.toggleItem(item))} />
                     {label}
                   </label>
                 ))}
@@ -303,7 +323,7 @@ export function CalendarView({ onPickBazi }: Props) {
                     : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
                 </small>
               </fieldset>
-            </DisplayMenu>
+            </DrawerPageTab>
             <div className="seg small" role="group" aria-label={t('视图')}>
               {VIEW_MODES.map((value) => (
                 <button
@@ -598,48 +618,6 @@ const zoomOf = (el: HTMLElement) => (el.offsetWidth ? el.getBoundingClientRect()
 
 /** The branch of the 干支 year that most of a Gregorian year falls in (from 立春) */
 const yearBranch = (year: number) => SolarDay.fromYmd(year, 6, 1).getSixtyCycleDay().getYear().getEarthBranch().getName()
-
-/**
- * 显示: what the calendar marks — China's and other countries' holidays, and
- * the saved charts' days — in a menu by the view switch, out of the day panel.
- */
-function DisplayMenu({ children }: { children: ReactNode }) {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const close = useCallback(() => setOpen(false), [])
-  useDismiss(ref, open, close)
-  return (
-    <div className="cal-display" ref={ref}>
-      <button
-        type="button"
-        className="cal-display-btn"
-        aria-expanded={open}
-        aria-controls="cal-display-panel"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-          <path
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"
-          />
-          <circle cx="16" cy="6" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
-          <circle cx="10" cy="12" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
-          <circle cx="18" cy="18" r="2" fill="none" stroke="currentColor" strokeWidth="2" />
-        </svg>
-        {t('显示')}
-      </button>
-      {open && (
-        <div id="cal-display-panel" className="cal-display-panel" role="dialog" aria-label={t('日历上显示')}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function TagBlock({ title, kind, items }: { title: string; kind: string; items: string[] }) {
   if (items.length === 0) return null

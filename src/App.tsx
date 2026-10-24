@@ -173,6 +173,7 @@ export function App() {
         <main>
           {tab === 'calendar' ? (
             <CalendarView
+              onDayGanzhi={(show) => changeSettings({ ...settings, dayGanzhi: show ? 'show' : 'hide' })}
               onPickBazi={(day) => {
                 setBaziInput((prev) => ({ ...prev, year: day.getYear(), month: day.getMonth(), day: day.getDay() }))
                 goTab('bazi')
