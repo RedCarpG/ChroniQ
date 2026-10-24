@@ -474,6 +474,21 @@ footer {
 .holiday-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .region-days li .tag-title { margin-right: 2px; }
 .holiday-hint { flex-basis: 100%; font-size: 11px; }
+.cal-display { position: relative; }
+.cal-display-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px;
+}
+.cal-display-btn:hover, .cal-display-btn[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
+.cal-display-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 340px; padding: 4px 14px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.16); animation: tip-in 0.15s ease-out;
+}
+.cal-display-panel .holiday-choice:first-child { border-top: 0; margin-top: 0; }
+@media (max-width: 600px) {
+  .cal-display-panel { position: fixed; top: auto; left: 16px; right: 16px; width: auto; margin-top: 8px; }
+}
 /* 命盘: the saved charts' dates, in purple */
 .day .mine-line, .week-day .mine-line {
   display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -494,7 +509,16 @@ footer {
 .tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }
 .tag.region.observance { background: var(--surface-2); color: var(--text); }
 
-.detail { display: flex; flex-direction: column; gap: 12px; }
+.detail-body { display: flex; flex-direction: column; gap: 12px; }
+/* Content added or removed in the day panel (another country's holiday, a chart's day) grows
+   or shrinks it over a moment instead of jumping; new blocks fade in. */
+.smooth-height { overflow: hidden; transition: height 0.35s cubic-bezier(0.33, 1, 0.68, 1); }
+.detail-body > :is(.tags, .region-days, .mine-days) { animation: detail-in 0.35s ease-out; }
+@keyframes detail-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .smooth-height { transition: none; }
+  .detail-body > :is(.tags, .region-days, .mine-days) { animation: none; }
+}
 .detail-hero { display: flex; align-items: center; gap: 12px; }
 .detail-hero .big { font-size: 48px; font-weight: 700; color: var(--accent); line-height: 1; }
 .lunar-line { font-size: 18px; font-weight: 600; }
@@ -728,15 +752,18 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .drawer-rail-slot:empty { display: none; }
 .drawer-handle {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px;
-  border: 1px solid var(--border); border-left: 0; border-radius: 0 12px 12px 0;
-  background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: 13px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 7px;
+  border: 0; border-radius: 0 12px 12px 0;
+  /* The way to the saved charts: in the accent colour, so it stands out from the page */
+  background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600;
+  box-shadow: 2px 3px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: padding 0.2s, filter 0.2s;
 }
-.drawer-handle:hover, .drawer.open .drawer-handle { color: var(--accent); }
+.drawer-handle:hover, .drawer.open .drawer-handle { filter: brightness(1.1); padding-left: 10px; }
 .drawer-handle-text { width: 1em; line-height: 1.15; word-break: break-all; }
 .drawer-count {
   min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; box-sizing: border-box;
-  background: var(--accent); color: var(--on-accent); font-size: 11px; line-height: 18px; text-align: center;
+  background: var(--on-accent); color: var(--accent); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
 }
 .saved-form { display: flex; gap: 8px; }
 .saved-form input {
