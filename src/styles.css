@@ -295,8 +295,10 @@ main { view-transition-name: page; }
 footer {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 26; margin: 0; padding: 14px 16px 16px;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; font-size: 13px;
-  background: linear-gradient(90deg, transparent, var(--edge), transparent) top / 100% 1px no-repeat, color-mix(in srgb, var(--bg) 94%, transparent);
-  box-shadow: 0 -16px 24px -18px rgb(0 0 0 / 0.35);
+  /* Solid under its words in the middle, clearing to nothing at the sides; the gold edge likewise */
+  background:
+    linear-gradient(90deg, transparent 8%, var(--edge) 35%, var(--edge) 65%, transparent 92%) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg) 95%, transparent) 30%, color-mix(in srgb, var(--bg) 95%, transparent) 70%, transparent);
   transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0s 0.25s;
 }
 footer.shown { transform: none; visibility: visible; transition: transform 0.25s ease; }
@@ -310,14 +312,19 @@ footer .about-badges { margin-left: 0; }
 .footer-tab { position: fixed; bottom: 0; left: 50%; z-index: 27; transform: translateX(-50%); }
 .footer-close { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); }
 @media (prefers-reduced-motion: reduce) { footer, footer.shown { transition: none; } }
-/* 作者与 About 小角标 */
-.about-badges { position: relative; display: flex; gap: 6px; margin-left: auto; }
-.badge-pill {
-  display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
-  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
-  font-size: 12px; text-decoration: none; letter-spacing: 0.02em;
+/* 作者与 About: quiet words between small stars, a fine gold line drawing in under them on hover */
+.about-badges { position: relative; display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.foot-sep { color: color-mix(in srgb, var(--accent) 70%, transparent); font-size: 8px; line-height: 1; }
+.foot-link {
+  position: relative; display: inline-flex; align-items: center; height: 24px; padding: 0; border: 0; background: none;
+  color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-decoration: none; cursor: pointer; transition: color 0.2s;
 }
-.badge-pill:hover, .badge-pill[aria-expanded='true'] { color: var(--accent); border-color: var(--accent); }
+.foot-link::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 3px; height: 1px; transform: scaleX(0);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); transition: transform 0.3s ease;
+}
+.foot-link:hover, .foot-link[aria-expanded='true'], .foot-link:focus-visible { color: var(--accent); outline: none; }
+.foot-link:is(:hover, :focus-visible, [aria-expanded='true'])::after { transform: none; }
 .about-panel {
   position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 20; width: min(340px, calc(100vw - 32px));
   display: grid; gap: 8px; padding: 16px; text-align: left; color: var(--text); font-size: 13px; line-height: 1.6;
