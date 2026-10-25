@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import './dom'
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PLACE } from '../../lib/place'
 import { SkyView } from '../SkyView'
@@ -48,13 +48,48 @@ describe('SkyView as the backdrop', () => {
     expect(container.querySelector('.sky-window')).not.toBeNull()
   })
 
-  it('keeps the sky itself (its colour and the Milky Way) in a layer of its own under the map', () => {
+  it('keeps the sky itself in a layer of its own under the map, and the Milky Way and the plain stars on a canvas between', () => {
     const { map } = setUp()
-    const back = map.previousElementSibling!
+    const canvas = map.previousElementSibling!
+    expect(canvas.classList.contains('sky-canvas')).toBe(true)
+    const back = canvas.previousElementSibling!
     expect(back.classList.contains('sky-map-back')).toBe(true)
     expect(back.querySelector('.sky-disc')).not.toBeNull()
-    expect(back.querySelector('.sky-milkyway')).not.toBeNull()
-    expect(map.querySelector('.sky-milkyway')).toBeNull()
+    // On the map only what can be pointed at: the named stars, each a point of light in its colour
+    const stars = map.querySelectorAll('.sky-star')
+    expect(stars.length).toBeGreaterThan(5)
+    expect(map.querySelectorAll('.sky-stars > :not(.sky-star)')).toHaveLength(0)
+    expect(stars[0].querySelector('.disc')!.getAttribute('fill')).toMatch(/^url\(#.+-star-\d\)$/)
+  })
+})
+
+describe('SkyView panel', () => {
+  it('can be put away, leaving the sky the whole width, and remembers that', () => {
+    const { container } = setUp()
+    const toggle = container.querySelector<HTMLButtonElement>('.sky-panel-toggle')!
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(toggle)
+    expect(container.querySelector<HTMLElement>('.sky-panel')!.hidden).toBe(true)
+    expect(container.querySelector('.sky-stage')!.classList.contains('panel-hidden')).toBe(true)
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    cleanup()
+    expect(setUp().container.querySelector<HTMLElement>('.sky-panel')!.hidden).toBe(true)
+  })
+
+  it('has a tab for the moment and place, and one for how the sky is drawn', () => {
+    const { container } = setUp()
+    const tabs = [...container.querySelectorAll<HTMLButtonElement>('[role=tab]')]
+    expect(tabs.map((b) => b.textContent)).toEqual(['时间·地点', '显示'])
+    const pane = (i: number) => container.querySelector<HTMLElement>(`#${CSS.escape(tabs[i].getAttribute('aria-controls')!)}`)!
+    expect(pane(0).hidden).toBe(false)
+    expect(pane(0).querySelector('input[type=time]')).not.toBeNull()
+    expect(pane(1).hidden).toBe(true)
+    fireEvent.click(tabs[1])
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true')
+    expect(pane(0).hidden).toBe(true)
+    expect(pane(1).hidden).toBe(false)
+    expect(pane(1).textContent).toContain('视角')
+    expect(pane(1).querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
   })
 })
 
@@ -68,14 +103,40 @@ describe('SkyView choosing a body or star', () => {
     expect(ringed()).toBe(true)
     expect(map.classList.contains('has-chosen')).toBe(true)
     expect(map.querySelector('.sky-jupiter')!.classList.contains('on')).toBe(true)
-    expect(row('木星').classList.contains('chosen')).toBe(true)
     // Nothing on the map is moved or scaled as a whole
     expect(map.querySelector('[style*="scale"]')).toBeNull()
 
-    fireEvent.click(row('木星'))
+    // Picked again on the map, it lets go
+    fireEvent.click(map.querySelector('.sky-jupiter')!)
     expect(info()).toBeNull()
     expect(ringed()).toBe(false)
     expect(map.classList.contains('has-chosen')).toBe(false)
+  })
+
+  it('tells of the chosen one in place of the table, and goes back to the table', () => {
+    const { container, row, info } = setUp()
+    fireEvent.click(row('木星'))
+    expect(container.querySelector('.sky-table')).toBeNull()
+    expect(info()).toMatch(/古称[岁歲]星，五行属木/)
+    const facts = Object.fromEntries(
+      [...container.querySelectorAll('.sky-facts dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]),
+    )
+    // Beijing, 02:57: Jupiter, up, rose at 00:53 and sets in the afternoon; it is in 星宿, some 5.6 AU off
+    expect(facts['升起']).toBe('00:53')
+    expect(facts['落下']).toMatch(/^1\d:\d\d$/)
+    expect(facts['宿']).toBe('星宿')
+    expect(facts['距离']).toMatch(/^5\.\d\d AU · 光行 /)
+    fireEvent.click(container.querySelector('.sky-back')!)
+    expect(info()).toBeNull()
+    expect(container.querySelector('.sky-table')).not.toBeNull()
+  })
+
+  it('tells of a star its colour and whether it ever sets', () => {
+    const { map, container } = setUp()
+    fireEvent.click([...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('北极星'))!)
+    const text = container.querySelector('.sky-facts')!.textContent
+    expect(text).toContain('终年不落（拱极）')
+    expect(text).toMatch(/黄 · 表面约 [\d,]+ K/)
   })
 
   it('picks a named star on the map, and lets go on the empty sky or Esc', () => {
@@ -139,15 +200,43 @@ describe('SkyView constellations and paths', () => {
 })
 
 describe('SkyView with the paths off', () => {
-  it('offers the chosen one’s path in its line in the panel', () => {
+  it('offers the paths in the chosen one’s details, as a switch', () => {
     localStorage.setItem('chroniq-sky-paths', 'off')
     const { map, row, container } = setUp()
     fireEvent.click(row('月亮'))
     expect(map.querySelectorAll('.sky-path')).toHaveLength(0)
-    fireEvent.click(container.querySelector('.sky-show-path')!)
+    const paths = [...container.querySelectorAll('.sky-detail [role=switch]')].find((b) => b.textContent === '今日轨迹')!
+    expect(paths.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(paths)
     expect(map.querySelector('.sky-path.on')).not.toBeNull()
-    expect(container.querySelector('.sky-show-path')).toBeNull()
-    localStorage.removeItem('chroniq-sky-paths')
+    expect(paths.getAttribute('aria-checked')).toBe('true')
+  })
+})
+
+describe('SkyView past track', () => {
+  it('is switched on in a body’s details, and follows the body chosen', () => {
+    const { map, row, container } = setUp()
+    fireEvent.click(row('土星'))
+    expect(map.querySelector('.sky-history')).toBeNull()
+    const history = () => [...container.querySelectorAll('.sky-detail [role=switch]')].find((b) => b.textContent === '历史轨迹')!
+    fireEvent.click(history())
+    expect(history().getAttribute('aria-checked')).toBe('true')
+    expect(map.querySelector('.sky-history')!.getAttribute('style')).toContain('rgb(234, 210, 143)')
+    // Three months by default, with a date mark every half month
+    expect(map.querySelectorAll('.sky-history .tick').length).toBe(6)
+    fireEvent.click([...container.querySelectorAll('.sky-detail .seg button')].find((b) => b.textContent === '1 年')!)
+    expect(map.querySelectorAll('.sky-history .tick').length).toBe(12)
+    // Another body chosen: its track; none chosen: none
+    fireEvent.click(map.querySelector('.sky-jupiter')!)
+    expect(map.querySelector('.sky-history')!.getAttribute('style')).toContain('rgb(244, 215, 168)')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(map.querySelector('.sky-history')).toBeNull()
+  })
+
+  it('is not offered for a star, which keeps its place among the others', () => {
+    const { map, container } = setUp()
+    fireEvent.click([...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('天狼星'))!)
+    expect([...container.querySelectorAll('.sky-detail [role=switch]')].map((b) => b.textContent)).toEqual(['今日轨迹'])
   })
 })
 
@@ -197,12 +286,13 @@ describe('SkyView hovered while one is chosen', () => {
     fireEvent.click(row('土星'))
     const lit = () => map.querySelectorAll('.sky-path.on').length
     expect(lit()).toBe(1)
-    fireEvent.pointerEnter(row('海王星'), { pointerType: 'mouse' })
-    expect(map.querySelector('.sky-neptune')!.classList.contains('hover')).toBe(true)
+    const neptune = map.querySelector('.sky-neptune')!
+    fireEvent.pointerEnter(neptune, { pointerType: 'mouse' })
+    expect(neptune.classList.contains('hover')).toBe(true)
     expect(map.querySelector('.sky-saturn')!.classList.contains('on')).toBe(true)
     // Saturn's path stays; Neptune's (not among the usual ones) is added and picked out too
     expect(lit()).toBe(2)
-    fireEvent.pointerLeave(row('海王星'), { pointerType: 'mouse' })
+    fireEvent.pointerLeave(neptune, { pointerType: 'mouse' })
     expect(lit()).toBe(1)
   })
 })

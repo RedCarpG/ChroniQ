@@ -28,8 +28,8 @@ export const SKY: Record<string, string> = {
   '太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。':
     'The Sun is up: stars can’t be seen by eye in daylight, so the map only hints at where they are.',
   '晨昏蒙影中，只有最亮的星和行星可见。': 'In twilight only the brightest stars and planets show.',
-  '地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。':
-    '{n} stars to magnitude 5 are above the horizon; dot size shows brightness and colour shows temperature. Star catalogue from d3-celestial (XHIP, from Hipparcos).',
+  '地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。':
+    '{n} stars to magnitude 5 are above the horizon, with the fainter ones to magnitude 6 and the Milky Way’s star clouds; a star’s size shows its brightness and its colour its temperature. Zoom in to see more and fainter stars. Star catalogue from d3-celestial (XHIP, from Hipparcos).',
 
   // Sun, Moon and planets (the same English as the 星盘 page)
   太阳: 'Sun',
@@ -136,8 +136,36 @@ export const SKY: Record<string, string> = {
   '高 {altitude}°': 'altitude {altitude}°',
   '星等 {mag}': 'magnitude {mag}',
   取消选中: 'Clear selection',
-  '点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
-    'Click a body, a named star, a constellation’s lines or a row of the table to pick it out (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
+  '点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
+    'Click a body, a named star, a constellation’s lines or a row of the table to pick it out and read about it (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
+  // The panel: put away, its tabs, and what it tells of the one chosen
+  隐藏面板: 'Hide panel',
+  显示面板: 'Show panel',
+  '时间·地点': 'Time & place',
+  '日月行星前后 12 小时的路径': 'Paths of the Sun, Moon and planets, 12 hours either side',
+  全部天体: 'All bodies',
+  恒星: 'Star',
+  卫星: 'Satellite',
+  '行星 · 古称{name}，五行属{element}': 'Planet · in old China {name}, the {element} star of the 五行',
+  出没: 'Rising and setting',
+  '终年不落（拱极）': 'Never sets (circumpolar)',
+  终年不升: 'Never rises here',
+  升起: 'Rises',
+  落下: 'Sets',
+  '前一日 {time}': '{time} the day before',
+  '次日 {time}': '{time} the next day',
+  距离: 'Distance',
+  '约 {n} 万公里': 'about {n} km',
+  '光行 {time}': 'light time {time}',
+  颜色: 'Colour',
+  蓝白: 'Blue-white',
+  白: 'White',
+  黄白: 'Yellow-white',
+  黄: 'Yellow',
+  橙: 'Orange',
+  橙红: 'Orange-red',
+  '{tone} · 表面约 {k} K': '{tone} · surface about {k} K',
+  今日轨迹: 'Today’s path',
   // The sky as the page's backdrop: pointing, dragging through time
   '指向 {direction} · 高 {altitude}°': 'Pointing {direction} · altitude {altitude}°',
   // Zooming the sky
@@ -146,7 +174,6 @@ export const SKY: Record<string, string> = {
   // The Moon's phase, when it is chosen
   '照亮 {n}%': '{n}% lit',
   缩放: 'Zoom',
-  显示轨迹: 'Show path',
   放大: 'Zoom in',
   缩小: 'Zoom out',
   复原: 'Reset zoom',
