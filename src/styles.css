@@ -238,11 +238,20 @@ main { view-transition-name: page; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding-bottom: 10px;
   background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat;
 }
-/* On the 天象 page the top bar folds up (App): a small tab at the top pulls it down, one under it
-   folds it up again. Folded, it takes no room, and the sky's stage grows into it (--topbar-h) */
-.app.bar-folded .topbar { display: none; }
-.app.page-sky .topbar { position: relative; animation: topbar-in 0.25s ease both; }
-@keyframes topbar-in { from { transform: translateY(-60%); opacity: 0; } }
+/* On the 天象 page the top bar folds up (App), and lies over the page rather than in it: it comes
+   down over the top without moving the sky; only the bar above the sky and the bodies beside it make
+   room for it. The mouse at the very top (the hot zone) brings it down; on a touch screen, a small tab
+   at the top pulls it down and one under it folds it up again */
+.app.page-sky .topbar {
+  position: absolute; top: 16px; left: 16px; right: 16px; z-index: 25; margin: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.app.page-sky.bar-folded .topbar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+.topbar-hotzone { position: fixed; top: 0; left: 0; right: 0; z-index: 29; height: 8px; }
+.app.page-sky .sky-toolbar { transition: transform 0.25s ease; }
+.app.page-sky .sky-bodies { transition: padding-top 0.25s ease; }
+.app.page-sky:not(.bar-folded) .sky-toolbar { transform: translateY(calc(var(--topbar-h, 46px) + 6px)); }
+.app.page-sky:not(.bar-folded) .sky-bodies { padding-top: calc(var(--topbar-h, 46px) + 10px); }
 .topbar-fold {
   display: flex; align-items: center; justify-content: center; width: 46px; height: 18px; padding: 0 0 4px; border: 1px solid var(--border);
   border-top: 0; border-radius: 0 0 10px 10px; background: rgb(9 13 26 / 0.75); color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer;
@@ -250,7 +259,7 @@ main { view-transition-name: page; }
 .topbar-fold:hover { color: var(--accent); }
 .topbar-fold.down { position: fixed; top: 0; left: 50%; z-index: 30; transform: translateX(-50%); }
 .topbar-fold.up { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); }
-@media (prefers-reduced-motion: reduce) { .app.page-sky .topbar { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .app.page-sky :is(.topbar, .sky-toolbar, .sky-bodies) { transition: none; } }
 .topbar h1 { margin: 0; font-size: 22px; letter-spacing: 3px; display: flex; align-items: center; gap: 8px; }
 .topbar h1 .logo { flex: none; }
 .brand-en { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; color: var(--muted); }
@@ -322,8 +331,10 @@ footer {
    and the long year view scroll inside, and the footer slides up over the calendar when the
    page is scrolled. (--topbar-h is the top bar's height, set by App.) */
 @media (min-width: 861px) and (min-height: 600px) {
-  .app:is(.page-calendar, .page-sky) .topbar { position: sticky; top: 16px; z-index: 5; }
-  .app:is(.page-calendar, .page-sky) main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
+  .app.page-calendar .topbar { position: sticky; top: 16px; z-index: 5; }
+  .app.page-calendar main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
+  /* On the 天象 page the top bar lies over the page (above), so the page holds still at the top */
+  .app.page-sky main { position: sticky; top: 16px; z-index: 1; }
   .app.page-calendar .calendar-layout {
     height: calc(100dvh / var(--ui-zoom) - var(--topbar-h, 52px) - 48px); min-height: 520px; align-items: stretch;
   }
@@ -1406,8 +1417,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   grid-template-rows: auto minmax(0, 1fr); gap: 10px 16px;
   height: calc(100dvh / var(--ui-zoom) - var(--topbar-h, 52px) - 48px); min-height: 520px;
 }
-/* The top bar folded up: the stage takes its room too */
-.app.bar-folded .sky-stage { height: calc(100dvh / var(--ui-zoom) - 48px); }
+/* The top bar lies over the 天象 page: the stage takes its room */
+.app.page-sky .sky-stage { height: calc(100dvh / var(--ui-zoom) - 48px); }
 .sky-toolbar { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .sky-toolbar .section-title { margin: 0; }
 .sky-controls { margin: 0; }
@@ -1521,6 +1532,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-zoom-buttons button:disabled { opacity: 0.35; cursor: default; }
 @media (max-width: 860px), (max-height: 599px) {
   .sky-stage { display: flex; flex-direction: column; height: auto; min-height: 0; }
+  .app.page-sky .sky-stage { height: auto; }
   .sky-window { width: 100%; aspect-ratio: 1; flex: none; }
   .sky-bodies { overflow: visible; }
 }
