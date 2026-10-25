@@ -397,7 +397,9 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                 <small className="muted holiday-hint">
                   {chartDays.charts.length === 0
                     ? t('在左侧「命盘」里保存命盘后，它们的生日、冲合、交运等日子会显示在日历上。')
-                    : t('显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。', { shown: chartDays.shown.length, total: chartDays.charts.length })}
+                    : chartDays.shown.length === 0
+                      ? t('在左侧「命盘」里选一张命盘，它的日子会显示在日历上。')
+                      : t('显示「{name}」的日子，可在左侧「命盘」里换一张。', { name: chartDays.shown[0].name })}
                 </small>
               </fieldset>
             </DrawerPageTab>
@@ -487,10 +489,15 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                     data-sound="shang"
                     onClick={() => select(c.solar)}
                   >
-                    {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
-                    {offTags(rd).length > 0 && (
-                      <span className={`badge region${offTags(rd).every((x) => x.partial) ? ' partial' : ''}`}>
-                        {offTags(rd).map((x) => x.tag).join(' ')}
+                    {(c.holiday || offTags(rd).length > 0) && (
+                      // 休 / 班 and other regions' days off, together in the top-left corner (the Moon has the top-right)
+                      <span className="badges">
+                        {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
+                        {offTags(rd).length > 0 && (
+                          <span className={`badge region${offTags(rd).every((x) => x.partial) ? ' partial' : ''}`}>
+                            {offTags(rd).map((x) => x.tag).join(' ')}
+                          </span>
+                        )}
                       </span>
                     )}
                     {moonPhase === 'show' && <MoonGlyph moon={moonOf(c.solar)} title={moonText(moonOf(c.solar))} />}

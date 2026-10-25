@@ -1,19 +1,18 @@
 // The saved charts, shared by the 命盘 drawer and the calendar (which shows the
-// charts' dates), and which of them the calendar leaves out. Both are kept in
-// this browser; components read them through these hooks so every view stays
-// in step when the drawer adds, removes or un-ticks a chart.
+// dates of the one chosen), and which one that is. Both are kept in this
+// browser; components read them through these hooks so every view stays in
+// step when the drawer adds, removes or chooses a chart.
 import { useSyncExternalStore } from 'react'
 import { loadCharts, saveCharts, type SavedChart } from '../lib/savedCharts'
 
-const HIDDEN_KEY = 'chroniq-calendar-hidden-charts'
+const CHOSEN_KEY = 'chroniq-calendar-chart'
 
 let charts: SavedChart[] = loadCharts()
-let hidden: string[] = (() => {
+let chosen: string | null = (() => {
   try {
-    const v = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
-    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+    return localStorage.getItem(CHOSEN_KEY)
   } catch {
-    return []
+    return null
   }
 })()
 
@@ -30,10 +29,11 @@ function setCharts(next: SavedChart[]) {
   emit()
 }
 
-function toggleHidden(id: string) {
-  hidden = hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id]
+function choose(id: string | null) {
+  chosen = id
   try {
-    localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
+    if (id === null) localStorage.removeItem(CHOSEN_KEY)
+    else localStorage.setItem(CHOSEN_KEY, id)
   } catch {
     // storage unavailable: lasts for this visit
   }
@@ -45,7 +45,7 @@ export function useSavedCharts(): [SavedChart[], (next: SavedChart[]) => void] {
   return [useSyncExternalStore(subscribe, () => charts), setCharts]
 }
 
-/** The ids of the charts the calendar leaves out, and a toggle; every chart shows unless left out */
-export function useCalendarHidden(): [string[], (id: string) => void] {
-  return [useSyncExternalStore(subscribe, () => hidden), toggleHidden]
+/** The id of the one chart whose dates the calendar shows (none until one is chosen in the drawer), and a way to choose */
+export function useCalendarChart(): [string | null, (id: string | null) => void] {
+  return [useSyncExternalStore(subscribe, () => chosen), choose]
 }

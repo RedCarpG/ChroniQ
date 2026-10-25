@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useCalendarHidden, useSavedCharts } from './chartStore'
+import { useCalendarChart, useSavedCharts } from './chartStore'
 import type { BaziInput } from '../lib/bazi'
 import { sameInput, upsertChart } from '../lib/savedCharts'
 import { translate, type Lang } from '../i18n'
@@ -86,8 +86,8 @@ export function DrawerPageTab({ label, title, count, children }: { label: string
 /**
  * Saved charts in a drawer on the left edge of the screen. Closed, only a
  * slim 命盘 tab shows; open, the panel slides over the page (nothing below
- * moves). Loading a chart closes it again. On the calendar page each chart
- * also gets a 日历 tick: whether its dates show on the calendar.
+ * moves). Loading a chart closes it again, and makes it the one whose dates the
+ * calendar shows; on the calendar page, choosing the chosen one again lets it go.
  */
 export function SavedChartsDrawer({
   input,
@@ -96,14 +96,15 @@ export function SavedChartsDrawer({
 }: {
   input: BaziInput
   onLoad: (input: BaziInput) => void
-  /** On the calendar page: show the 日历 ticks */
+  /** On the calendar page: the chart picked out is the one the calendar shows */
   calendar?: boolean
 }) {
   const t = useT()
   const { language } = useSettings()
   const [charts, update] = useSavedCharts()
-  const [hidden, toggleHidden] = useCalendarHidden()
+  const [chosen, choose] = useCalendarChart()
   const active = charts.find((c) => sameInput(c.input, input))
+  const on = calendar ? charts.find((c) => c.id === chosen) : active
   const [name, setName] = useState('')
   const [tab, setTab] = useOpenTab()
   const open = tab !== null
@@ -151,29 +152,29 @@ export function SavedChartsDrawer({
         {charts.length > 0 ? (
           <ul className="saved-list">
             {charts.map((c) => (
-              <li key={c.id} className={c === active ? 'on' : undefined}>
+              <li key={c.id} className={c === on ? 'on' : undefined}>
                 <button
                   type="button"
                   className="saved-item"
+                  title={calendar ? (c === on ? t('再点一次，日历上不再显示这张命盘') : t('在日历上显示这张命盘的日子')) : undefined}
+                  aria-pressed={calendar ? c === on : undefined}
                   onClick={() => {
                     onLoad(c.input)
+                    choose(calendar && c === on ? null : c.id)
                     close()
                   }}
                 >
                   <span className="saved-name">{c.name}</span>
                   <small className="muted">{describe(c.input, language)}</small>
                 </button>
-                {calendar && (
-                  <label className="saved-calendar" title={t('在日历上显示这张命盘的日子')}>
-                    <input type="checkbox" checked={!hidden.includes(c.id)} onChange={() => toggleHidden(c.id)} />
-                    {t('日历')}
-                  </label>
-                )}
                 <button
                   type="button"
                   className="chip-x"
                   aria-label={t('删除{name}', { name: c.name })}
-                  onClick={() => update(charts.filter((x) => x !== c))}
+                  onClick={() => {
+                    update(charts.filter((x) => x !== c))
+                    if (c.id === chosen) choose(null)
+                  }}
                 >
                   ×
                 </button>

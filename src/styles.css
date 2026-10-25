@@ -430,7 +430,7 @@ footer {
 .moon .moon-lit { fill: var(--moon-lit); }
 .moon.quarter .moon-shade { stroke: var(--moon-lit); stroke-width: 0.8; stroke-opacity: 0.6; }
 .moon.full { filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--moon-lit) 75%, transparent)); }
-.day .moon { position: absolute; top: 6px; left: 6px; width: 11px; height: 11px; }
+.day .moon { position: absolute; top: 6px; right: 6px; width: 11px; height: 11px; }
 .day.selected .moon { --moon-lit: #fffaf0; --moon-shade: color-mix(in srgb, var(--on-accent) 28%, transparent); }
 .moon-line { display: flex; align-items: center; gap: 6px; }
 .moon-line .moon { width: 15px; height: 15px; }
@@ -494,8 +494,11 @@ footer {
 }
 .badge.off { background: var(--good); }
 .badge.work { background: var(--muted); }
-/* 其他地区节日: the country's tag sits top-left; paler for a day off only in part of it */
-.badge.region { right: auto; left: 4px; background: #2f5fa7; letter-spacing: 0.04em; }
+/* A day's badges (休 / 班, then other regions' days off) sit together in the top-left corner */
+.day .badges { position: absolute; top: 2px; left: 4px; right: 20px; display: flex; flex-wrap: wrap; gap: 2px; pointer-events: none; }
+.day .badges .badge { position: static; }
+/* 其他地区节日: the country's tag; paler for a day off only in part of it */
+.badge.region { background: #2f5fa7; letter-spacing: 0.04em; }
 .badge.region.partial { background: color-mix(in srgb, #2f5fa7 55%, transparent); }
 .day .sub.region, .week-day .sub.region { color: #3f6fbf; }
 .day .sub.region.observance { color: color-mix(in srgb, #3f6fbf 75%, var(--muted)); }
@@ -530,8 +533,6 @@ footer {
 .mine-days { margin: 10px 0; display: grid; gap: 6px; }
 .mine-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 13px; color: #8a5cc8; }
 .mine-days .mine-pillar { color: var(--muted); }
-.saved-calendar { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 11px; color: var(--muted); white-space: nowrap; cursor: pointer; }
-.saved-calendar input { accent-color: var(--accent); }
 .region-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .region-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .tag.region { background: color-mix(in srgb, #3f6fbf 14%, transparent); color: #3f6fbf; }
@@ -657,7 +658,7 @@ button.fortune:hover { background: var(--surface-2); }
   .kv.inline { grid-template-columns: repeat(2, auto 1fr); }
 }
 @media (max-width: 480px) {
-  .day .moon { top: 2px; left: 2px; width: 7px; height: 7px; }
+  .day .moon { top: 2px; right: 2px; width: 7px; height: 7px; }
   .dipper-dial { width: 56px; height: 56px; }
   .cal-title { gap: 10px; }
   .day .num { font-size: 16px; }
@@ -668,6 +669,7 @@ button.fortune:hover { background: var(--surface-2); }
   .month-picker { position: static; }
   .picker-panel { left: 0; width: min(300px, 100%); }
   .badge { top: 1px; right: 1px; font-size: 8px; padding: 1px 2px; }
+  .day .badges { top: 1px; left: 1px; right: 10px; gap: 1px; }
   .char { font-size: 26px; }
   .card { padding: 12px; }
 }

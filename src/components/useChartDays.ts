@@ -3,7 +3,7 @@ import type { SolarDay } from 'tyme4ts'
 import { CHART_ITEMS, chartYear, pillarDays, taiSui, type ChartDay, type ChartItem } from '../lib/chartDays'
 import { loadSchools } from '../lib/schools'
 import { useT, useTerm } from '../settingsContext'
-import { useCalendarHidden, useSavedCharts } from './chartStore'
+import { useCalendarChart, useSavedCharts } from './chartStore'
 
 type Western = typeof import('../lib/chartWestern')
 
@@ -25,15 +25,15 @@ const ASPECT: Record<string, string> = { conjunction: '合', square: '刑', trin
 const POINT: Record<string, string> = { sun: '太阳', moon: '月亮', asc: '上升' }
 
 /**
- * The saved charts' dates for the calendar: which charts show (all but those
- * un-ticked in the 命盘 drawer), which kinds of date (chosen in the day panel,
+ * The saved charts' dates for the calendar: which chart shows (the one chosen
+ * in the 命盘 drawer, if any), which kinds of date (chosen in the day panel,
  * kept in this browser), the dates on a day, and their wording. The 星盘 dates
  * need astronomy-engine, loaded only once they are asked for.
  */
 export function useChartDays() {
   const [charts] = useSavedCharts()
-  const [hidden] = useCalendarHidden()
-  const shown = useMemo(() => charts.filter((c) => !hidden.includes(c.id)), [charts, hidden])
+  const [chosen] = useCalendarChart()
+  const shown = useMemo(() => charts.filter((c) => c.id === chosen), [charts, chosen])
   const [items, setItems] = useState<ChartItem[]>(loadItems)
   const toggleItem = (item: ChartItem) => {
     const next = items.includes(item) ? items.filter((i) => i !== item) : CHART_ITEMS.filter((i) => i === item || items.includes(i))

@@ -63,7 +63,8 @@ export const CALENDAR: Record<string, string> = {
   交运与太岁: '大运 and 太岁',
   '在左侧「命盘」里保存命盘后，它们的生日、冲合、交运等日子会显示在日历上。':
     'Save charts in the Charts drawer on the left, and their birthdays, 冲 / 合 days, 大运 changes and more show on the calendar.',
-  '显示 {shown} / {total} 张命盘，可在左侧「命盘」里勾选。': 'Showing {shown} of {total} charts; tick them in the Charts drawer on the left.',
+  '在左侧「命盘」里选一张命盘，它的日子会显示在日历上。': 'Choose a chart in the Charts drawer on the left to show its dates on the calendar.',
+  '显示「{name}」的日子，可在左侧「命盘」里换一张。': 'Showing the dates of “{name}”; choose another in the Charts drawer on the left.',
   '{name}生日（{age} 岁）': '{name}’s birthday ({age})',
   '{name}农历生日': '{name}’s lunar birthday',
   '冲{name}日柱': 'Clashes {name}’s day pillar',
@@ -79,6 +80,7 @@ export const CALENDAR: Record<string, string> = {
   '{name}冲太岁': '{name} clashes with 太岁 this year',
   日历: 'Calendar',
   在日历上显示这张命盘的日子: 'Show this chart’s dates on the calendar',
+  '再点一次，日历上不再显示这张命盘': 'Click again to stop showing this chart on the calendar',
   地区假日: 'Regional holiday',
   纪念日: 'Notable day',
 
