@@ -93,11 +93,14 @@ export function SavedChartsDrawer({
   input,
   onLoad,
   calendar = false,
+  charts: withCharts = true,
 }: {
   input: BaziInput
   onLoad: (input: BaziInput) => void
   /** On the calendar page: the chart picked out is the one the calendar shows */
   calendar?: boolean
+  /** Whether it holds the saved charts (not on the 天象 page, where it holds only the page's own tab) */
+  charts?: boolean
 }) {
   const t = useT()
   const { language } = useSettings()
@@ -121,7 +124,7 @@ export function SavedChartsDrawer({
   return (
     <div className={`drawer${open ? ' open' : ''}`} ref={ref}>
       <aside className="drawer-panel" inert={!open}>
-        <div id="saved-charts" className="drawer-section" aria-label={t('已保存的命盘')} hidden={tab === 'page'}>
+        <div id="saved-charts" className="drawer-section" aria-label={t('已保存的命盘')} hidden={tab === 'page' || !withCharts}>
         <div className="drawer-head">
           <h3>
             <TitleMark />
@@ -193,6 +196,7 @@ export function SavedChartsDrawer({
         <button
           type="button"
           className="drawer-handle"
+          hidden={!withCharts}
           aria-expanded={tab === 'charts'}
           aria-controls="saved-charts"
           title={t('已保存的命盘')}
