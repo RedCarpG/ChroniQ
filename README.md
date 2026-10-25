@@ -12,7 +12,7 @@
     <td width="50%"><img src="docs/images/sky.jpg" alt="天象" /><br /><b>天象</b> · 此刻头顶的星空、太阳系行星</td>
   </tr>
   <tr>
-    <td><img src="docs/images/bazi.jpg" alt="八字排盘" /><br /><b>八字</b> · 四柱、十神、神煞、大运流年</td>
+    <td><img src="docs/images/bazi.jpg" alt="八字排盘" /><br /><b>八字</b> · 四柱、十神、神煞、大运流年、生辰星空</td>
     <td><img src="docs/images/ziwei.jpg" alt="紫微斗数" /><br /><b>紫微斗数</b> · 十二宫、四化飞星、运限</td>
   </tr>
   <tr>

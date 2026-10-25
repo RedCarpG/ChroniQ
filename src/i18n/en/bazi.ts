@@ -71,4 +71,13 @@ export const BAZI: Record<string, string> = {
     '{ganzhi} is in the {xun} 旬. Its ten 天干 pair with only ten 地支, leaving {a} and {b} with no stem: they are 空亡.',
   '其他柱或岁运的地支遇到{a}、{b}，传统认为作用减弱。':
     'A 地支 of another pillar or of the 岁运 that is {a} or {b} is traditionally held to be weakened.',
+
+  // 五星 under the 五行 bars (BirthSky): where each stood at birth
+  '{name}（{west}）· {mansion} · {height}': '{name} ({west}) · {mansion} · {height}',
+  '地平上 {alt}°': '{alt}° up',
+  地平下: 'below the horizon',
+  '日躔{mansion}': 'Sun in {mansion}',
+  '月离{mansion}': 'Moon in {mansion}',
+  昼生: 'born by day',
+  夜生: 'born by night',
 }

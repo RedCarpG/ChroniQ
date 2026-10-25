@@ -23,6 +23,7 @@ import { CONCEPTS } from '../src/lib/glossary'
 import { SHENSHA_INFO } from '../src/lib/shenshaInfo'
 import { buildZiwei } from '../src/lib/ziwei'
 import { DEFAULT_ZIWEI_SCHOOLS } from '../src/lib/ziweiSchools'
+import { FIVE_STARS } from '../src/lib/fiveStars'
 
 const STEMS = '甲乙丙丁戊己庚辛壬癸'
 const BRANCHES = '子丑寅卯辰巳午未申酉戌亥'
@@ -100,6 +101,8 @@ export function collectTerms(years: [number, number] = [1990, 2035], ziweiCharts
   // Pillar tags in 刑冲合会 (年月日时 + 运/岁)
   add('年月日时运岁')
   add('大运流年流月流日')
+  // 五星 (the 八字 page's sky)
+  for (const s of FIVE_STARS) add(s.name)
 
   // 刑冲合会: every pair, plus full trios, under both 午未 settings
   for (const wuWei of ['土', '火'] as const) {

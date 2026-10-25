@@ -653,7 +653,7 @@ button.fortune:hover { background: var(--surface-2); }
 
 @media (max-width: 860px) {
   .calendar-layout { grid-template-columns: 1fr; }
-  .elements { grid-template-columns: repeat(3, 1fr); }
+  .elements, .five-stars { grid-template-columns: repeat(3, 1fr); }
   .kv.inline { grid-template-columns: repeat(2, auto 1fr); }
 }
 @media (max-width: 480px) {
@@ -1410,6 +1410,98 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .sky-panel { overflow: visible; }
 }
 @media print { .sky-backdrop { display: none; } }
+
+/* ---------- 生辰星空 (BirthSky): the sky at the moment of birth behind the 八字 page ----------
+   Dark: the night sky, stars in their own colours. Light: an ink star map on paper, as old Chinese
+   star charts were drawn: black stars, the 二十八宿 in vermilion. The Sun, Moon and 五星 keep the
+   colours of their 五行 in both. */
+:root {
+  --bs-star: #2f2b33; --bs-star-alpha: 0.5; --bs-milky-alpha: 0.45;
+  --bs-mw-haze: #c9a86a; --bs-mw-body: #b8924f; --bs-mw-core: #9a7536; --bs-mw-grain: #6b5a3e;
+  --bs-figure: rgb(178 58 46 / 0.3); --bs-label: rgb(178 58 46 / 0.55); --bs-sun: #c9821e;
+  --bs-moon-shade: rgb(0 0 0 / 0.08); --bs-daylight: rgb(255 196 110 / 0.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bs-star: initial; --bs-star-alpha: 0.9; --bs-milky-alpha: 0.6;
+    --bs-mw-haze: #8496d8; --bs-mw-body: #b9c5f2; --bs-mw-core: #f1eedf; --bs-mw-grain: #d6defc;
+    --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0.42); --bs-sun: #ffcf4a;
+    --bs-moon-shade: rgb(255 255 255 / 0.1); --bs-daylight: rgb(120 160 255 / 0.1);
+  }
+}
+:root[data-theme='dark'] {
+  --bs-star: initial; --bs-star-alpha: 0.9; --bs-milky-alpha: 0.6;
+  --bs-mw-haze: #8496d8; --bs-mw-body: #b9c5f2; --bs-mw-core: #f1eedf; --bs-mw-grain: #d6defc;
+  --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0.42); --bs-sun: #ffcf4a;
+  --bs-moon-shade: rgb(255 255 255 / 0.1); --bs-daylight: rgb(120 160 255 / 0.1);
+}
+.birth-sky {
+  position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100lvh; overflow: hidden; pointer-events: none;
+  contain: strict;
+}
+.birth-sky canvas { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; }
+/* Born by day or in twilight: the sky lightens about the Sun */
+.birth-sky.day::before, .birth-sky.twilight::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--sun-x) var(--sun-y), var(--bs-daylight), transparent 75%);
+}
+.birth-sky.twilight::before { opacity: 0.5; }
+.birth-sky.day canvas { opacity: 0.65; }
+/* The Sun, Moon and 五星: a point each, centred on its place, in the colour of its 五行 */
+.bs-body { position: absolute; width: 0; height: 0; }
+.bs-body > * { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
+.bs-body i { border-radius: 50%; }
+.bs-body .glow { width: 44px; height: 44px; background: radial-gradient(circle, currentColor, transparent 65%); opacity: 0.4; transition: opacity 0.3s; }
+.bs-body .ring { width: 18px; height: 18px; border: 1px solid currentColor; opacity: 0.45; transition: opacity 0.3s, transform 0.3s; }
+.bs-body .disc { width: var(--d, 5px); height: var(--d, 5px); background: currentColor; }
+.bs-body b { transform: none; left: 9px; top: -22px; font-size: 12px; font-weight: 400; white-space: nowrap; opacity: 0.7; transition: opacity 0.3s; }
+.bs-body.sun { color: var(--bs-sun); }
+.bs-body.sun .glow { width: 150px; height: 150px; opacity: 0.45; }
+.bs-body.sun .disc { width: 14px; height: 14px; }
+.bs-body.moon { color: var(--moon-lit); }
+.bs-body.moon svg { width: 14px; height: 14px; overflow: visible; }
+.bs-body.moon .shade { fill: var(--bs-moon-shade); }
+.bs-body.moon .lit { fill: currentColor; }
+/* Picked out from the 五星 row */
+.bs-body.on .glow { opacity: 0.85; }
+.bs-body.on .ring { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+.bs-body.on b { opacity: 1; font-weight: 600; }
+.bs-twinkles i {
+  position: absolute; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  background:
+    radial-gradient(circle, var(--c) 0 1px, transparent 60%),
+    linear-gradient(var(--c), var(--c)) center / 1px 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) center / 100% 1px no-repeat;
+  -webkit-mask: radial-gradient(circle, #000 15%, transparent 68%); mask: radial-gradient(circle, #000 15%, transparent 68%);
+  animation: sf-twinkle 6s ease-in-out infinite; will-change: opacity, transform;
+}
+:root:not([data-theme='dark']) .bs-twinkles { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .bs-twinkles { display: block; } }
+@media (prefers-reduced-motion: reduce) {
+  .bs-twinkles { visibility: hidden; }
+}
+@media print { .birth-sky { display: none; } }
+/* On a phone the chart covers nearly the whole sky: no names showing through it, only the lights */
+@media (max-width: 640px) { .bs-body b { display: none; } }
+/* The chart reads over the sky: the 八字 page's cards a little more solid than elsewhere */
+.app.page-bazi { --card: color-mix(in srgb, var(--surface) 92%, transparent); }
+
+/* 五星 under the 五行 bars, one under each */
+.five-stars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 8px; }
+.five-star {
+  display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.five-star .fs-name { display: flex; align-items: center; gap: 4px; color: var(--el); font-size: 13px; font-weight: 600; }
+.five-star .fs-name i { font-style: normal; font-size: 11px; }
+.five-star:not(.up) .fs-name { opacity: 0.75; }
+.five-star .fs-where { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.five-star:hover, .five-star.on, .five-star:focus-visible {
+  outline: none; background: color-mix(in srgb, var(--el) 10%, transparent); border-color: color-mix(in srgb, var(--el) 35%, transparent);
+}
+.five-stars-note { margin: 4px 0 0 8px; font-size: 12px; }
+.five-stars-note span[tabindex] { border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); outline: none; }
+.five-stars-note span[tabindex]:focus-visible { color: var(--text); }
 /* Coming in: the sky fades up from the dark and settles from a little closer; the Milky Way comes
    up after it, the figures draw themselves in, and the twinkling starts */
 .sky-map.entering { animation: sky-settle 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
