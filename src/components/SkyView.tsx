@@ -984,30 +984,16 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   }, [below, sky.light])
 
   const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
-  const map = (
-    <svg
-      ref={svgRef}
-      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}${entering ? ' entering' : ''}`}
-      style={{ '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties}
-      // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
-      role="group"
-      aria-label={t('此刻天空星图')}
-      onClick={() => {
-        // The end of a drag is not a click on the empty sky
-        if (dragged.current) dragged.current = false
-        else setChosen(null)
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onPointerOver={(e) => e.pointerType === 'mouse' && showTip(e.target)}
-      onPointerLeave={() => {
-        pointAt(null)
-        tipRef.current?.classList.remove('on')
-      }}
-    >
-      <g ref={mapRef} transform={`translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`}>
+  const mapTransform = `translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`
+  const mapClass = `sky-${below ? 'below' : sky.light}${entering ? ' entering' : ''}`
+  const mapStyle = { '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties
+  // The sky itself (its colour, glows and the Milky Way, with its blurs) in an SVG of its own, on a
+  // layer of its own, under the map: it changes only as the time, place or view does, so choosing,
+  // hovering and the fades that follow repaint the map above without blurring the Milky Way again
+  // (zoomed in, that took long enough to make the page flicker)
+  const backdrop = (
+    <svg className={`sky-map-back ${mapClass}`} style={mapStyle} aria-hidden="true">
+      <g transform={mapTransform}>
       <defs>
         <clipPath id={clipId}>
           <circle cx={C} cy={C} r={R} />
@@ -1082,8 +1068,35 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         )}
         {moonGlow && <circle cx={moonGlow.at[0]} cy={moonGlow.at[1]} r={R * 0.42} fill={`url(#${clipId}-moon)`} opacity={moonGlow.strength} />}
       </g>
+      <g clipPath={`url(#${clipId})`}>{milkyWayLayer}</g>
+      </g>
+    </svg>
+  )
+  const map = (
+    <svg
+      ref={svgRef}
+      className={`sky-map ${mapClass}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
+      style={mapStyle}
+      // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
+      role="group"
+      aria-label={t('此刻天空星图')}
+      onClick={() => {
+        // The end of a drag is not a click on the empty sky
+        if (dragged.current) dragged.current = false
+        else setChosen(null)
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerOver={(e) => e.pointerType === 'mouse' && showTip(e.target)}
+      onPointerLeave={() => {
+        pointAt(null)
+        tipRef.current?.classList.remove('on')
+      }}
+    >
+      <g ref={mapRef} transform={mapTransform}>
       <g clipPath={`url(#${clipId})`}>
-        {milkyWayLayer}
         {[30, 60].map((alt) => (
           <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
         ))}
@@ -1541,6 +1554,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
 
       {createPortal(
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
+          {backdrop}
           {map}
           <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
             {twinkles.map((tw) => (

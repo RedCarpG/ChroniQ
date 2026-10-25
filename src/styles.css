@@ -1406,6 +1406,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-backdrop { position: fixed; inset: 0; z-index: 0; background: #020308; animation: cal-fade 0.5s ease both; }
 .sky-backdrop.unplaced { visibility: hidden; }
 .sky-map { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+/* The sky under the map (its colour, glows and Milky Way): an SVG on a layer of its own, so what
+   changes on the map above does not repaint it */
+.sky-map-back { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; will-change: transform; }
+.sky-map-back + .sky-map { position: absolute; inset: 0; }
 /* Zoomed in, a drag moves the map, also on a touch screen */
 .sky-map.zoomed { touch-action: none; cursor: move; }
 .sky-backdrop.dragging .sky-map { cursor: grabbing; }
@@ -1523,13 +1527,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .five-stars-note span[tabindex]:focus-visible { color: var(--text); }
 /* Coming in: the sky fades up from the dark and settles from a little closer; the Milky Way comes
    up after it, the figures draw themselves in, and the twinkling starts */
-.sky-map.entering { animation: sky-settle 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+:is(.sky-map, .sky-map-back).entering { animation: sky-settle 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes sky-settle {
   from { opacity: 0; transform: scale(1.12); }
   45% { opacity: 1; }
   to { transform: none; }
 }
-.sky-map.entering .sky-milkyway { animation: cal-fade 2.2s 0.5s ease both; }
+.sky-map-back.entering .sky-milkyway { animation: cal-fade 2.2s 0.5s ease both; }
 .sky-map.entering .sky-figures .line { stroke-dasharray: 1; animation: sky-draw 2.2s 0.7s ease-out both; }
 .sky-twinkles { position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s ease; }
 .sky-twinkles.entering { opacity: 0; }
@@ -1816,6 +1820,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .orrery-sight { stroke: #fff; stroke-width: 1; stroke-dasharray: 4 3; stroke-opacity: 0.8; }
 /* While it is retrograde the line of sight turns red and says so; its trail on the zodiac doubles back */
 .orrery-sight.retro { stroke: #ff7a6b; stroke-opacity: 0.95; }
+.orrery-sight.sun { stroke: #ffcf4a; }
 .orrery-retro { fill: #ff8a7a; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; pointer-events: none; }
 .orrery-seen-dot { pointer-events: none; }
 .orrery-table tbody tr { cursor: pointer; outline: none; transition: background-color 0.2s; }

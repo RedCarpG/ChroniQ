@@ -285,7 +285,7 @@ export function SolarSystemView() {
               ))}
               {seen.map((lon, i) => {
                 const [x, y] = polar(lon, (R_Z1 + R_Z2) / 2)
-                return <circle key={i} className="orrery-seen-dot" cx={x} cy={y} r={1.2 + (i / seen.length) * 1.3} opacity={0.15 + (0.75 * i) / seen.length} fill={BODY_COLOUR[pick.picked!] ?? '#ffcf4a'} />
+                return <circle key={i} className="orrery-seen-dot" cx={x} cy={y} r={1.2 + (i / seen.length) * 1.3} opacity={0.15 + (0.75 * i) / seen.length} fill={pick.picked === 'earth' ? '#ffcf4a' : BODY_COLOUR[pick.picked!]} />
               })}
               {focused && (
                 <line
@@ -350,6 +350,11 @@ export function SolarSystemView() {
               >
                 {t('逆行')}
               </text>
+            )}
+            {focused?.key === 'earth' && (
+              // From Earth the Sun is what it sees on the zodiac (as the table's Earth row): its line of
+              // sight runs through the Sun to the zodiac, and a chosen Earth's trail is the Sun's way through the year
+              <line className="orrery-sight sun" x1={xy(earth.x, earth.y)[0]} y1={xy(earth.x, earth.y)[1]} x2={polar(focused.geo, R_Z1 - 4)[0]} y2={polar(focused.geo, R_Z1 - 4)[1]} />
             )}
             {focused && focused.key !== 'earth' && (
               <line
