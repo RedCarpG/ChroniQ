@@ -1,5 +1,5 @@
-// Shared set-up for component tests, which run in jsdom (each test file opts in
-// with a `// @vitest-environment jsdom` comment). jsdom has no layout, media
+// Shared set-up for component tests, which run in happy-dom (each test file opts in
+// with a `// @vitest-environment happy-dom` comment). happy-dom has no layout, media
 // queries or animation, so this stands in for the bits the components touch.
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeEach } from 'vitest'

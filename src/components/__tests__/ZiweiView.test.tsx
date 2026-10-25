@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import './dom'
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

@@ -1,12 +1,12 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import './dom'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PLACE } from '../../lib/place'
 import { SkyView } from '../SkyView'
 
-// jsdom has no PointerEvent: a mouse event with a pointer id stands in, so pointer events carry their coordinates
-if (!('PointerEvent' in globalThis)) {
+// Mouse events stand in for pointer and wheel events, so they carry the pointer's place
+{
   class PointerEventStub extends MouseEvent {
     pointerId: number
     pointerType: string
@@ -16,7 +16,23 @@ if (!('PointerEvent' in globalThis)) {
       this.pointerType = init.pointerType ?? 'mouse'
     }
   }
-  Object.assign(globalThis, { PointerEvent: PointerEventStub })
+  // And for the wheel: happy-dom's WheelEvent leaves the pointer's place (clientX, clientY) unset
+  class WheelEventStub extends MouseEvent {
+    deltaX: number
+    deltaY: number
+    deltaZ: number
+    deltaMode: number
+    constructor(type: string, init: WheelEventInit = {}) {
+      super(type, init)
+      this.deltaX = init.deltaX ?? 0
+      this.deltaY = init.deltaY ?? 0
+      this.deltaZ = init.deltaZ ?? 0
+      this.deltaMode = init.deltaMode ?? 0
+    }
+  }
+  // On the global, and on the window the DOM's events are made from (Testing Library takes them from there)
+  for (const target of [globalThis, document.defaultView ?? globalThis])
+    Object.assign(target, { PointerEvent: PointerEventStub, WheelEvent: WheelEventStub })
 }
 
 // Beijing, 02:57 on 25 October 2026: Jupiter, Saturn and Sirius are up, the Sun is not
@@ -240,14 +256,15 @@ describe('SkyView past track', () => {
     const history = () => [...container.querySelectorAll('.sky-detail [role=switch]')].find((b) => b.textContent === '历史轨迹')!
     fireEvent.click(history())
     expect(history().getAttribute('aria-checked')).toBe('true')
-    expect(map.querySelector('.sky-history')!.getAttribute('style')).toContain('rgb(234, 210, 143)')
+    // The path in the Sun's colour (a DOM may keep it as written or as rgb())
+    expect(map.querySelector('.sky-history')!.getAttribute('style')).toMatch(/#ead28f|rgb\(234, 210, 143\)/)
     // Three months by default, with a date mark every half month
     expect(map.querySelectorAll('.sky-history .tick').length).toBe(6)
     fireEvent.click([...container.querySelectorAll('.sky-detail .seg button')].find((b) => b.textContent === '1 年')!)
     expect(map.querySelectorAll('.sky-history .tick').length).toBe(12)
     // Another body chosen: its track; none chosen: none
     fireEvent.click(map.querySelector('.sky-jupiter')!)
-    expect(map.querySelector('.sky-history')!.getAttribute('style')).toContain('rgb(244, 215, 168)')
+    expect(map.querySelector('.sky-history')!.getAttribute('style')).toMatch(/#f4d7a8|rgb\(244, 215, 168\)/)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(map.querySelector('.sky-history')).toBeNull()
   })
@@ -299,8 +316,12 @@ describe('SkyView zoomed', () => {
   })
 
   it('draws the map past the screen, and draws it anew mid-drag once a drag goes past that', async () => {
-    // A window for the sky as on a screen (jsdom lays nothing out), so that zoomed in it can be panned
-    const laidOut = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 700, 700))
+    // A window for the sky as on a screen (the test DOM lays nothing out), so that zoomed in it can be panned
+    // (set on HTMLElement and taken off again after, as a spy on the method inherited from Element
+    // may not be in every DOM)
+    const box = { left: 0, top: 0, width: 700, height: 700, right: 700, bottom: 700, x: 0, y: 0, toJSON() {} }
+    Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', { value: () => box, configurable: true, writable: true })
+    try {
     const { map } = setUp()
     const zoomer = document.querySelector<HTMLElement>('.sky-zoomer')!
     // The layers reach past the screen: 15% of its larger side
@@ -326,7 +347,9 @@ describe('SkyView zoomed', () => {
     await act(() => new Promise((rest) => setTimeout(rest, 100)))
     expect(drawn()).not.toBe(before)
     fireEvent.pointerUp(map, { pointerId: 4, pointerType: 'mouse', clientX: 700, clientY: 300 })
-    laidOut.mockRestore()
+    } finally {
+      delete (HTMLElement.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect
+    }
   })
 })
 
@@ -405,7 +428,7 @@ describe('SkyView dragged through time', () => {
   it('turns the time as the sky is dragged sideways, and a drag is not a click on the empty sky', () => {
     const { map, row, info, time } = setUp()
     fireEvent.click(row('木星'))
-    // jsdom has no layout: the map counts as 400 px square
+    // No layout in the test DOM: the map counts as 400 px square
     map.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 400, right: 400, bottom: 400, x: 0, y: 0, toJSON() {} })
     map.setPointerCapture = () => {}
     const frames: FrameRequestCallback[] = []
