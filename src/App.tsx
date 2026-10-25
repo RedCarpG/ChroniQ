@@ -141,9 +141,25 @@ export function App() {
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])
-  // The top bar, folded up on the 天象 page until pulled down (each visit starts folded)
+  // The top bar, folded up on the 天象 page (each visit starts folded): the mouse at the top of the
+  // screen brings it down, and it goes again a moment after the mouse leaves it, unless one of its
+  // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up
   const [barShown, setBarShown] = useState(false)
   const barFolded = tab === 'sky' && !barShown
+  const barTimer = useRef(0)
+  const showBar = () => {
+    clearTimeout(barTimer.current)
+    setBarShown(true)
+  }
+  const hideBarSoon = () => {
+    clearTimeout(barTimer.current)
+    barTimer.current = window.setTimeout(() => {
+      const bar = topbarRef.current
+      if (bar && (bar.matches(':hover') || bar.contains(document.activeElement))) return
+      setBarShown(false)
+    }, 500)
+  }
+  useEffect(() => () => clearTimeout(barTimer.current), [])
   // The top bar's height, for pages laid out to fill the window under it (the calendar)
   const appRef = useRef<HTMLDivElement>(null)
   const topbarRef = useRef<HTMLElement>(null)
@@ -161,14 +177,22 @@ export function App() {
   return (
     <SettingsContext.Provider value={settings}>
       <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
-        {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): a small tab
-            pulls it down, and one under it folds it up again */}
+        {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): the mouse at the
+            very top brings it down; a small tab pulls it down, and one under it folds it up again */}
+        {tab === 'sky' && <div className="topbar-hotzone" aria-hidden="true" onPointerEnter={(e) => e.pointerType === 'mouse' && showBar()} />}
         {barFolded && (
           <button type="button" className="topbar-fold down" aria-label={t('展开标题栏')} title={t('展开标题栏')} onClick={() => setBarShown(true)}>
             <span aria-hidden="true">⌄</span>
           </button>
         )}
-        <header className="topbar" ref={topbarRef}>
+        <header
+          className="topbar"
+          ref={topbarRef}
+          inert={barFolded}
+          onPointerEnter={() => tab === 'sky' && clearTimeout(barTimer.current)}
+          onPointerLeave={(e) => tab === 'sky' && e.pointerType === 'mouse' && hideBarSoon()}
+          onBlur={(e) => tab === 'sky' && !e.currentTarget.contains(e.relatedTarget as Node | null) && hideBarSoon()}
+        >
           <h1>
             <Logo />
             星曆
