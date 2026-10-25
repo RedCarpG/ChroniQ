@@ -317,20 +317,89 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     const keep = off > room ? room / off : 1
     return { z, x: v.x * keep, y: v.y * keep }
   }
-  /** Zooms by a factor about a point on the screen, which stays where it is */
-  const zoomAt = (fx: number, fy: number, factor: number) =>
-    setView((v) => {
-      const f = frameRef.current
-      if (!f) return v
-      const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z * factor))
-      const wx = f.left + f.width / 2
-      const wy = f.top + f.height / 2
-      const grow = z / v.z
-      return clampView({ z, x: fx - (fx - (wx + v.x)) * grow - wx, y: fy - (fy - (wy + v.y)) * grow - wy })
-    })
+
+  // While the wheel turns, fingers pinch or the map is dragged, the view on screen runs ahead of the
+  // one drawn: the drawn map (both its layers and the twinkles) is moved and scaled as a whole by one
+  // transform, which the compositor does without drawing anything again. When the gesture rests,
+  // the view is drawn properly (labels back to their size, stars to theirs) and the transform goes,
+  // in the same frame. Drawing the whole map anew for every step of a zoom was what made it judder.
+  const zoomerRef = useRef<HTMLDivElement>(null)
+  const live = useRef<typeof view | null>(null)
+  const settle = useRef(0)
+  const tween = useRef(0)
+  /** The view on screen: the one a gesture has reached, or the one drawn */
+  const current = () => live.current ?? viewRef.current
+  /** Moves the drawn map (drawn at viewRef's view) to show another */
+  const shift = (next: typeof view) => {
+    const f = frameRef.current!
+    const el = zoomerRef.current!
+    const v = viewRef.current
+    const g = next.z / v.z
+    const [wx, wy] = [f.left + f.width / 2, f.top + f.height / 2]
+    el.style.transform = `translate(${wx + next.x - (wx + v.x) * g}px, ${wy + next.y - (wy + v.y) * g}px) scale(${g})`
+    if (!el.classList.contains('moving')) el.classList.add('moving')
+  }
+  /** Shows a view at once by moving the drawn map; draws it properly after `rest` ms without another
+   *  (long enough that the notches of a wheel spun on a slow machine still count as one gesture) */
+  const preview = (next: typeof view, rest = 250) => {
+    if (!frameRef.current || !zoomerRef.current) return setView(next)
+    live.current = next
+    shift(next)
+    if (tipRef.current?.classList.contains('on')) tipRef.current.classList.remove('on')
+    clearTimeout(settle.current)
+    settle.current = window.setTimeout(() => live.current && setView(live.current), rest)
+  }
+  // A view has been drawn: if it is the one shown, the transform goes before the frame is painted;
+  // if the gesture went on meanwhile, the transform now starts from the view just drawn
+  useLayoutEffect(() => {
+    const el = zoomerRef.current
+    if (!el) return
+    if (live.current && live.current !== view) return shift(live.current)
+    live.current = null
+    el.style.transform = ''
+    el.classList.remove('moving')
+  }, [view])
+  useEffect(() => () => {
+    clearTimeout(settle.current)
+    cancelAnimationFrame(tween.current)
+  }, [])
+  /** The view zoomed by a factor about a point on the screen, which stays where it is */
+  const zoomedAt = (v: typeof view, fx: number, fy: number, factor: number) => {
+    const f = frameRef.current!
+    const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z * factor))
+    const wx = f.left + f.width / 2
+    const wy = f.top + f.height / 2
+    const grow = z / v.z
+    return clampView({ z, x: fx - (fx - (wx + v.x)) * grow - wx, y: fy - (fy - (wy + v.y)) * grow - wy })
+  }
+  const zoomAt = (fx: number, fy: number, factor: number) => {
+    if (!frameRef.current) return
+    cancelAnimationFrame(tween.current)
+    preview(zoomedAt(current(), fx, fy, factor))
+  }
+  /** Glides to a view (the zoom buttons), then draws it; with reduced motion, draws it at once */
+  const glideTo = (target: typeof view) => {
+    const from = current()
+    const start = performance.now()
+    cancelAnimationFrame(tween.current)
+    if (reducedMotion()) {
+      clearTimeout(settle.current)
+      live.current = null
+      return setView(target)
+    }
+    const step = (now: number) => {
+      const a = Math.min(1, (now - start) / 240)
+      const e = 1 - (1 - a) ** 3
+      const z = from.z * (target.z / from.z) ** e
+      preview({ z, x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e }, a < 1 ? 1000 : 0)
+      if (a < 1) tween.current = requestAnimationFrame(step)
+    }
+    tween.current = requestAnimationFrame(step)
+  }
   const zoomBy = (factor: number) => {
     const f = frameRef.current
-    if (f) zoomAt(f.left + f.width / 2 + viewRef.current.x, f.top + f.height / 2 + viewRef.current.y, factor)
+    const v = current()
+    if (f) glideTo(zoomedAt(v, f.left + f.width / 2 + v.x, f.top + f.height / 2 + v.y, factor))
   }
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
@@ -849,10 +918,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       // A second finger: the drag becomes a pinch
       if (drag.current?.moved) dragged.current = true
       drag.current = null
-      pinch.current = { ...pinchOf(), view: viewRef.current }
+      pinch.current = { ...pinchOf(), view: current() }
       return
     }
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: viewRef.current, time: middle || viewRef.current.z <= Z_MIN, moved: false }
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: utc.getTime(), view: current(), time: middle || current().z <= Z_MIN, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -862,24 +931,25 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       const f = frameRef.current
       if (!f) return
       later(() => {
-        // Zoom about where the pinch began, then follow the fingers' midpoint
+        // Zoom about where the pinch began, then follow the fingers' midpoint; drawn when they rest or lift
         const z = Math.min(Z_MAX, Math.max(Z_MIN, (p.view.z * now.dist) / p.dist))
         const wx = f.left + f.width / 2
         const wy = f.top + f.height / 2
         const grow = z / p.view.z
-        setView(
+        preview(
           clampView({
             z,
             x: p.mid[0] - (p.mid[0] - (wx + p.view.x)) * grow - wx + (now.mid[0] - p.mid[0]),
             y: p.mid[1] - (p.mid[1] - (wy + p.view.y)) * grow - wy + (now.mid[1] - p.mid[1]),
           }),
+          250,
         )
       })
       return
     }
     const d = drag.current
     if (!d || d.id !== e.pointerId) {
-      if (e.pointerType === 'mouse') pointAt(e)
+      if (e.pointerType === 'mouse' && !live.current) pointAt(e)
       return
     }
     const dx = e.clientX - d.x
@@ -904,14 +974,21 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         setDragShift(minutes)
         setPicked(wallTime(new Date(d.base + minutes * 60_000), place.timeZone))
       })
-    } else later(() => setView(clampView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy })))
+    } else later(() => preview(clampView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy }), 250))
   }
+  /** A gesture over: draw the view it reached now, after its last step lands */
+  const settleNow = () =>
+    requestAnimationFrame(() => {
+      clearTimeout(settle.current)
+      if (live.current) setView(live.current)
+    })
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     pointers.current.delete(e.pointerId)
     if (pinch.current) {
       if (pointers.current.size < 2) {
         pinch.current = null
         dragged.current = true
+        settleNow()
       }
       return
     }
@@ -920,6 +997,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     drag.current = null
     if (!d.moved) return
     dragged.current = true
+    if (!d.time) settleNow()
     // After the last step has landed
     if (d.time) requestAnimationFrame(() => requestAnimationFrame(() => setDragShift(null)))
   }
@@ -929,14 +1007,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     const onWheel = (e: WheelEvent) => {
       const zoomIn = e.deltaY < 0
       // A trackpad pinch comes as the wheel with ctrl held: always a zoom
-      if (!e.ctrlKey && (zoomIn ? window.scrollY > 0 : viewRef.current.z <= Z_MIN)) return
+      if (!e.ctrlKey && (zoomIn ? window.scrollY > 0 : current().z <= Z_MIN)) return
       e.preventDefault()
       const step = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY
       zoomAt(e.clientX, e.clientY, Math.exp(-step * (e.ctrlKey ? 0.01 : 0.0015)))
     }
     svg.addEventListener('wheel', onWheel, { passive: false })
     return () => svg.removeEventListener('wheel', onWheel)
-    // zoomAt uses refs and setView only
+    // zoomAt uses refs, setView and the transform only
   }, [])
   const shiftLabel = (minutes: number) => {
     const h = Math.floor(Math.abs(minutes) / 60)
@@ -959,7 +1037,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     const fire = () => {
       const el = meteorRef.current
       const f = frameRef.current
-      if (el && f && el.animate && !document.hidden && !drag.current?.moved) {
+      if (el && f && el.animate && !document.hidden && !drag.current?.moved && !live.current) {
         const v = viewRef.current
         const s = (Math.min(f.width, f.height) / (2 * C)) * v.z
         const turn = Math.random() * Math.PI * 2
@@ -1089,7 +1167,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onPointerOver={(e) => e.pointerType === 'mouse' && showTip(e.target)}
+      // Not while a zoom or drag moves the map under a still pointer: each would measure the page anew
+      onPointerOver={(e) => e.pointerType === 'mouse' && !live.current && showTip(e.target)}
       onPointerLeave={() => {
         pointAt(null)
         tipRef.current?.classList.remove('on')
@@ -1554,6 +1633,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
 
       {createPortal(
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
+          <div className="sky-zoomer" ref={zoomerRef}>
           {backdrop}
           {map}
           <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
@@ -1572,6 +1652,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 }
               />
             ))}
+          </div>
           </div>
           <div className="sky-meteor" ref={meteorRef} aria-hidden="true" />
           <div className="sky-tip" ref={tipRef} aria-hidden="true" />
@@ -1597,7 +1678,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <button type="button" data-sound="zoomOut" aria-label={t('缩小')} title={t('缩小')} disabled={view.z <= Z_MIN} onClick={() => zoomBy(1 / 1.6)}>
                   −
                 </button>
-                <button type="button" data-sound="zoomOut" aria-label={t('复原')} title={t('复原')} disabled={view.z <= Z_MIN} onClick={() => setView({ z: 1, x: 0, y: 0 })}>
+                <button type="button" data-sound="zoomOut" aria-label={t('复原')} title={t('复原')} disabled={view.z <= Z_MIN} onClick={() => glideTo({ z: 1, x: 0, y: 0 })}>
                   ⟲
                 </button>
               </div>
