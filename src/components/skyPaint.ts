@@ -112,6 +112,8 @@ export interface SkyCanvasScene {
   light: { milkyWay: number; stars: number; limit: number }
   /** While the sky is dragged through time: the star clouds' points thinned out, to keep up */
   rough: boolean
+  /** 流畅 (the 画质 option): drawn at the screen's CSS pixels, not its device pixels */
+  lowRes?: boolean
 }
 
 /** Down to a quarter of the size for the blurs, which are soft enough not to show it */
@@ -168,7 +170,7 @@ function blurInto(into: CanvasRenderingContext2D, from: HTMLCanvasElement, px: n
 export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: SkyCanvasScene) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
-  const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1)
+  const dpr = s.lowRes ? 1 : Math.min(DPR_MAX, window.devicePixelRatio || 1)
   const [w, h] = [s.width, s.height]
   // A new size makes a new bitmap: only when the size changes, else the old one is cleared
   const [cw, ch] = [Math.round(w * dpr), Math.round(h * dpr)]
