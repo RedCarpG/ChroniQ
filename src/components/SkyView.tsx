@@ -5,30 +5,39 @@ import { WESTERN } from '../lib/constellations'
 import {
   PATH_BODIES,
   constellationsAt,
+  directionsAt,
+  distanceOf,
+  fieldStars,
   formatAzimuth,
   historyTrack,
   litPart,
-  moonPhaseName,
-  towards,
   mansionsAt,
   milkyWayAt,
+  milkyWayCloud,
+  moonPhaseName,
+  riseSet,
   skyAt,
+  starPlace,
+  towards,
   trackOf,
   tracksAt,
   type SkyBody,
   type SkyStar,
+  vectorsOfStars,
 } from '../lib/sky'
+import { STAR_FIELDS } from '../lib/brightStars'
 import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
-import { useSettings, useT } from '../settingsContext'
+import { FIVE_STARS } from '../lib/fiveStars'
+import { lightTime } from '../lib/solarSystem'
+import { useSettings, useT, useTerm } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 import { play } from '../sound'
+import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour, type SkyCanvasScene } from './skyPaint'
 
-// The map: the horizon is the rim, the zenith the centre, altitude falling off
+// The map: the horizon is the rim (radius R), the zenith the centre (C, C), altitude falling off
 // evenly outwards. North is up and east is LEFT, as when looking up at the sky.
-const C = 200
-const R = 170
 const project = (az: number, alt: number): [number, number] => {
   const r = (R * (90 - alt)) / 90
   const a = (az * Math.PI) / 180
@@ -91,23 +100,21 @@ const TICKS = Array.from({ length: 72 }, (_, i) => {
 }).join('')
 /** The sky's colours from the zenith (first) out to the horizon, by how much sunlight there is */
 const SKY_STOPS: Record<string, [number, string][]> = {
-  night: [[0, '#04081a'], [0.55, '#091027'], [0.85, '#111a39'], [1, '#1b2850']],
+  night: [[0, '#02040d'], [0.55, '#050a1a'], [0.85, '#0a1128'], [1, '#141d3d']],
   twilight: [[0, '#0b1433'], [0.55, '#182553'], [0.85, '#2c3a6e'], [1, '#4a5486']],
   day: [[0, '#3c6aa3'], [0.7, '#5e8cc4'], [1, '#a9c7e6']],
   below: [[0, '#0b0806'], [0.7, '#15100c'], [1, '#221a14']],
 }
 /** The glow low in the sky all round (airglow, a town's light): its colour and strength */
 const HORIZON_GLOW: Record<string, [string, number]> = {
-  night: ['#5a6eb0', 0.26],
+  night: ['#5a6eb0', 0.2],
   twilight: ['#7d84c4', 0.4],
   day: ['#e8f1ff', 0.35],
   below: ['#6a4a30', 0.25],
 }
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-/** Star colour from its B−V index: hot blue-white to cool orange */
-const starColour = (bv: number) =>
-  bv < 0 ? '#a9bfff' : bv < 0.3 ? '#d4dfff' : bv < 0.6 ? '#f8f7ff' : bv < 1 ? '#fff1dc' : bv < 1.4 ? '#ffd6a8' : '#ffb98a'
+/** A star's size for what is placed round it (its name, the chosen ring), in map units at the full view */
 const starRadius = (mag: number) => Math.max(0.6, 3.2 - 0.55 * mag)
 
 export const BODY_COLOUR: Record<string, string> = {
@@ -181,6 +188,9 @@ const PATH_SPAN = 12 * 3600_000
 const PATH_STEP = 10 * 60_000
 const HOUR = 3600_000
 const PATHS_KEY = 'chroniq-sky-paths'
+const PANEL_KEY = 'chroniq-sky-panel'
+/** Kilometres in an astronomical unit */
+const AU_KM = 149_597_870.7
 
 // Constellation figures: Western, the Chinese 星官, the 二十八宿 alone, or none
 type FigureSet = 'none' | 'west' | 'china' | 'mansions'
@@ -233,6 +243,7 @@ function wallTime(d: Date, timeZone: string) {
  */
 export function SkyView({ place, placeControls }: { place: StarPlace; placeControls?: ReactNode }) {
   const t = useT()
+  const term = useTerm()
   const { language, script } = useSettings()
   const en = language === 'en'
   const azimuth = (az: number) => formatAzimuth(az, language)
@@ -402,6 +413,26 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     if (f) glideTo(zoomedAt(v, f.left + f.width / 2 + v.x, f.top + f.height / 2 + v.y, factor))
   }
 
+  // The panel beside the sky, which can be put away to give the sky the whole width (remembered in
+  // this browser), and which of its tabs is open
+  const [panelOpen, setPanelOpen] = useState(() => {
+    try {
+      return localStorage.getItem(PANEL_KEY) !== 'hidden'
+    } catch {
+      return true
+    }
+  })
+  const togglePanel = () =>
+    setPanelOpen((open) => {
+      try {
+        localStorage.setItem(PANEL_KEY, open ? 'hidden' : 'shown')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !open
+    })
+  const [tab, setTab] = useState<'when' | 'show'>('when')
+
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
   const [showPaths, setShowPaths] = useState(() => {
     try {
@@ -501,15 +532,17 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         ? `${figureName(c)} · ${c.en}`
         : figureName(c)
 
-  // One body's way among the stars over the past days, drawn on tonight's sky
-  const [history, setHistory] = useState<{ body: SkyBody['key'] | null; days: number }>({ body: null, days: 90 })
+  // One body's way among the stars over the past days, drawn on tonight's sky: switched on in a
+  // chosen body's details, it then follows whichever body is chosen
+  const [history, setHistory] = useState({ on: false, days: 90 })
+  const historyBody = history.on && chosen && !/^(hip|fig)/.test(chosen) ? (chosen as SkyBody['key']) : null
   // While the sky is dragged through time, the paths and the history track (too slow to redo at
   // every step) wait until it is let go
   const [dragShift, setDragShift] = useState<number | null>(null)
   const dragging = dragShift !== null
   const historyLine = useMemo(() => {
-    if (!history.body || dragging) return null
-    const points = historyTrack(history.body, utc, place.latitude, place.longitude, history.days)
+    if (!historyBody || dragging) return null
+    const points = historyTrack(historyBody, utc, place.latitude, place.longitude, history.days)
     // A date mark every week (1 month), half month (3 months) or month (1 year), counted back from now
     const tickDays = history.days <= 31 ? 7 : history.days <= 92 ? 15 : 30
     const stride = Math.round(((points.length - 1) * tickDays) / history.days)
@@ -518,8 +551,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       const [, m, d] = wallTime(points[i].utc, place.timeZone).date.split('-').map(Number)
       ticks.push({ ...points[i], m, d })
     }
-    return { key: history.body, d: pathData(points, at), start: points[0], ticks }
-  }, [history, dragging, utc, place.latitude, place.longitude, place.timeZone])
+    return { key: historyBody, d: pathData(points, at), start: points[0], ticks }
+  }, [historyBody, history.days, dragging, utc, place.latitude, place.longitude, place.timeZone])
   const dateLabel = (m: number, d: number) =>
     en ? new Date(Date.UTC(2000, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : `${m}/${d}`
 
@@ -576,6 +609,52 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
   // Where the chosen one is on the map, if it is on this half of the sky
   const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
+  // What the panel tells of the chosen body or star: what it is, when it rises and sets, which 宿 it
+  // is in and how far off it is. Not worked out again at each step of a drag through time.
+  const five = pick && 'key' in pick ? FIVE_STARS.find((f) => f.key === pick.key) : undefined
+  const pickKind = !pick
+    ? ''
+    : !('key' in pick) || pick.key === 'sun'
+      ? t('恒星')
+      : pick.key === 'moon'
+        ? t('卫星')
+        : five
+          ? t('行星 · 古称{name}，五行属{element}', { name: term(five.name), element: term(five.element) })
+          : t('行星')
+  const lastDetails = useRef<{
+    times: ReturnType<typeof riseSet>
+    mansion: (typeof MANSIONS)[number] | null
+    distance: number | null
+  } | null>(null)
+  const details = useMemo(() => {
+    if (!pick) return null
+    if (dragging) return lastDetails.current
+    const ra = 'key' in pick ? pick.ra : starPlace(pick.hip)?.ra
+    return {
+      times: riseSet('key' in pick ? { body: pick.key } : { hip: pick.hip }, utc, place.latitude, place.longitude, pick.alt > 0),
+      mansion: ra === undefined ? null : mansionOf(ra).mansion,
+      distance: 'key' in pick ? distanceOf(pick.key, utc) : null,
+    }
+    // pick follows chosen and the sky (utc, place)
+  }, [chosen, dragging, utc, place.latitude, place.longitude])
+  lastDetails.current = details
+  /** A rise or set: its local time, marked if it falls on the day before or after */
+  const clock = (d: Date | null) => {
+    if (!d) return '—'
+    const w = wallTime(d, place.timeZone)
+    return w.date === wall.date ? w.time : w.date < wall.date ? t('前一日 {time}', { time: w.time }) : t('次日 {time}', { time: w.time })
+  }
+  const distanceText = (b: SkyBody, au: number) =>
+    b.key === 'moon'
+      ? // In 万 kilometres in Chinese, in kilometres in English
+        t('约 {n} 万公里', { n: en ? (Math.round((au * AU_KM) / 1000) * 1000).toLocaleString('en') : ((au * AU_KM) / 1e4).toFixed(1) })
+      : `${au.toFixed(au < 10 ? 2 : 1)} AU · ${t('光行 {time}', { time: lightTime(au, language) })}`
+  /** A star's colour, and its surface temperature from it (Ballesteros' formula from B−V) */
+  const starTone = (bv: number) => {
+    const tone = bv < 0 ? t('蓝白') : bv < 0.3 ? t('白') : bv < 0.6 ? t('黄白') : bv < 1 ? t('黄') : bv < 1.4 ? t('橙') : t('橙红')
+    const kelvin = 4600 * (1 / (0.92 * bv + 1.7) + 1 / (0.92 * bv + 0.62))
+    return t('{tone} · 表面约 {k} K', { tone, k: (Math.round(kelvin / 100) * 100).toLocaleString('en') })
+  }
   // The path of a star, or of a body without one among the usual (Uranus, Neptune), when it is
   // chosen or hovered, drawn like the others while the paths are on. While the sky is dragged
   // through time the usual paths wait, but the chosen one's is still drawn, whichever it is.
@@ -617,28 +696,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
   }
   const light = below ? 'below' : sky.light
-  // The Milky Way (lib/sky.ts milkyWayModel): its glow as soft patches that overlap into a haze,
-  // its dust as dark ones, and its grain as tiny dots in three brightnesses, one path each (a dot is
-  // a round cap on a line of next to no length)
+  // The Milky Way's band (lib/sky.ts milkyWayModel) for the canvas under the map (skyPaint), in
+  // map units: short strokes along its centre line, each as wide as the band is there and as bright,
+  // in three layers (haze, body, core) that the blurs run together into one continuous band; the
+  // Great Rift as dark strokes and the Coalsack as a dark patch, cut out of it
   const galaxy = useMemo(() => milkyWayAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
-  const milkyWay = useMemo(() => {
+  const milkyWay = useMemo((): SkyCanvasScene['band'] => {
     const seen = (alt: number) => (below ? alt < 4 : alt > -4)
-    const grain = ['', '', '']
-    const { az, alt, weight } = galaxy.grain
-    for (let i = 0; i < az.length; i++) {
-      if (!seen(alt[i])) continue
-      const [x, y] = at(az[i], alt[i])
-      grain[weight[i]] += `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
-    }
     // Sizes are in degrees: R / 90 map units to the degree
-    const patches = (list: typeof galaxy.glow) =>
-      list.filter((p) => seen(p.alt)).map((p) => {
-        const [x, y] = at(p.az, p.alt)
-        return { x, y, r: ((p.size ?? 4) * R) / 90, a: p.weight }
-      })
-    // The band as short strokes along its centre line, each as wide as the band is there and as
-    // bright; drawn in three blurred layers (styles.css .mw-haze / .mw-body / .mw-core) they run
-    // together into one continuous, brighter-cored band. The Great Rift is a dark stroke over it.
     const deg = R / 90
     const line = (list: typeof galaxy.rift) =>
       list
@@ -647,10 +712,9 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
         })
         .join('')
-    const strokes = (list: typeof galaxy.spine, closed: boolean) => {
+    const strokes = (list: typeof galaxy.spine) => {
       const out: { d: string; w: number; a: number }[] = []
-      const n = closed ? list.length : list.length - 1
-      for (let i = 0; i < n; i++) {
+      for (let i = 0; i < list.length; i++) {
         const p = list[i]
         const q = list[(i + 1) % list.length]
         // Leave out what is well below the horizon (and so far outside the disc)
@@ -665,9 +729,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }
       return out
     }
-    // Each blurred layer as a few paths rather than a stroke each: strokes of about the same
-    // opacity (to 0.02) and width (to half a unit) share one path, which under the blur looks the
-    // same and is far less to redraw as the sky turns
+    // Each layer as a few paths rather than a stroke each: strokes of about the same opacity (to
+    // 0.02) and width (to half a unit) share one path, which under the blur looks the same
     const layer = (band: { d: string; w: number; a: number }[], width: number, opacity: (a: number) => number) => {
       const groups = new Map<string, { d: string; w: number; o: number }>()
       for (const b of band) {
@@ -681,62 +744,66 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }
       return [...groups.values()]
     }
-    const band = strokes(galaxy.spine, true)
+    // Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius)
+    const band = strokes(galaxy.spine)
     return {
-      grain,
-      glow: patches(galaxy.glow),
-      // The rift's own patches would bead along the line drawn below: only the Coalsack stays a patch
-      dust: patches(galaxy.dust.filter((p) => p.l > 180)),
-      haze: layer(band, 3.4, (a) => Math.min(0.32, 0.09 + 0.14 * a)),
-      body: layer(band, 1.7, (a) => Math.min(0.55, 0.1 + 0.28 * a)),
+      haze: layer(band, 3.4, (a) => Math.min(0.3, 0.08 + 0.13 * a)),
+      body: layer(band, 1.7, (a) => Math.min(0.5, 0.08 + 0.26 * a)),
       core: layer(band, 0.75, (a) => (a > 0.55 ? Math.min(0.6, 0.5 * (a - 0.55)) : 0)),
       // The rift as continuous lines (separate strokes would bead): a thin one along its whole
       // length and a wider one where it is deepest, Aquila to Cygnus
       rift: [
-        { d: line(galaxy.rift), w: 1.6 * deg, a: 0.6 },
-        { d: line(galaxy.rift.filter((p) => p.l >= 18 && p.l <= 72)), w: 2.8 * deg, a: 0.6 },
+        { d: line(galaxy.rift), w: 2.6 * deg, o: 0.55 },
+        { d: line(galaxy.rift.filter((p) => p.l >= 18 && p.l <= 72)), w: 4.5 * deg, o: 0.5 },
       ],
+      // The rift's own patches would bead along its line: only the Coalsack stays a patch
+      dust: galaxy.dust
+        .filter((p) => p.l > 180 && seen(p.alt))
+        .map((p) => {
+          const [x, y] = at(p.az, p.alt)
+          return { x, y, r: ((p.size ?? 4) * R) / 90, a: p.weight }
+        }),
     }
     // at follows below
   }, [galaxy, below])
-  // The layers that only change with the sky itself are made once per sky, so hovering, choosing or
-  // panning (which redraw the page) leave them alone
-  const milkyWayLayer = useMemo(
-    () => (
-      <g className="sky-milkyway" aria-hidden="true">
-        {/* Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius) */}
-        <g className="mw-haze" filter={`url(#${clipId}-mw-blur-wide)`}>
-          {milkyWay.haze.map((g, i) => (
-            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
-          ))}
-        </g>
-        <g className="mw-body" filter={`url(#${clipId}-mw-blur)`}>
-          {milkyWay.body.map((g, i) => (
-            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
-          ))}
-        </g>
-        <g className="mw-core" filter={`url(#${clipId}-mw-blur-fine)`}>
-          {milkyWay.core.map((g, i) => (
-            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
-          ))}
-        </g>
-        {milkyWay.glow.map((g, i) => (
-          <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a * 0.6} />
-        ))}
-        <g className="mw-rift" filter={`url(#${clipId}-mw-blur-fine)`}>
-          {milkyWay.rift.map((b, i) => (
-            <path key={i} d={b.d} strokeWidth={b.w} opacity={b.a} />
-          ))}
-        </g>
-        {milkyWay.dust.map((g, i) => (
-          <circle key={`dust-${i}`} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-dust)`} opacity={g.a} />
-        ))}
-        {milkyWay.grain.map((d, i) => (
-          <path key={`grain-${i}`} className={`grain grain-${i}`} d={d} />
-        ))}
-      </g>
-    ),
-    [milkyWay, clipId],
+  // The faint stars (magnitude 5 to 6) and the Milky Way's star clouds: loaded and made once,
+  // after the first sky is up, then turned with the sky
+  const [deep, setDeep] = useState<{
+    faint: readonly number[]
+    cloud: ReturnType<typeof milkyWayCloud>
+    field: ReturnType<typeof fieldStars>
+  } | null>(null)
+  useEffect(() => {
+    let gone = false
+    let timer = 0
+    import('../lib/faintStars').then(({ FAINT_STARS }) => {
+      if (!gone) timer = window.setTimeout(() => setDeep({ faint: FAINT_STARS, cloud: milkyWayCloud(), field: fieldStars() }), 0)
+    })
+    return () => {
+      gone = true
+      clearTimeout(timer)
+    }
+  }, [])
+  // At the full view the star clouds' light is drawn by the cells they are gathered in, and only their
+  // brighter points singly; zoomed in, every point. The stars past magnitude 6 only once zoomed in
+  // (skyPaint), and not while dragged through time.
+  const allCloud = view.z >= 2
+  const wantField = view.z > 1.5 && !dragging
+  const deepSky = useMemo(
+    () =>
+      deep && {
+        cloud: {
+          ...directionsAt(deep.cloud.v, utc, place.latitude, place.longitude, allCloud ? undefined : deep.cloud.bright),
+          weight: deep.cloud.weight,
+          warm: deep.cloud.warm,
+          cells: allCloud
+            ? null
+            : { ...directionsAt(deep.cloud.cells.v, utc, place.latitude, place.longitude), light: deep.cloud.cells.light, warm: deep.cloud.cells.warm },
+        },
+        faint: { ...directionsAt(vectorsOfStars(deep.faint), utc, place.latitude, place.longitude), rows: deep.faint, fields: STAR_FIELDS },
+        field: wantField ? { ...directionsAt(deep.field.v, utc, place.latitude, place.longitude), weight: deep.field.weight } : null,
+      },
+    [deep, utc, place.latitude, place.longitude, allCloud, wantField],
   )
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
@@ -797,26 +864,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             const [x, y] = at(st.az, st.alt)
             return { hip: st.hip, x: centre[0] + (x - C) * scale, y: centre[1] + (y - C) * scale, size: 14 + (1.6 - st.mag) * 7, colour: starColour(st.bv) }
           })
-  // The stars without a name, which are only looked at, as one path of dots per colour rather than
-  // hundreds of elements: far less to redraw as the sky is dragged through time
-  const starDots = useMemo(() => {
-    // A dot is a round cap on a stroke of next to no length, as wide as the star: much shorter to
-    // write (and for the browser to read) than two arcs, so one path per colour and size. The
-    // colours keep the order they come in, so that where two dots touch the same one is on top.
-    const groups = new Map<string, Map<number, string>>()
-    for (const st of sky.stars) {
-      if (st.name) continue
-      const [x, y] = at(st.az, st.alt)
-      const width = Math.round(starRadius(st.mag) * dot * 40) / 20
-      const colour = starColour(st.bv)
-      const mark = `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
-      let sizes = groups.get(colour)
-      if (!sizes) groups.set(colour, (sizes = new Map()))
-      sizes.set(width, (sizes.get(width) ?? '') + mark)
-    }
-    return [...groups].flatMap(([colour, sizes]) => [...sizes].map(([width, d]) => ({ colour, width, d })))
-    // at follows below, as sky does
-  }, [sky, dot])
+  // The stars without a name, which are only looked at, go to the canvas (skyPaint) with the faint ones
+  const plainStars = useMemo(() => sky.stars.filter((st) => !st.name), [sky])
   const labels = useMemo(
     () =>
       placeLabels([
@@ -1065,6 +1114,53 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const mapTransform = `translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`
   const mapClass = `sky-${below ? 'below' : sky.light}${entering ? ' entering' : ''}`
   const mapStyle = { '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties
+  // The canvas between the sky and the map (skyPaint): the Milky Way and the stars without a name.
+  // How much of them shows: the Milky Way is gone by day and faint in twilight, when only the
+  // brighter stars are out; a bright Moon up washes out the faintest stars and the Milky Way a little.
+  const moonLight = !below && moon.alt > 0 ? moon.lit : 0
+  const canvasLight =
+    light === 'below'
+      ? { milkyWay: 0.7, stars: 0.85, limit: 6.3 }
+      : light === 'day'
+        ? { milkyWay: 0, stars: 0.35, limit: 5 }
+        : light === 'twilight'
+          ? { milkyWay: 0.3, stars: 0.7, limit: 4 }
+          : { milkyWay: 1 - 0.3 * moonLight, stars: 1, limit: 6.3 - 0.7 * moonLight }
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const glowRef = useRef<HTMLCanvasElement>(null)
+  const paint = useRef(() => {})
+  paint.current = () => {
+    const el = canvasRef.current
+    if (!el || !glowRef.current || !frame) return
+    paintSky(el, glowRef.current, {
+      width: el.clientWidth,
+      height: el.clientHeight,
+      ox: centre[0] - C * scale,
+      oy: centre[1] - C * scale,
+      scale,
+      zoom: view.z,
+      fit,
+      below,
+      band: milkyWay,
+      cloud: deepSky?.cloud ?? null,
+      stars: plainStars,
+      faint: deepSky?.faint ?? null,
+      field: deepSky?.field ?? null,
+      light: canvasLight,
+      rough: dragging,
+    })
+  }
+  // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
+  useLayoutEffect(() => paint.current(), [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging])
+  // The canvas fills the screen: drawn again when the screen's size changes (a phone's address bar
+  // folding away), which need not move the sky's window
+  useEffect(() => {
+    const el = canvasRef.current?.parentElement
+    if (!el) return
+    const ro = new ResizeObserver(() => paint.current())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   // The sky itself (its colour, glows and the Milky Way, with its blurs) in an SVG of its own, on a
   // layer of its own, under the map: it changes only as the time, place or view does, so choosing,
   // hovering and the fades that follow repaint the map above without blurring the Milky Way again
@@ -1105,26 +1201,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <stop offset={0} stopColor="#e4ebff" stopOpacity={1} />
           <stop offset={1} stopColor="#e4ebff" stopOpacity={0} />
         </radialGradient>
-        {/* The Milky Way's blurs (in map units; one degree is R / 90 ≈ 1.9) */}
-        <filter id={`${clipId}-mw-blur-wide`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation={7} />
-        </filter>
-        <filter id={`${clipId}-mw-blur`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation={3.5} />
-        </filter>
-        <filter id={`${clipId}-mw-blur-fine`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation={1.6} />
-        </filter>
-        <radialGradient id={`${clipId}-mw`}>
-          <stop offset={0} stopColor="#cdd6ff" stopOpacity={1} />
-          <stop offset={0.45} stopColor="#b7c4f5" stopOpacity={0.45} />
-          <stop offset={1} stopColor="#9fb0ea" stopOpacity={0} />
-        </radialGradient>
-        <radialGradient id={`${clipId}-dust`}>
-          <stop offset={0} stopColor="#03050d" stopOpacity={1} />
-          <stop offset={0.5} stopColor="#03050d" stopOpacity={0.6} />
-          <stop offset={1} stopColor="#03050d" stopOpacity={0} />
-        </radialGradient>
+        {/* A named star's light, in each of the stars' colours (as skyPaint draws the rest) */}
+        {PALETTE.map((hex, i) => (
+          <radialGradient key={hex} id={`${clipId}-star-${i}`}>
+            {PSF.map(([offset, white, alpha]) => (
+              <stop key={offset} offset={offset} stopColor={white ? mixWhite(hex, white) : hex} stopOpacity={alpha} />
+            ))}
+          </radialGradient>
+        ))}
         <radialGradient id={`${clipId}-halo`}>
           <stop offset={0} stopColor="#ffffff" stopOpacity={0.55} />
           <stop offset={0.35} stopColor="#ffffff" stopOpacity={0.12} />
@@ -1146,7 +1230,6 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         )}
         {moonGlow && <circle cx={moonGlow.at[0]} cy={moonGlow.at[1]} r={R * 0.42} fill={`url(#${clipId}-moon)`} opacity={moonGlow.strength} />}
       </g>
-      <g clipPath={`url(#${clipId})`}>{milkyWayLayer}</g>
       </g>
     </svg>
   )
@@ -1212,17 +1295,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               const r = bodyRadius(b) * dot * (b.key === 'moon' ? 4.5 : 3.6)
               return <circle key={b.key} cx={x} cy={y} r={r} fill={`url(#${clipId}-halo)`} opacity={b.key === 'moon' ? 0.4 + 0.5 * b.lit : 0.55} />
             })}
-          {sky.stars
-            .filter((st) => st.mag < 1.2)
-            .map((st) => {
-              const [x, y] = at(st.az, st.alt)
-              return <circle key={st.hip} cx={x} cy={y} r={starRadius(st.mag) * dot * 5} fill={`url(#${clipId}-halo)`} opacity={0.45} />
-            })}
         </g>
         <g className="sky-stars">
-          {starDots.map((g) => (
-            <path key={`${g.colour} ${g.width}`} className="dots" stroke={g.colour} strokeWidth={g.width} d={g.d} />
-          ))}
           {sky.stars.filter((s) => s.name).map((s) => (
             <Star
               key={s.hip}
@@ -1230,6 +1304,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               tip={s.name && t('{name} · {direction} · 高 {altitude}°', { name: t(s.name), direction: azimuth(s.az), altitude: s.alt.toFixed(1) })}
               at={at}
               size={dot}
+              light={`url(#${clipId}-star-${colourIndex(s.bv)})`}
               hit={10 * k}
               on={chosen === `hip${s.hip}`}
               hover={focus === `hip${s.hip}`}
@@ -1411,48 +1486,81 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   )
 
   return (
-    <section id="sky-now" className="sky-stage">
+    <section id="sky-now" className={`sky-stage${panelOpen ? '' : ' panel-hidden'}`}>
       <div className="sky-toolbar">
         <h3 className="section-title">
           <TitleMark />
           {t('此刻天空')}
         </h3>
-        <div className="overlay-bar sky-controls">
-          <DateParts
-            label={t('日期')}
-            value={ymd(wall.date)}
-            onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
-          />
-          <input type="time" aria-label={t('时间')} value={wall.time} onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })} />
-          <button
-            type="button"
-            className={`ghost toggle${picked ? '' : ' on'}`}
-            aria-pressed={!picked}
-            // Already following the clock: pressing again only refreshes it
-            data-sound={picked ? 'on' : 'tap'}
-            onClick={() => {
-              setNow(new Date())
-              setPicked(null)
-            }}
-          >
-            {t('现在')}
-          </button>
-          <button type="button" className={`ghost toggle${showPaths ? ' on' : ''}`} aria-pressed={showPaths} onClick={togglePaths}>
-            {t('轨迹')}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="ghost sky-panel-toggle"
+          aria-expanded={panelOpen}
+          aria-controls={`${clipId}-panel`}
+          data-sound={panelOpen ? 'off' : 'on'}
+          onClick={togglePanel}
+        >
+          {panelOpen ? t('隐藏面板') : t('显示面板')}
+          <span aria-hidden="true">{panelOpen ? ' ⟩' : ' ⟨'}</span>
+        </button>
       </div>
 
       {/* Left empty: the sky behind the page shows through here */}
       <div className="sky-window" ref={windowRef} />
 
-      <aside className="card sky-panel">
-        {placeControls && <div className="sky-place bazi-form">{placeControls}</div>}
-        <p className="muted row-note sky-when">
-          {t('{place}上空 · 当地时间 {date} {time}', { place: t(place.name), date: wall.date, time: wall.time })}
-          {picked ? '' : t('（随时间更新）')}
-        </p>
-        <div className="sky-options">
+      <aside className="card sky-panel" id={`${clipId}-panel`} hidden={!panelOpen}>
+        {/* What is shown: the moment and the place, and how the sky is drawn */}
+        <div className="sky-tabs" role="tablist" aria-label={t('设置')}>
+          {(
+            [
+              ['when', t('时间·地点')],
+              ['show', t('显示')],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              id={`${clipId}-tab-${key}`}
+              aria-selected={tab === key}
+              aria-controls={`${clipId}-pane-${key}`}
+              className={tab === key ? 'on' : undefined}
+              data-sound="tap"
+              onClick={() => setTab(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="sky-pane" role="tabpanel" id={`${clipId}-pane-when`} aria-labelledby={`${clipId}-tab-when`} hidden={tab !== 'when'}>
+          <div className="overlay-bar sky-controls">
+            <DateParts
+              label={t('日期')}
+              value={ymd(wall.date)}
+              onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
+            />
+            <input type="time" aria-label={t('时间')} value={wall.time} onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })} />
+            <button
+              type="button"
+              className={`ghost toggle${picked ? '' : ' on'}`}
+              aria-pressed={!picked}
+              // Already following the clock: pressing again only refreshes it
+              data-sound={picked ? 'on' : 'tap'}
+              onClick={() => {
+                setNow(new Date())
+                setPicked(null)
+              }}
+            >
+              {t('现在')}
+            </button>
+          </div>
+          {placeControls && <div className="sky-place bazi-form">{placeControls}</div>}
+          <p className="muted row-note sky-when">
+            {t('{place}上空 · 当地时间 {date} {time}', { place: t(place.name), date: wall.date, time: wall.time })}
+            {picked ? '' : t('（随时间更新）')}
+          </p>
+        </div>
+        <div className="sky-pane sky-options" role="tabpanel" id={`${clipId}-pane-show`} aria-labelledby={`${clipId}-tab-show`} hidden={tab !== 'show'}>
           <span className="sky-option-title">{t('视角')}</span>
           <div className="seg small" role="group" aria-label={t('视角')}>
             {(
@@ -1481,128 +1589,175 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               </button>
             ))}
           </div>
-          <span className="sky-option-title">{t('历史轨迹')}</span>
-          <div className="sky-history-pick">
-            <select
-              aria-label={t('历史轨迹')}
-              value={history.body ?? ''}
-              onChange={(e) => setHistory((h) => ({ ...h, body: (e.target.value || null) as SkyBody['key'] | null }))}
-            >
-              <option value="">{t('不显示')}</option>
-              {sky.bodies.map((b) => (
-                <option key={b.key} value={b.key}>
-                  {t(b.name)}
-                </option>
-              ))}
-            </select>
-            {history.body && (
-              <div className="seg small" role="group" aria-label={t('时长')}>
-                {(
-                  [
-                    [30, t('1 个月')],
-                    [90, t('3 个月')],
-                    [365, t('1 年')],
-                  ] as const
-                ).map(([days, label]) => (
-                  <button
-                    key={days}
-                    type="button"
-                    className={history.days === days ? 'on' : undefined}
-                    aria-pressed={history.days === days}
-                    onClick={() => setHistory((h) => ({ ...h, days }))}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="sky-option-title">{t('轨迹')}</span>
+          <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
         </div>
 
-        {pickFigure && (
-          <div className="sky-chosen-info">
-            <span
-              className={`sky-figure-mark sky-figure-mark-${figures}${figures === 'mansions' ? ` zone-${zoneOf(pickFigure.name)}` : ''}`}
-              aria-hidden="true"
-            />
-            <strong>{figureName(pickFigure)}</strong>
-            <span className="muted">
-              {figures === 'mansions' ? (
-                <MansionFacts name={pickFigure.name} />
-              ) : (
-                <>
-                  {figures === 'west' ? t('西方星座') : t('中国星官')}
-                  {!(figures === 'west' && en) && ` · ${pickFigure.en}`}
-                </>
-              )}
-              {' · '}
-              {azimuth(pickFigure.label.az)} · {t('高 {altitude}°', { altitude: pickFigure.label.alt.toFixed(1) })}
-            </span>
-            <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
-              ✕
+        {/* Below: the bodies, or what is chosen, in detail */}
+        {pickFigure ? (
+          <div className="sky-detail">
+            <button type="button" className="ghost sky-back" data-sound="unpick" onClick={() => setChosen(null)}>
+              ‹ {t('全部天体')}
             </button>
+            <div className="sky-chosen-info">
+              <span
+                className={`sky-figure-mark sky-figure-mark-${figures}${figures === 'mansions' ? ` zone-${zoneOf(pickFigure.name)}` : ''}`}
+                aria-hidden="true"
+              />
+              <strong>{figureName(pickFigure)}</strong>
+              <span className="muted">
+                {figures === 'mansions' ? (
+                  <MansionFacts name={pickFigure.name} />
+                ) : (
+                  <>
+                    {figures === 'west' ? t('西方星座') : t('中国星官')}
+                    {!(figures === 'west' && en) && ` · ${pickFigure.en}`}
+                  </>
+                )}
+              </span>
+              <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+                ✕
+              </button>
+            </div>
+            <dl className="sky-facts">
+              <dt>{t('方位')}</dt>
+              <dd>{azimuth(pickFigure.label.az)}</dd>
+              <dt>{t('高度')}</dt>
+              <dd>{`${pickFigure.label.alt.toFixed(1)}°`}</dd>
+            </dl>
           </div>
-        )}
-        {pick && (
-          <div className="sky-chosen-info">
-            <span className="sky-dot" style={{ background: pickColour }} />
-            <strong>{pickName}</strong>
-            <span className="muted">
-              {azimuth(pick.az)} · {t('高 {altitude}°', { altitude: pick.alt.toFixed(1) })} · {t('星等 {mag}', { mag: pick.mag.toFixed(1) })}
+        ) : pick ? (
+          <div className="sky-detail">
+            <button type="button" className="ghost sky-back" data-sound="unpick" onClick={() => setChosen(null)}>
+              ‹ {t('全部天体')}
+            </button>
+            <div className="sky-chosen-info">
+              <span className="sky-dot" style={{ background: pickColour }} />
+              <strong>{pickName}</strong>
+              <span className="muted">{pickKind}</span>
+              <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+                ✕
+              </button>
+            </div>
+            <dl className="sky-facts">
+              <dt>{t('方位')}</dt>
+              <dd>{azimuth(pick.az)}</dd>
+              <dt>{t('高度')}</dt>
+              <dd>{pick.alt < 0 ? `${t('地平线下')} · ${pick.alt.toFixed(1)}°` : `${pick.alt.toFixed(1)}°`}</dd>
+              <dt>{t('星等')}</dt>
+              <dd>{pick.mag.toFixed(1)}</dd>
               {'phase' in pick && pick.phase !== undefined && (
                 <>
-                  {' · '}
-                  {t(moonPhaseName(pick.phase))} · {t('照亮 {n}%', { n: Math.round(pick.lit * 100) })}
+                  <dt>{t('月相')}</dt>
+                  <dd>
+                    {t(moonPhaseName(pick.phase))} · {t('照亮 {n}%', { n: Math.round(pick.lit * 100) })}
+                  </dd>
                 </>
               )}
-            </span>
-            {/* With the paths off, the chosen one's is a click away */}
-            {!showPaths && (
-              <button type="button" className="ghost sky-show-path" data-sound="on" onClick={togglePaths}>
-                {t('显示轨迹')}
-              </button>
-            )}
-            <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
-              ✕
-            </button>
+              {details?.times && (
+                <>
+                  {'always' in details.times ? (
+                    <>
+                      <dt>{t('出没')}</dt>
+                      <dd>{details.times.always === 'up' ? t('终年不落（拱极）') : t('终年不升')}</dd>
+                    </>
+                  ) : (
+                    <>
+                      <dt>{t('升起')}</dt>
+                      <dd>{clock(details.times.rise)}</dd>
+                      <dt>{t('落下')}</dt>
+                      <dd>{clock(details.times.set)}</dd>
+                    </>
+                  )}
+                </>
+              )}
+              {details?.mansion && (
+                <>
+                  <dt>{t('宿')}</dt>
+                  <dd className={`sky-mansion-cell zone-${details.mansion.zone}`}>{mansionName(details.mansion.name)}</dd>
+                </>
+              )}
+              {'key' in pick && details?.distance && (
+                <>
+                  <dt>{t('距离')}</dt>
+                  <dd>{distanceText(pick, details.distance)}</dd>
+                </>
+              )}
+              {!('key' in pick) && (
+                <>
+                  <dt>{t('颜色')}</dt>
+                  <dd>{starTone(pick.bv)}</dd>
+                </>
+              )}
+            </dl>
+            {/* Its path today, and for a body its track over the past months */}
+            <div className="sky-switches">
+              <SkySwitch on={showPaths} label={t('今日轨迹')} onChange={togglePaths} />
+              {'key' in pick && (
+                <>
+                  <SkySwitch on={history.on} label={t('历史轨迹')} onChange={() => setHistory((h) => ({ ...h, on: !h.on }))} />
+                  {history.on && (
+                    <div className="seg small" role="group" aria-label={t('时长')}>
+                      {(
+                        [
+                          [30, t('1 个月')],
+                          [90, t('3 个月')],
+                          [365, t('1 年')],
+                        ] as const
+                      ).map(([days, label]) => (
+                        <button
+                          key={days}
+                          type="button"
+                          className={history.days === days ? 'on' : undefined}
+                          aria-pressed={history.days === days}
+                          onClick={() => setHistory((h) => ({ ...h, days }))}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        )}
-        <table className="star-table sky-table">
-          <thead>
-            <tr>
-              <th>{t('天体')}</th>
-              <th>{t('方位')}</th>
-              <th>{t('高度')}</th>
-              <th>{t('星等')}</th>
-              {figures === 'mansions' && <th>{t('宿')}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {sky.bodies.map((b) => (
-              <tr
-                key={b.key}
-                className={[b.alt < 0 && 'below', focus === b.key && 'on', chosen === b.key && 'chosen'].filter(Boolean).join(' ') || undefined}
-                {...focusProps(b.key)}
-                tabIndex={0}
-                aria-selected={chosen === b.key}
-                onClick={() => choose(b.key)}
-                onKeyDown={chooseKeys(b.key)}
-                data-sound={chosen === b.key ? 'unpick' : 'pick'}
-              >
-                <td>
-                  <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
-                  {t(b.name)}
-                </td>
-                <td>{azimuth(b.az)}</td>
-                <td>{b.alt < 0 ? t('地平线下') : `${b.alt.toFixed(1)}°`}</td>
-                <td>{b.mag.toFixed(1)}</td>
-                {figures === 'mansions' && (
-                  <td className={`sky-mansion-cell zone-${mansionOf(b.ra).mansion.zone}`}>{mansionName(mansionOf(b.ra).mansion.name)}</td>
-                )}
+        ) : (
+          <table className="star-table sky-table">
+            <thead>
+              <tr>
+                <th>{t('天体')}</th>
+                <th>{t('方位')}</th>
+                <th>{t('高度')}</th>
+                <th>{t('星等')}</th>
+                {figures === 'mansions' && <th>{t('宿')}</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sky.bodies.map((b) => (
+                <tr
+                  key={b.key}
+                  className={[b.alt < 0 && 'below', focus === b.key && 'on'].filter(Boolean).join(' ') || undefined}
+                  {...focusProps(b.key)}
+                  tabIndex={0}
+                  onClick={() => choose(b.key)}
+                  onKeyDown={chooseKeys(b.key)}
+                  data-sound="pick"
+                >
+                  <td>
+                    <span className="sky-dot" style={{ background: BODY_COLOUR[b.key] }} />
+                    {t(b.name)}
+                  </td>
+                  <td>{azimuth(b.az)}</td>
+                  <td>{b.alt < 0 ? t('地平线下') : `${b.alt.toFixed(1)}°`}</td>
+                  <td>{b.mag.toFixed(1)}</td>
+                  {figures === 'mansions' && (
+                    <td className={`sky-mansion-cell zone-${mansionOf(b.ra).mansion.zone}`}>{mansionName(mansionOf(b.ra).mansion.name)}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <p className="muted row-note">
           {t('上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。')}
           {en && ' '}
@@ -1610,9 +1765,9 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           {(below || lightNote) && en && ' '}
           {below
             ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
-            : t('地平线上有 {n} 颗 5 等以内的亮星，星点大小示亮度、颜色示温度。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+            : t('地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
           {en && ' '}
-          {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
+          {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
           {paths && en && ' '}
           {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
           {historyLine && en && ' '}
@@ -1635,6 +1790,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
           <div className="sky-zoomer" ref={zoomerRef}>
           {backdrop}
+          <div
+            className={`sky-canvas${entering ? ' entering' : ''}${spot ? ' dim' : ''}`}
+            style={{ transformOrigin: mapStyle.transformOrigin }}
+            aria-hidden="true"
+          >
+            <canvas ref={glowRef} className="glow" />
+            <canvas ref={canvasRef} />
+          </div>
           {map}
           <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
             {twinkles.map((tw) => (
@@ -1697,6 +1860,7 @@ function Star({
   tip,
   at,
   size,
+  light,
   hit,
   on,
   hover,
@@ -1709,6 +1873,8 @@ function Star({
   at: (az: number, alt: number) => [number, number]
   /** How much of its size it keeps as the map zooms */
   size: number
+  /** Its light: the gradient of its colour */
+  light: string
   /** The least radius the pointer finds it in, in map units */
   hit: number
   /** Whether it is the chosen one, and whether it is under the pointer */
@@ -1722,8 +1888,18 @@ function Star({
   return (
     <g className={`sky-star${on ? ' on' : ''}${hover ? ' hover' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
       <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
-      <circle className="disc" cx={x} cy={y} r={r} fill={starColour(s.bv)} />
+      <circle className="disc" cx={x} cy={y} r={glowRadius(s.mag) * size} fill={light} fillOpacity={starAlpha(s.mag)} />
     </g>
+  )
+}
+
+/** A switch: its label, and a track whose knob slides across when it is on */
+function SkySwitch({ on, label, onChange }: { on: boolean; label: string; onChange: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} className={`sky-switch${on ? ' on' : ''}`} data-sound={on ? 'off' : 'on'} onClick={onChange}>
+      <span className="sky-switch-label">{label}</span>
+      <span className="sky-switch-track" aria-hidden="true" />
+    </button>
   )
 }
 

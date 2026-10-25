@@ -327,11 +327,50 @@ export function trackOf(what: { body: BodyKey } | { hip: number }, times: Date[]
       return { az: hor.azimuth, alt: hor.altitude }
     })
   }
+  const at = starPlace(what.hip)
+  if (!at) return []
+  return times.map((utc) => horizonOf(utc, latitude, longitude)(at.ra, at.dec))
+}
+
+/** A bright star's J2000 right ascension and declination (degrees), from the catalogue */
+export function starPlace(hip: number) {
   let i = 0
-  while (i < BRIGHT_STARS.length && BRIGHT_STARS[i] !== what.hip) i += STAR_FIELDS
-  if (i >= BRIGHT_STARS.length) return []
-  const [ra, dec] = [BRIGHT_STARS[i + 1], BRIGHT_STARS[i + 2]]
-  return times.map((utc) => horizonOf(utc, latitude, longitude)(ra, dec))
+  while (i < BRIGHT_STARS.length && BRIGHT_STARS[i] !== hip) i += STAR_FIELDS
+  return i < BRIGHT_STARS.length ? { ra: BRIGHT_STARS[i + 1], dec: BRIGHT_STARS[i + 2] } : null
+}
+
+/**
+ * When a body or bright star rises and sets about a moment, within a day either way (astronomy-
+ * engine's SearchRiseSet: the top of the Sun's or Moon's disc, refraction included): one up rose
+ * before it and sets after, one down set before it and rises after. A star always up at this
+ * latitude, or never, says so instead; a body that does not rise or set within the day has null.
+ */
+export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, latitude: number, longitude: number, up: boolean) {
+  const observer = new A.Observer(latitude, longitude, 0)
+  let body: A.Body
+  if ('body' in what) {
+    const found = SKY_BODIES.find(([k]) => k === what.body)
+    if (!found) return null
+    body = found[1]
+  } else {
+    const at = starPlace(what.hip)
+    if (!at) return null
+    // Circumpolar: always above the horizon, or never
+    if (latitude >= 0 ? at.dec > 90 - latitude : at.dec < -90 - latitude) return { always: 'up' as const }
+    if (latitude >= 0 ? at.dec < latitude - 90 : at.dec > 90 + latitude) return { always: 'down' as const }
+    A.DefineStar(A.Body.Star1, at.ra / 15, at.dec, 1000)
+    body = A.Body.Star1
+  }
+  const start = A.MakeTime(utc)
+  const rise = A.SearchRiseSet(body, observer, +1, start, up ? -1 : 1)?.date ?? null
+  const set = A.SearchRiseSet(body, observer, -1, start, up ? 1 : -1)?.date ?? null
+  return { rise, set }
+}
+
+/** How far a body is from the Earth's centre at a moment, in astronomical units */
+export function distanceOf(key: BodyKey, utc: Date) {
+  const body = SKY_BODIES.find(([k]) => k === key)?.[1]
+  return body === undefined ? null : A.GeoVector(body, A.MakeTime(utc), true).Length()
 }
 
 // The galactic frame: the north galactic pole and the galactic longitude of the north celestial pole (J2000)
@@ -511,6 +550,158 @@ function grainLayout() {
 }
 const grainVectors = () => grainLayout().v
 const grainWeights = () => grainLayout().weight
+
+/* ---------- The 天象 page's canvas: the Milky Way's star clouds and the faint stars ---------- */
+
+/** Smooth value noise, 0–1, on a grid of `cell` degrees over galactic longitude (wrapping) and latitude */
+function valueNoise(l: number, b: number, cell: number, seed: number) {
+  const cols = Math.round(360 / cell)
+  const x = l / cell
+  const y = (b + 90) / cell
+  const [i, j] = [Math.floor(x), Math.floor(y)]
+  const [fx, fy] = [x - i, y - j]
+  const hash = (u: number, v: number) => {
+    let h = Math.imul((((u % cols) + cols) % cols) + 1, 0x27d4eb2d) ^ Math.imul(v + 1, 0x165667b1) ^ Math.imul(seed, 0x9e3779b9)
+    h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
+    return ((h ^ (h >>> 13)) >>> 0) / 4294967296
+  }
+  const sx = fx * fx * (3 - 2 * fx)
+  const sy = fy * fy * (3 - 2 * fy)
+  const top = hash(i, j) + (hash(i + 1, j) - hash(i, j)) * sx
+  const bottom = hash(i, j + 1) + (hash(i + 1, j + 1) - hash(i, j + 1)) * sx
+  return top + (bottom - top) * sy
+}
+
+export interface MilkyWayCloud {
+  /** Its points, brightest first: J2000 unit vectors, brightness 0–1, and whether towards the bulge */
+  v: Float64Array
+  weight: Float32Array
+  warm: Uint8Array
+  /** How many points, from the first, are bright enough (0.5 and over) to show singly at the full view */
+  bright: number
+  /** The points gathered in cells 1.5° across, to draw their light at the full view in far fewer
+   *  strokes: each cell's direction (its points' mean), its light (the sum of theirs) and warmth */
+  cells: { v: Float64Array; light: Float32Array; warm: Uint8Array }
+}
+/** How much light one point of the star clouds gives, by its brightness */
+export const cloudLight = (weight: number) => 0.017 * (1 + Math.min(3, Math.floor(weight * 4)))
+/** The size of a cell of the star clouds, in degrees */
+export const CLOUD_CELL = 1.5
+
+let cloud: MilkyWayCloud | null = null
+
+/**
+ * The Milky Way as the eye half sees it on a dark night: a mist of countless faint stars, drawn as
+ * many points (made once). They follow the same band, brightness and dust as milkyWayModel, and
+ * are thinned further by noise at a few degrees and less, so the band comes out mottled with star
+ * clouds and dark lanes rather than as a smooth glow.
+ */
+export function milkyWayCloud(count = 24000): MilkyWayCloud {
+  if (cloud) return cloud
+  const rand = seeded(2203)
+  const points: { l: number; b: number; weight: number }[] = []
+  // Most tries are thrown away: the band's light and width, by half degrees of longitude, looked up
+  const light = Float32Array.from({ length: 720 }, (_, i) => bandBrightness(i / 2) / 1.6)
+  const spread = Float32Array.from({ length: 720 }, (_, i) => bandSpread(i / 2) * 0.8)
+  while (points.length < count) {
+    const step = Math.floor(rand() * 720)
+    const l = step / 2 + rand() / 2
+    const b = gaussian(rand) * spread[step]
+    // Kept by the band's light and dust first, the cheaper test, and then by the mottle
+    const lit = light[step] * dustAt(l, b)
+    if (rand() >= lit) continue
+    const mottle = 0.5 * valueNoise(l, b, 6, 1) + 0.3 * valueNoise(l, b, 2.5, 2) + 0.2 * valueNoise(l, b, 1, 3)
+    const clump = Math.max(0, mottle * 1.6 - 0.45)
+    if (rand() >= clump) continue
+    points.push({ l, b, weight: Math.min(1, 0.25 + 0.75 * lit * clump) })
+  }
+  points.sort((p, q) => q.weight - p.weight)
+  const v = new Float64Array(count * 3)
+  const weight = new Float32Array(count)
+  const warm = new Uint8Array(count)
+  const cells = new Map<number, { x: number; y: number; z: number; light: number; warm: number }>()
+  points.forEach((p, n) => {
+    const [ra, dec] = galacticToEquatorial(p.l, p.b)
+    unitVector(ra, dec, v, n * 3)
+    weight[n] = p.weight
+    warm[n] = apart(p.l, 0) < 40 ? 1 : 0
+    const key = Math.floor(p.l / CLOUD_CELL) * 1000 + Math.floor((p.b + 90) / CLOUD_CELL)
+    const cell = cells.get(key) ?? { x: 0, y: 0, z: 0, light: 0, warm: warm[n] }
+    cell.x += v[n * 3]
+    cell.y += v[n * 3 + 1]
+    cell.z += v[n * 3 + 2]
+    cell.light += cloudLight(p.weight)
+    cells.set(key, cell)
+  })
+  const list = [...cells.values()]
+  const cellV = new Float64Array(list.length * 3)
+  list.forEach((c, i) => {
+    const r = Math.hypot(c.x, c.y, c.z)
+    cellV.set([c.x / r, c.y / r, c.z / r], i * 3)
+  })
+  cloud = {
+    v,
+    weight,
+    warm,
+    bright: points.findIndex((p) => p.weight < 0.5),
+    cells: { v: cellV, light: Float32Array.from(list, (c) => c.light), warm: Uint8Array.from(list, (c) => c.warm) },
+  }
+  return cloud
+}
+
+let field: { v: Float64Array; weight: Float32Array } | null = null
+
+/**
+ * Stars fainter than the catalogue goes (beyond magnitude 6), scattered evenly over the sky (made
+ * once): too faint to see at the full view, they come out as the map is zoomed in, as more stars
+ * do through binoculars. Each has a brightness, 0–1, most of them faint.
+ */
+export function fieldStars(count = 9000) {
+  if (field) return field
+  const rand = seeded(6151)
+  const v = new Float64Array(count * 3)
+  const weight = new Float32Array(count)
+  for (let n = 0; n < count; n++) {
+    const ra = rand() * 360
+    const dec = Math.asin(2 * rand() - 1) / RAD
+    unitVector(ra, dec, v, n * 3)
+    weight[n] = rand() ** 2
+  }
+  field = { v, weight }
+  return field
+}
+
+/** A list of stars in the catalogue's row layout ([hip, RA, Dec, mag, B−V]…) as unit vectors, once a list */
+const listVectors = new WeakMap<readonly number[], Float64Array>()
+export function vectorsOfStars(rows: readonly number[]) {
+  let v = listVectors.get(rows)
+  if (!v) {
+    const count = rows.length / STAR_FIELDS
+    v = new Float64Array(count * 3)
+    for (let s = 0; s < count; s++) unitVector(rows[s * STAR_FIELDS + 1], rows[s * STAR_FIELDS + 2], v, s * 3)
+    listVectors.set(rows, v)
+  }
+  return v
+}
+
+/** Unit vectors (J2000; the first `count`, or all) → azimuth and altitude at a moment and place,
+ *  without refraction (for faint points) */
+export function directionsAt(vectors: Float64Array, utc: Date, latitude: number, longitude: number, count = vectors.length / 3) {
+  const r = rotationFor(utc, latitude, longitude).rot
+  const az = new Float32Array(count)
+  const alt = new Float32Array(count)
+  for (let i = 0, j = 0; i < count; i++, j += 3) {
+    const x = vectors[j]
+    const y = vectors[j + 1]
+    const z = vectors[j + 2]
+    const hx = r[0][0] * x + r[1][0] * y + r[2][0] * z
+    const hy = r[0][1] * x + r[1][1] * y + r[2][1] * z
+    const hz = r[0][2] * x + r[1][2] * y + r[2][2] * z
+    az[i] = (360 - ((Math.atan2(hy, hx) / RAD + 360) % 360)) % 360
+    alt[i] = Math.atan2(hz, Math.sqrt(hx * hx + hy * hy)) / RAD
+  }
+  return { az, alt }
+}
 
 /** The Moon's phase by name, from its phase angle (degrees past the Sun: 0 new, 180 full) */
 export function moonPhaseName(phase: number): string {
