@@ -7,6 +7,9 @@ import {
   constellationsAt,
   formatAzimuth,
   historyTrack,
+  litPart,
+  moonPhaseName,
+  towards,
   mansionsAt,
   milkyWayAt,
   skyAt,
@@ -537,6 +540,13 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return o && shown(o.alt) ? at(o.az, o.alt) : null
   }
   const up = sky.bodies.filter((b) => shown(b.alt))
+  /** Which way (degrees, on the map) the Sun lies from the Moon: its lit side faces that way */
+  const moonTurn = (moon: SkyBody) => {
+    const [x0, y0] = at(moon.az, moon.alt)
+    const step = towards(moon, sky.bodies[0], 0.5)
+    const [x1, y1] = at(step.az, step.alt)
+    return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
+  }
   const light = below ? 'below' : sky.light
   // The Milky Way (lib/sky.ts milkyWayModel): its glow as soft patches that overlap into a haze,
   // its dust as dark ones, and its grain as tiny dots in three brightnesses, one path each (a dot is
@@ -1188,7 +1198,19 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 {...focusProps(b.key)}
               >
                 <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) * dot + 4 * k, 12 * k)} />
-                <circle cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} opacity={b.key === 'moon' ? 0.4 + 0.6 * b.lit : 1} />
+                {b.key === 'moon' ? (
+                  // The Moon as it looks: its lit part (litPart) turned towards the Sun, the rest faintly
+                  // there by earthshine. The turn is worked out on the map: a step from the Moon towards
+                  // the Sun along the sky, projected, gives the way the Sun lies from it here.
+                  <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${moonTurn(b).toFixed(1)})`}>
+                    <g className="disc">
+                      <circle className="moon-dark" r={bodyRadius(b) * dot} />
+                      <path d={litPart(b.lit, bodyRadius(b) * dot)} fill={BODY_COLOUR.moon} />
+                    </g>
+                  </g>
+                ) : (
+                  <circle className="disc" cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} />
+                )}
               </g>
             )
           })}
@@ -1435,6 +1457,12 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             <strong>{pickName}</strong>
             <span className="muted">
               {azimuth(pick.az)} · {t('高 {altitude}°', { altitude: pick.alt.toFixed(1) })} · {t('星等 {mag}', { mag: pick.mag.toFixed(1) })}
+              {'phase' in pick && pick.phase !== undefined && (
+                <>
+                  {' · '}
+                  {t(moonPhaseName(pick.phase))} · {t('照亮 {n}%', { n: Math.round(pick.lit * 100) })}
+                </>
+              )}
             </span>
             {/* With the paths off, the chosen one's is a click away */}
             {!showPaths && (
@@ -1599,7 +1627,7 @@ function Star({
   return (
     <g className={`sky-star${on ? ' on' : ''}${hover ? ' hover' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
       <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
-      <circle cx={x} cy={y} r={r} fill={starColour(s.bv)} />
+      <circle className="disc" cx={x} cy={y} r={r} fill={starColour(s.bv)} />
     </g>
   )
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { WESTERN } from '../constellations'
-import { constellationsAt, formatAzimuth, galacticToEquatorial, historyTrack, milkyWayAt, milkyWayModel, skyAt, tracksAt } from '../sky'
+import { constellationsAt, formatAzimuth, galacticToEquatorial, historyTrack, litPart, milkyWayAt, milkyWayModel, moonPhaseName, skyAt, towards, tracksAt } from '../sky'
 import { XINGGUAN } from '../xingguan'
 
 const BEIJING = [39.9, 116.4] as const
@@ -179,5 +179,34 @@ describe('the Milky Way', () => {
     }
     expect(centre.length).toBeGreaterThan(0)
     for (const p of centre) expect(Math.abs(sep(p, kaus) - 9.3)).toBeLessThan(Math.abs(p.b) + 3)
+  })
+})
+
+describe('the Moon\u2019s phase', () => {
+  it('knows a full Moon and a new Moon, and names the phases', () => {
+    // 2026-03-03 11:38 UT full Moon (a total eclipse), 2026-03-19 01:23 UT new Moon
+    const full = skyAt(new Date('2026-03-03T11:38:00Z'), ...BEIJING).bodies.find((b) => b.key === 'moon')!
+    expect(Math.abs(full.phase! - 180)).toBeLessThan(1)
+    expect(full.lit).toBeGreaterThan(0.99)
+    const fresh = skyAt(new Date('2026-03-19T01:23:00Z'), ...BEIJING).bodies.find((b) => b.key === 'moon')!
+    expect(Math.min(fresh.phase!, 360 - fresh.phase!)).toBeLessThan(1)
+    expect([0, 45, 90, 135, 180, 225, 270, 315].map(moonPhaseName)).toEqual(['新月', '蛾眉月', '上弦月', '盈凸月', '满月', '亏凸月', '下弦月', '残月'])
+  })
+
+  it('draws the lit part as a crescent, a half, or more, on the Sun\u2019s side', () => {
+    expect(litPart(0.5, 10)).toBe('M0 -10A10 10 0 0 1 0 10A0.00 10 0 0 0 0 -10Z')
+    // A crescent closes back on the Sun's side (sweep 0); gibbous on the far side (sweep 1)
+    expect(litPart(0.2, 10)).toContain('A6.00 10 0 0 0')
+    expect(litPart(0.8, 10)).toContain('A6.00 10 0 0 1')
+  })
+
+  it('steps along the great circle towards a point', () => {
+    // From the horizon due north towards the zenith: straight up
+    const p = towards({ az: 0, alt: 0 }, { az: 0, alt: 90 }, 1)
+    expect(p.alt).toBeCloseTo(1, 5)
+    // From due east on the horizon towards due south on the horizon: along the horizon, southwards
+    const q = towards({ az: 90, alt: 0 }, { az: 180, alt: 0 }, 2)
+    expect(q.alt).toBeCloseTo(0, 5)
+    expect(q.az).toBeCloseTo(92, 5)
   })
 })
