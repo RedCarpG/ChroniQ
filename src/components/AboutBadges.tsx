@@ -37,12 +37,15 @@ export function AboutBadges() {
 
   return (
     <div className="about-badges" ref={ref}>
-      <a className="badge-pill" href="https://github.com/RedCarpG" target="_blank" rel="noreferrer">
+      <a className="foot-link" href="https://github.com/RedCarpG" target="_blank" rel="noreferrer">
         by RedCarpG
       </a>
+      <span className="foot-sep" aria-hidden="true">
+        ✦
+      </span>
       <button
         type="button"
-        className="badge-pill"
+        className="foot-link"
         aria-expanded={open}
         aria-controls="about-panel"
         onClick={() => setOpen((o) => !o)}

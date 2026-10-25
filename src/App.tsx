@@ -338,6 +338,9 @@ export function App() {
             <a href="https://github.com/6tail/tyme4ts">tyme4ts</a>
             {creditAfter}
           </span>
+          <span className="foot-sep" aria-hidden="true">
+            ✦
+          </span>
           <AboutBadges />
         </footer>
       </div>
