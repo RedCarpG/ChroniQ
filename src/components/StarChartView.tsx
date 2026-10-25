@@ -126,7 +126,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     <div className="bazi-layout">
       {birthSky === 'show' && (
         <Suspense fallback={null}>
-          <BirthSky moment={moment} focus={skyFocus} />
+          <BirthSky moment={moment} focus={skyFocus} figures="west" />
         </Suspense>
       )}
       <BirthForm
