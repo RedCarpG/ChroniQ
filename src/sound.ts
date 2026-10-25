@@ -4,7 +4,8 @@
 // choosing a star or body (lower for letting go), a sparkle for a constellation, clockwork ticks
 // while the sky is turned through time, and a sweep for zooming. What belongs to Chinese culture
 // (the 岁运 and 运限, the 星官 and 二十八宿, the days of the 农历) sounds a single note of the
-// pentatonic 宫商角徵羽 on a plucked 古筝 string instead. Off in the settings (音效).
+// pentatonic 宫商角徵羽 on a plucked 古筝 string instead. Off in the settings (音效). Half a
+// minute after the last sound the audio context is suspended, and the next sound wakes it.
 
 /** 宫商角徵羽 in D, the 古筝's usual tuning (D E F♯ A B), and 宫 an octave down for letting go */
 export const NOTES = { gong: 293.66, shang: 329.63, jue: 369.99, zhi: 440, yu: 493.88, gongLow: 146.83 } as const
@@ -16,6 +17,9 @@ let enabled = true
 let context: AudioContext | null = null
 let master: GainNode | null = null
 let noise: AudioBuffer | null = null
+let idle = 0
+/** After this long without a sound the context is suspended, so the audio thread can sleep */
+const IDLE_MS = 30_000
 
 export function setSoundEnabled(on: boolean) {
   enabled = on
@@ -34,6 +38,8 @@ function audio() {
     limit.connect(context.destination)
   }
   if (context.state === 'suspended') void context.resume()
+  clearTimeout(idle)
+  idle = window.setTimeout(() => void context?.suspend(), IDLE_MS)
   return context
 }
 

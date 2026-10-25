@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { BaziInput } from '../lib/bazi'
 import { ELEMENTS, formatTime } from '../lib/bazi'
 import {
@@ -101,7 +101,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   const chart = useMemo(() => buildZiwei(input, schools), [input, schools])
   const term = useTerm()
   const t = useT()
-  const { ziweiColor, language } = useSettings()
+  const { ziweiColor, language, script } = useSettings()
   const english = language === 'en'
   // The palace whose 三方四正 is shown (hover with a mouse, tap or focus otherwise)
   const [active, setActive] = useState<string | null>(null)
@@ -140,12 +140,17 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
     () => (depth === 'natal' ? null : buildHoroscope(input, schools, { year, month, day, hour })),
     [depth, input, schools, year, month, day, hour],
   )
-  const layers: ZiweiLayer[] = horoscope
-    ? LAYER_ORDER.slice(
-        0,
-        DEPTHS.findIndex((d) => d.value === depth),
-      ).map((k) => horoscope[k])
-    : []
+  // The same array while the 运限 stay the same, so the palaces (React.memo) skip a hover's redraw
+  const layers: ZiweiLayer[] = useMemo(
+    () =>
+      horoscope
+        ? LAYER_ORDER.slice(
+            0,
+            DEPTHS.findIndex((d) => d.value === depth),
+          ).map((k) => horoscope[k])
+        : [],
+    [horoscope, depth],
+  )
   // The board starts at 本命 and 运限 are picked one level at a time, so only the
   // 大限 row starts open; picking a level opens the next one.
   const [open, setOpen] = useState(INITIAL_OPEN)
@@ -233,6 +238,172 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   const boardRef = useRef<HTMLDivElement>(null)
   const boardSize = useSize(boardRef)
 
+  // The 运限 rows (dozens of tyme4ts dates) only change with the picks, not with a palace being
+  // hovered: made again only when what they show changes
+  const fortunes = useMemo(
+    () => (
+        <section className="card fortunes ziwei-fortunes" id="ziwei-fortune">
+          <div className="fortunes-head">
+            <h3>
+              <TitleMark />
+              {term('运限')}
+            </h3>
+            <div className="seg small" role="group" aria-label={t('叠加到')}>
+              {DEPTHS.map((d) => (
+                <button key={d.value} className={depth === d.value ? 'on' : undefined} onClick={() => smoothUpdate('ziwei', () => setDepth(d.value))}>
+                  {term(d.label)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <FortuneRow
+            title={term('大限')}
+            summary={`${t('{from}–{to}岁', { from: decade.range[0], to: decade.range[1] })} · ${decade.stem}${decade.branch} · ${term(decade.palace)}`}
+            open={open.decade}
+            onToggle={() => toggle('decade')}
+          >
+            <div className="fortune-row decades" data-sounds="gong">
+              {chart.decades.map((d, i) => (
+                <button
+                  key={d.branch}
+                  className={[
+                    'fortune',
+                    i === currentDecade && 'current',
+                    shows('decadal') && i === decadeIndex && 'selected',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => pickDecade(i)}
+                >
+                  <small>
+                    {d.range[0]}–{d.range[1]}
+                  </small>
+                  <small className="muted">{d.years[0]}</small>
+                  <strong>
+                    {d.stem}
+                    {d.branch}
+                  </strong>
+                  <small>{term(d.palace)}</small>
+                </button>
+              ))}
+            </div>
+          </FortuneRow>
+          <FortuneRow
+            title={term('流年')}
+            summary={`${year} ${yearGanzhi(year)} · ${t('{age}岁', { age: year - chart.birthYear + 1 })}`}
+            open={open.year}
+            onToggle={() => toggle('year')}
+          >
+            <div className="fortune-row" data-sounds="shang">
+              {decade.years.map((y) => (
+                <button
+                  key={y}
+                  className={['fortune', y === today.year && 'current', shows('yearly') && y === year && 'selected']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => pickYear(y)}
+                >
+                  <small>{y}</small>
+                  <small className="muted">{t('{age}岁', { age: y - chart.birthYear + 1 })}</small>
+                  <strong>{yearGanzhi(y)}</strong>
+                </button>
+              ))}
+            </div>
+          </FortuneRow>
+          <FortuneRow
+            title={term('流月')}
+            summary={`${term(monthInfo(year, month).name)} ${monthInfo(year, month).ganzhi}`}
+            open={open.month}
+            onToggle={() => toggle('month')}
+          >
+            <div className="fortune-row months" data-sounds="jue">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                const info = monthInfo(year, m)
+                return (
+                  <button
+                    key={m}
+                    className={[
+                      'fortune',
+                      year === today.year && m === today.month && 'current',
+                      shows('monthly') && m === month && 'selected',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => pickMonth(m)}
+                  >
+                    <small>{term(info.name)}</small>
+                    <strong>{info.ganzhi}</strong>
+                  </button>
+                )
+              })}
+            </div>
+          </FortuneRow>
+          <FortuneRow
+            title={term('流日')}
+            summary={`${dayInfo(year, month, day).name} ${dayInfo(year, month, day).ganzhi}`}
+            open={open.day}
+            onToggle={() => toggle('day')}
+          >
+            <div className="fortune-row days" data-sounds="zhi">
+              {Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1).map((d) => {
+                const info = dayInfo(year, month, d)
+                return (
+                  <button
+                    key={d}
+                    className={[
+                      'fortune',
+                      isThisMonth && d === today.day && 'current',
+                      shows('daily') && d === day && 'selected',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => pickDay(d)}
+                  >
+                    <small>{info.name}</small>
+                    <strong>{info.ganzhi}</strong>
+                  </button>
+                )
+              })}
+            </div>
+          </FortuneRow>
+          <FortuneRow
+            title={term('流时')}
+            summary={`${term(hourInfo(year, month, day, hour).name)} ${hourInfo(year, month, day, hour).ganzhi}`}
+            open={open.hour}
+            onToggle={() => toggle('hour')}
+          >
+            <div className="fortune-row months" data-sounds="yu">
+              {Array.from({ length: 12 }, (_, i) => i).map((h) => {
+                const info = hourInfo(year, month, day, h)
+                return (
+                  <button
+                    key={h}
+                    className={[
+                      'fortune',
+                      isToday && h === today.hour && 'current',
+                      shows('hourly') && h === hour && 'selected',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => pickHour(h)}
+                  >
+                    <small>{term(info.name)}</small>
+                    <strong>{info.ganzhi}</strong>
+                  </button>
+                )
+              })}
+            </div>
+          </FortuneRow>
+          <p className="muted row-note">
+            {t('流年按{start}换年（可在流派设置中切换）；流月按 iztro 的斗君起月；流日、流时以农历日和时辰为准（子时取当日早子时）。', {
+              start: term(schools.horoscopeDivide === 'exact' ? '立春' : '正月初一'),
+            })}
+          </p>
+        </section>
+    ),
+    // The handlers read only these (and state setters)
+    [chart, decadeIndex, year, month, day, hour, depth, open, today, currentDecade, isThisMonth, isToday, language, script, schools],
+  )
   return (
     <div className="bazi-layout">
       <BirthForm
@@ -271,7 +442,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 key={p.branch}
                 palace={p}
                 role={roles?.get(p.branch)}
-                fly={flies && (p.branch === active ? 'src' : flies.filter((f) => f.to === p.branch))}
+                fly={flies && (p.branch === active ? 'src' : flyInto(flies, p.branch))}
                 showSelf={mode === 'feihua'}
                 layers={layers}
                 onActive={setActive}
@@ -379,164 +550,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         </p>
       </section>
 
-      <section className="card fortunes ziwei-fortunes" id="ziwei-fortune">
-        <div className="fortunes-head">
-          <h3>
-            <TitleMark />
-            {term('运限')}
-          </h3>
-          <div className="seg small" role="group" aria-label={t('叠加到')}>
-            {DEPTHS.map((d) => (
-              <button key={d.value} className={depth === d.value ? 'on' : undefined} onClick={() => smoothUpdate('ziwei', () => setDepth(d.value))}>
-                {term(d.label)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <FortuneRow
-          title={term('大限')}
-          summary={`${t('{from}–{to}岁', { from: decade.range[0], to: decade.range[1] })} · ${decade.stem}${decade.branch} · ${term(decade.palace)}`}
-          open={open.decade}
-          onToggle={() => toggle('decade')}
-        >
-          <div className="fortune-row decades" data-sounds="gong">
-            {chart.decades.map((d, i) => (
-              <button
-                key={d.branch}
-                className={[
-                  'fortune',
-                  i === currentDecade && 'current',
-                  shows('decadal') && i === decadeIndex && 'selected',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => pickDecade(i)}
-              >
-                <small>
-                  {d.range[0]}–{d.range[1]}
-                </small>
-                <small className="muted">{d.years[0]}</small>
-                <strong>
-                  {d.stem}
-                  {d.branch}
-                </strong>
-                <small>{term(d.palace)}</small>
-              </button>
-            ))}
-          </div>
-        </FortuneRow>
-        <FortuneRow
-          title={term('流年')}
-          summary={`${year} ${yearGanzhi(year)} · ${t('{age}岁', { age: year - chart.birthYear + 1 })}`}
-          open={open.year}
-          onToggle={() => toggle('year')}
-        >
-          <div className="fortune-row" data-sounds="shang">
-            {decade.years.map((y) => (
-              <button
-                key={y}
-                className={['fortune', y === today.year && 'current', shows('yearly') && y === year && 'selected']
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => pickYear(y)}
-              >
-                <small>{y}</small>
-                <small className="muted">{t('{age}岁', { age: y - chart.birthYear + 1 })}</small>
-                <strong>{yearGanzhi(y)}</strong>
-              </button>
-            ))}
-          </div>
-        </FortuneRow>
-        <FortuneRow
-          title={term('流月')}
-          summary={`${term(monthInfo(year, month).name)} ${monthInfo(year, month).ganzhi}`}
-          open={open.month}
-          onToggle={() => toggle('month')}
-        >
-          <div className="fortune-row months" data-sounds="jue">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-              const info = monthInfo(year, m)
-              return (
-                <button
-                  key={m}
-                  className={[
-                    'fortune',
-                    year === today.year && m === today.month && 'current',
-                    shows('monthly') && m === month && 'selected',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => pickMonth(m)}
-                >
-                  <small>{term(info.name)}</small>
-                  <strong>{info.ganzhi}</strong>
-                </button>
-              )
-            })}
-          </div>
-        </FortuneRow>
-        <FortuneRow
-          title={term('流日')}
-          summary={`${dayInfo(year, month, day).name} ${dayInfo(year, month, day).ganzhi}`}
-          open={open.day}
-          onToggle={() => toggle('day')}
-        >
-          <div className="fortune-row days" data-sounds="zhi">
-            {Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1).map((d) => {
-              const info = dayInfo(year, month, d)
-              return (
-                <button
-                  key={d}
-                  className={[
-                    'fortune',
-                    isThisMonth && d === today.day && 'current',
-                    shows('daily') && d === day && 'selected',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => pickDay(d)}
-                >
-                  <small>{info.name}</small>
-                  <strong>{info.ganzhi}</strong>
-                </button>
-              )
-            })}
-          </div>
-        </FortuneRow>
-        <FortuneRow
-          title={term('流时')}
-          summary={`${term(hourInfo(year, month, day, hour).name)} ${hourInfo(year, month, day, hour).ganzhi}`}
-          open={open.hour}
-          onToggle={() => toggle('hour')}
-        >
-          <div className="fortune-row months" data-sounds="yu">
-            {Array.from({ length: 12 }, (_, i) => i).map((h) => {
-              const info = hourInfo(year, month, day, h)
-              return (
-                <button
-                  key={h}
-                  className={[
-                    'fortune',
-                    isToday && h === today.hour && 'current',
-                    shows('hourly') && h === hour && 'selected',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => pickHour(h)}
-                >
-                  <small>{term(info.name)}</small>
-                  <strong>{info.ganzhi}</strong>
-                </button>
-              )
-            })}
-          </div>
-        </FortuneRow>
-        <p className="muted row-note">
-          {t('流年按{start}换年（可在流派设置中切换）；流月按 iztro 的斗君起月；流日、流时以农历日和时辰为准（子时取当日早子时）。', {
-            start: term(schools.horoscopeDivide === 'exact' ? '立春' : '正月初一'),
-          })}
-        </p>
-      </section>
+      {fortunes}
     </div>
   )
 }
@@ -588,7 +602,16 @@ const ROLE_LABEL: Record<Role, string> = {
   trine: '三合',
 }
 
-function Palace({
+/** The 飞化 landing in a palace, or null for none (so an untouched palace's props stay the same) */
+function flyInto(flies: ZiweiFly[], branch: string) {
+  const hits = flies.filter((f) => f.to === branch)
+  return hits.length ? hits : null
+}
+
+/** A palace redraws only when its own props change, not whenever another one is hovered */
+const Palace = memo(PalaceView)
+
+function PalaceView({
   palace: p,
   role,
   fly,

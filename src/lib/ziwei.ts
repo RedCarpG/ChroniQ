@@ -103,10 +103,24 @@ export const timeIndex = (hour: number) => (hour === 23 ? 12 : Math.floor((hour 
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /**
- * Cast the iztro astrolabe. iztro keeps its config globally, so anything that
- * reads the astrolabe later (运限) casts again rather than reuse an old one.
+ * Cast the iztro astrolabe. Since iztro 2.6.2 an astrolabe's methods (horoscope
+ * and the rest) run with the config it was cast with, so one cast serves the
+ * chart and all its 运限: the last few are kept, as casting is the slow part of
+ * picking a 运限.
  */
+const casts = new Map<string, ReturnType<typeof castNow>>()
 function cast(input: BaziInput, schools: ZiweiSchoolSettings) {
+  const key = JSON.stringify([input, schools])
+  let hit = casts.get(key)
+  if (!hit) {
+    hit = castNow(input, schools)
+    casts.set(key, hit)
+    if (casts.size > 4) casts.delete(casts.keys().next().value!)
+  }
+  return hit
+}
+
+function castNow(input: BaziInput, schools: ZiweiSchoolSettings) {
   const { corrected, time } = effectiveTime(input)
   const dateStr = `${time.year}-${pad(time.month)}-${pad(time.day)}`
   const timeIdx = timeIndex(time.hour)

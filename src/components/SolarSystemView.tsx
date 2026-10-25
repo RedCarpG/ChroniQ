@@ -44,8 +44,14 @@ export function SolarSystemView() {
   // Following now: refresh once a minute
   useEffect(() => {
     if (!live) return
-    const id = setInterval(() => setTime(Date.now()), 60_000)
-    return () => clearInterval(id)
+    // Not while the tab is hidden; catch up when it is shown again
+    const tick = () => !document.hidden && setTime(Date.now())
+    const id = setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [live])
   // Playback: advance the date every frame
   const last = useRef(0)
@@ -72,6 +78,12 @@ export function SolarSystemView() {
     const k = d ? s.r(d) / d : 0
     return [C + x * k, C - y * k]
   }
+  // The orbits' outlines only change with the scale, not with the date (which playback moves every frame)
+  const orbitPoints = useMemo(
+    () => Object.fromEntries(Object.entries(paths).map(([key, pts]) => [key, pts.map(([x, y]) => xy(x, y).join(',')).join(' ')])),
+    // xy follows the scale
+    [paths, scale],
+  )
   /** Where an off-map planet's direction meets the rim */
   const rim = (p: PlanetPosition): [number, number] => {
     const a = Math.atan2(p.y, p.x)
@@ -190,7 +202,7 @@ export function SolarSystemView() {
               <polygon
                 key={p.key}
                 className={`orrery-orbit${focus === p.key ? ' on' : ''}`}
-                points={paths[p.key].map(([x, y]) => xy(x, y).join(',')).join(' ')}
+                points={orbitPoints[p.key]}
                 stroke={BODY_COLOUR[p.key]}
               />
             ))}

@@ -10,18 +10,26 @@ export interface WallClock {
   minute: number
 }
 
+const offsetFormats = new Map<string, Intl.DateTimeFormat>()
+
 /** Offset of timeZone from UTC at a UTC instant, in minutes. */
 export function zoneOffset(utcMs: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-  }).formatToParts(new Date(utcMs))
+  // Making a formatter is far slower than using one: keep one a zone
+  let format = offsetFormats.get(timeZone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+    })
+    offsetFormats.set(timeZone, format)
+  }
+  const parts = format.formatToParts(new Date(utcMs))
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value)
   const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
   return Math.round((asUtc - utcMs) / 60000)

@@ -212,7 +212,10 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
     else shiftMonth(Math.abs(step) === 2 ? Math.sign(step) * 12 : step)
   }
 
-  const lunarYear = SolarDay.fromYmd(view.year, view.month, 15).getLunarDay().getYearSixtyCycle()
+  const lunarYear = useMemo(
+    () => SolarDay.fromYmd(view.year, view.month, 15).getLunarDay().getYearSixtyCycle(),
+    [view.year, view.month],
+  )
 
   return (
     <div className="calendar-layout">

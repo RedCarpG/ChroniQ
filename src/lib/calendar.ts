@@ -44,10 +44,19 @@ export function weekTitles(weekStart: WeekStart = 'mon'): { name: string; weeken
  * A calendar date in English (British style, e.g. 24 October 2026), from the
  * date's own year, month and day: no time zone comes into it.
  */
+const enFormats = new Map<string, Intl.DateTimeFormat>()
+
 export function enDate(year: number, month: number, day: number, options: Intl.DateTimeFormatOptions): string {
   const d = new Date(Date.UTC(2000, month - 1, day))
   d.setUTCFullYear(year)
-  return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(d)
+  // One formatter for each set of options, made once (making one costs far more than using it)
+  const key = JSON.stringify(options)
+  let format = enFormats.get(key)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' })
+    enFormats.set(key, format)
+  }
+  return format.format(d)
 }
 
 /** English month name, e.g. October / Oct */

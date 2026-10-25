@@ -1428,6 +1428,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-milkyway { transition: opacity 0.8s ease; }
 /* Its grain: tiny dots, a screen pixel or so whatever the zoom */
 .sky-milkyway .grain { fill: none; stroke: #d6defc; stroke-linecap: round; }
+.sky-stars path.dots { fill: none; stroke-linecap: round; }
 .sky-milkyway :is(.mw-haze, .mw-body, .mw-core, .mw-rift) path { fill: none; stroke-linecap: butt; }
 .sky-milkyway .mw-haze path { stroke: #8496d8; }
 .sky-milkyway .mw-body path { stroke: #b9c5f2; }
@@ -1493,7 +1494,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   to { stroke-dashoffset: 0; }
 }
 .sky-figures.has-chosen .sky-figure:not(.on) .line { opacity: 0.35; }
-.sky-map:has(.sky-figures.has-chosen) .sky-labels .sky-figure-name { opacity: 0.4; }
+/* A class rather than :has(), which made every change on the map restyle all of it */
+.sky-map.figure-chosen .sky-labels .sky-figure-name { opacity: 0.4; }
 .sky-labels .sky-figure-name { cursor: pointer; }
 .sky-figure-name.chosen {
   fill: #f6e2b5; font-size: calc(13px * var(--k, 1)); font-weight: 700; paint-order: stroke;

@@ -237,8 +237,14 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const [picked, setPicked] = useState<{ date: string; time: string } | null>(null)
   useEffect(() => {
     if (picked) return
-    const id = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(id)
+    // Not while the tab is hidden (each tick redraws the whole sky); catch up when it is shown again
+    const tick = () => !document.hidden && setNow(new Date())
+    const id = setInterval(tick, 30_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [picked])
 
   const wall = picked ?? wallTime(now, place.timeZone)
@@ -447,8 +453,11 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
 
   // The moments a path is drawn through: every 10 minutes from 12 hours before to 12 after, and
   // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
+  // While the sky is dragged through time the usual paths wait, so the moments are only needed then
+  // for a chosen or hovered one's path
+  const wantPathTimes = showPaths && (!dragging || chosen !== null || focus !== null)
   const pathTimes = useMemo(() => {
-    if (!showPaths) return null
+    if (!wantPathTimes) return null
     const now = utc.getTime()
     const times: Date[] = []
     for (let ms = now - PATH_SPAN; ms <= now + PATH_SPAN; ms += PATH_STEP) times.push(new Date(ms))
@@ -459,7 +468,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       hours.push(new Date(ms))
     }
     return { times, hours, hourOf: hours.map((h) => Number(wallTime(h, place.timeZone).time.slice(0, 2))) }
-  }, [showPaths, utc, place.timeZone])
+  }, [wantPathTimes, utc, place.timeZone])
   /** A path from its positions at pathTimes' moments followed by its hours */
   const pathOf = (key: string, track: { az: number; alt: number }[]) => {
     const { times, hourOf } = pathTimes!
@@ -498,10 +507,16 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // The path of a star, or of a body without one among the usual (Uranus, Neptune), when it is
   // chosen or hovered, drawn like the others while the paths are on. While the sky is dragged
   // through time the usual paths wait, but the chosen one's is still drawn, whichever it is.
+  // Tracks already worked out for these moments and this place, so hovering the same star again is free
+  const trackCache = useMemo(() => new Map<string, { az: number; alt: number }[]>(), [pathTimes, place.latitude, place.longitude])
   const extraPath = (key: string | null) => {
     if (!pathTimes || !key || key.startsWith('fig') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
-    const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
-    const track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
+    let track = trackCache.get(key)
+    if (!track) {
+      const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
+      track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
+      trackCache.set(key, track)
+    }
     return track.length ? pathOf(key, track) : null
   }
   const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, dragging, chosen, place.latitude, place.longitude])
@@ -530,10 +545,11 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const milkyWay = useMemo(() => {
     const seen = (alt: number) => (below ? alt < 4 : alt > -4)
     const grain = ['', '', '']
-    for (const p of galaxy.grain) {
-      if (!seen(p.alt)) continue
-      const [x, y] = at(p.az, p.alt)
-      grain[p.weight] += `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
+    const { az, alt, weight } = galaxy.grain
+    for (let i = 0; i < az.length; i++) {
+      if (!seen(alt[i])) continue
+      const [x, y] = at(az[i], alt[i])
+      grain[weight[i]] += `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
     }
     // Sizes are in degrees: R / 90 map units to the degree
     const patches = (list: typeof galaxy.glow) =>
@@ -570,12 +586,31 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }
       return out
     }
+    // Each blurred layer as a few paths rather than a stroke each: strokes of about the same
+    // opacity (to 0.02) and width (to half a unit) share one path, which under the blur looks the
+    // same and is far less to redraw as the sky turns
+    const layer = (band: { d: string; w: number; a: number }[], width: number, opacity: (a: number) => number) => {
+      const groups = new Map<string, { d: string; w: number; o: number }>()
+      for (const b of band) {
+        const o = Math.round(opacity(b.a) * 50) / 50
+        if (o <= 0) continue
+        const w = Math.round(b.w * width * 2) / 2
+        const key = `${o} ${w}`
+        const g = groups.get(key)
+        if (g) g.d += b.d
+        else groups.set(key, { d: b.d, w, o })
+      }
+      return [...groups.values()]
+    }
+    const band = strokes(galaxy.spine, true)
     return {
       grain,
       glow: patches(galaxy.glow),
       // The rift's own patches would bead along the line drawn below: only the Coalsack stays a patch
       dust: patches(galaxy.dust.filter((p) => p.l > 180)),
-      band: strokes(galaxy.spine, true),
+      haze: layer(band, 3.4, (a) => Math.min(0.32, 0.09 + 0.14 * a)),
+      body: layer(band, 1.7, (a) => Math.min(0.55, 0.1 + 0.28 * a)),
+      core: layer(band, 0.75, (a) => (a > 0.55 ? Math.min(0.6, 0.5 * (a - 0.55)) : 0)),
       // The rift as continuous lines (separate strokes would bead): a thin one along its whole
       // length and a wider one where it is deepest, Aquila to Cygnus
       rift: [
@@ -585,6 +620,85 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     }
     // at follows below
   }, [galaxy, below])
+  // The layers that only change with the sky itself are made once per sky, so hovering, choosing or
+  // panning (which redraw the page) leave them alone
+  const milkyWayLayer = useMemo(
+    () => (
+      <g className="sky-milkyway" aria-hidden="true">
+        {/* Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius) */}
+        <g className="mw-haze" filter={`url(#${clipId}-mw-blur-wide)`}>
+          {milkyWay.haze.map((g, i) => (
+            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
+          ))}
+        </g>
+        <g className="mw-body" filter={`url(#${clipId}-mw-blur)`}>
+          {milkyWay.body.map((g, i) => (
+            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
+          ))}
+        </g>
+        <g className="mw-core" filter={`url(#${clipId}-mw-blur-fine)`}>
+          {milkyWay.core.map((g, i) => (
+            <path key={i} d={g.d} strokeWidth={g.w} opacity={g.o} />
+          ))}
+        </g>
+        {milkyWay.glow.map((g, i) => (
+          <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a * 0.6} />
+        ))}
+        <g className="mw-rift" filter={`url(#${clipId}-mw-blur-fine)`}>
+          {milkyWay.rift.map((b, i) => (
+            <path key={i} d={b.d} strokeWidth={b.w} opacity={b.a} />
+          ))}
+        </g>
+        {milkyWay.dust.map((g, i) => (
+          <circle key={`dust-${i}`} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-dust)`} opacity={g.a} />
+        ))}
+        {milkyWay.grain.map((d, i) => (
+          <path key={`grain-${i}`} className={`grain grain-${i}`} d={d} />
+        ))}
+      </g>
+    ),
+    [milkyWay, clipId],
+  )
+  // Figure outlines: their path data once per sky; the layer again only when the choice changes.
+  // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
+  // place in the list, which shifts as figures rise and set: a remount would draw the chosen one in again
+  const figureShapes = useMemo(() => {
+    const parts = new Map<string, number>()
+    return figureViews.map((c) => {
+      const part = parts.get(c.id) ?? 0
+      parts.set(c.id, part + 1)
+      return { c, part, d: c.lines.map((l) => pathData(l, at)).join('') }
+    })
+    // at follows below
+  }, [figureViews, below])
+  const figuresLayer = useMemo(
+    () =>
+      figureShapes.length > 0 && (
+        <g className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
+          {figureShapes.map(({ c, part, d }) => {
+            const on = chosen === `fig${c.id}`
+            return (
+              <g
+                key={`${c.id}-${part}`}
+                className={`sky-figure${on ? ' on' : ''}${figures === 'mansions' ? ` zone-${zoneOf(c.name)}` : ''}`}
+                data-sound={figures === 'west' ? (on ? 'unpick' : 'sparkle') : on ? 'gongLow' : 'zhi'}
+                data-tip={figureTip(c)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  choose(`fig${c.id}`)
+                }}
+              >
+                <path className="hit" d={d} />
+                {/* The chosen one's lines draw themselves in: one length unit for the whole figure */}
+                <path className="line" d={d} pathLength={1} />
+              </g>
+            )
+          })}
+        </g>
+      ),
+    // figureTip and choose follow the settings and setChosen
+    [figureShapes, figures, chosen, pickFigure, language, script],
+  )
   // Sunlight low in the sky: at dusk and dawn a warm glow on the Sun's side of the horizon, by day a
   // bright one round the Sun; and moonlight round the Moon
   const sun = sky.bodies[0]
@@ -607,18 +721,21 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // The stars without a name, which are only looked at, as one path of dots per colour rather than
   // hundreds of elements: far less to redraw as the sky is dragged through time
   const starDots = useMemo(() => {
-    const groups = new Map<string, string[]>()
+    // A dot is a round cap on a stroke of next to no length, as wide as the star: much shorter to
+    // write (and for the browser to read) than two arcs, so one path per colour and size. The
+    // colours keep the order they come in, so that where two dots touch the same one is on top.
+    const groups = new Map<string, Map<number, string>>()
     for (const st of sky.stars) {
       if (st.name) continue
       const [x, y] = at(st.az, st.alt)
-      const r = (starRadius(st.mag) * dot).toFixed(2)
-      const mark = `M${(x - Number(r)).toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${(2 * Number(r)).toFixed(2)} 0a${r} ${r} 0 1 0 -${(2 * Number(r)).toFixed(2)} 0`
+      const width = Math.round(starRadius(st.mag) * dot * 40) / 20
       const colour = starColour(st.bv)
-      const list = groups.get(colour)
-      if (list) list.push(mark)
-      else groups.set(colour, [mark])
+      const mark = `M${x.toFixed(1)} ${y.toFixed(1)}h.01`
+      let sizes = groups.get(colour)
+      if (!sizes) groups.set(colour, (sizes = new Map()))
+      sizes.set(width, (sizes.get(width) ?? '') + mark)
     }
-    return [...groups].map(([fill, dots]) => ({ fill, d: dots.join('') }))
+    return [...groups].flatMap(([colour, sizes]) => [...sizes].map(([width, d]) => ({ colour, width, d })))
     // at follows below, as sky does
   }, [sky, dot])
   const labels = useMemo(
@@ -860,7 +977,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const map = (
     <svg
       ref={svgRef}
-      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}${entering ? ' entering' : ''}`}
+      className={`sky-map sky-${below ? 'below' : sky.light}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}${entering ? ' entering' : ''}`}
       style={{ '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties}
       // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
       role="group"
@@ -956,39 +1073,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         {moonGlow && <circle cx={moonGlow.at[0]} cy={moonGlow.at[1]} r={R * 0.42} fill={`url(#${clipId}-moon)`} opacity={moonGlow.strength} />}
       </g>
       <g clipPath={`url(#${clipId})`}>
-        <g className="sky-milkyway" aria-hidden="true">
-          {/* Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius) */}
-          <g className="mw-haze" filter={`url(#${clipId}-mw-blur-wide)`}>
-            {milkyWay.band.map((b, i) => (
-              <path key={i} d={b.d} strokeWidth={b.w * 3.4} opacity={Math.min(0.32, 0.09 + 0.14 * b.a)} />
-            ))}
-          </g>
-          <g className="mw-body" filter={`url(#${clipId}-mw-blur)`}>
-            {milkyWay.band.map((b, i) => (
-              <path key={i} d={b.d} strokeWidth={b.w * 1.7} opacity={Math.min(0.55, 0.1 + 0.28 * b.a)} />
-            ))}
-          </g>
-          <g className="mw-core" filter={`url(#${clipId}-mw-blur-fine)`}>
-            {milkyWay.band.map(
-              (b, i) =>
-                b.a > 0.55 && <path key={i} d={b.d} strokeWidth={b.w * 0.75} opacity={Math.min(0.6, 0.5 * (b.a - 0.55))} />,
-            )}
-          </g>
-          {milkyWay.glow.map((g, i) => (
-            <circle key={i} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-mw)`} opacity={g.a * 0.6} />
-          ))}
-          <g className="mw-rift" filter={`url(#${clipId}-mw-blur-fine)`}>
-            {milkyWay.rift.map((b, i) => (
-              <path key={i} d={b.d} strokeWidth={b.w} opacity={b.a} />
-            ))}
-          </g>
-          {milkyWay.dust.map((g, i) => (
-            <circle key={`dust-${i}`} cx={g.x} cy={g.y} r={g.r} fill={`url(#${clipId}-dust)`} opacity={g.a} />
-          ))}
-          {milkyWay.grain.map((d, i) => (
-            <path key={`grain-${i}`} className={`grain grain-${i}`} d={d} />
-          ))}
-        </g>
+        {milkyWayLayer}
         {[30, 60].map((alt) => (
           <circle key={alt} className="sky-grid" cx={C} cy={C} r={(R * (90 - alt)) / 90} />
         ))}
@@ -1016,34 +1101,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             })}
           </g>
         )}
-        {figureViews.length > 0 && (
-          <g className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
-            {figureViews.map((c, i) => {
-              const d = c.lines.map((l) => pathData(l, at)).join('')
-              const on = chosen === `fig${c.id}`
-              // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by
-              // its place in the list, which shifts as figures rise and set: a remount would draw the
-              // chosen one in again
-              const part = figureViews.slice(0, i).filter((o) => o.id === c.id).length
-              return (
-                <g
-                  key={`${c.id}-${part}`}
-                  className={`sky-figure${on ? ' on' : ''}${figures === 'mansions' ? ` zone-${zoneOf(c.name)}` : ''}`}
-                  data-sound={figures === 'west' ? (on ? 'unpick' : 'sparkle') : on ? 'gongLow' : 'zhi'}
-                  data-tip={figureTip(c)}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    choose(`fig${c.id}`)
-                  }}
-                >
-                  <path className="hit" d={d} />
-                  {/* The chosen one's lines draw themselves in: one length unit for the whole figure */}
-                  <path className="line" d={d} pathLength={1} />
-                </g>
-              )
-            })}
-          </g>
-        )}
+        {figuresLayer}
         <g className="sky-halos" aria-hidden="true">
           {up
             .filter((b) => b.key !== 'sun')
@@ -1061,7 +1119,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         </g>
         <g className="sky-stars">
           {starDots.map((g) => (
-            <path key={g.fill} fill={g.fill} d={g.d} />
+            <path key={`${g.colour} ${g.width}`} className="dots" stroke={g.colour} strokeWidth={g.width} d={g.d} />
           ))}
           {sky.stars.filter((s) => s.name).map((s) => (
             <Star
