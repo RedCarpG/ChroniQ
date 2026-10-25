@@ -15,6 +15,8 @@
     "gen:constellations": "vite-node scripts/gen-constellations.ts"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/noto-serif-sc": "^5.3.1",
     "astronomy-engine": "^2.1.19",
     "iztro": "^2.6.3",
     "modern-screenshot": "^4.7.0",

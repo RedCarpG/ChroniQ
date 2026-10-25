@@ -4,10 +4,15 @@ import { App } from './App'
 import { SPLASH_FADE_MS, SPLASH_MIN_MS } from './components/Splash'
 import { setUpPwa } from './pwa'
 import { startStarfield } from './starfield'
+// The titles' typefaces (styles.css: 题字): Cormorant Garamond's Latin here; 思源宋体 below
+import '@fontsource/cormorant-garamond/latin-600.css'
 import './styles.css'
 
 setUpPwa()
 startStarfield()
+// 思源宋体's rules (a hundred slices, each fetched only when a character in it is shown) come in a
+// stylesheet of their own once the page is up, not in the one it waits for; till then, a system serif
+void import('@fontsource/noto-serif-sc/600.css')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

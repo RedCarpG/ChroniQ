@@ -2171,3 +2171,28 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   content: ''; position: absolute; top: 15%; bottom: 15%; right: -4px; width: 1px; z-index: 1;
   background: linear-gradient(180deg, transparent, var(--accent), transparent);
 }
+
+/* 命盘: the way to the saved charts, still a framed tab (a full fine gold border), standing out
+   beside the page's quiet tabs */
+.drawer-handle:not(.quiet) {
+  border: 1px solid color-mix(in srgb, var(--accent) 75%, transparent); border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.drawer-handle:not(.quiet)::after { display: none; }
+.drawer-handle:not(.quiet):is(:hover, [aria-expanded='true']) { background: var(--accent-soft); border-color: var(--accent); }
+
+/* ---------- 题字: the titles in a serif ----------
+   Cormorant Garamond for the Latin letters and figures (ChroniQ, the dates; its figures are old-style),
+   思源宋体 (Noto Serif SC) for the Chinese, both from the site itself (fontsource, imported in main.tsx;
+   the Chinese in slices, each fetched only when a character in it is shown). The body stays sans. */
+:root { --font-title: 'Cormorant Garamond', 'Noto Serif SC', 'Songti SC', 'STSong', serif; }
+.topbar h1, .brand-en, .section-title, .fortunes-head h3, .drawer-head h3, .page-menu-btn, .page-menu-title,
+.cal-pickers select, .detail-hero .big, .lunar-line, .moon-name strong, .about-title, .sky-chosen-info strong, .char,
+/* and the labels that find the way: the page menu's names, the left drawer's tabs (命盘, 显示), the section links */
+.page-menu-item b, .drawer-handle-text, .section-nav-text {
+  /* Figures as tall as the characters beside them (Cormorant's own are old-style) */
+  font-family: var(--font-title); font-variant-numeric: lining-nums;
+}
+.brand-en { letter-spacing: 0.12em; }
+.detail-hero .big { font-size: 52px; font-weight: 600; }
