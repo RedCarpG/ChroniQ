@@ -2222,3 +2222,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-sources { margin-top: 8px; font-size: 12px; }
 .sky-sources a { color: color-mix(in srgb, var(--accent) 85%, var(--muted)); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 .sky-sources a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* The left drawer's tabs a size up, so they are not missed: 命盘 the larger, the page's own a step below */
+.drawer-handle { padding: 16px 9px; font-size: 16px; gap: 8px; }
+.drawer-handle:hover, .drawer-handle[aria-expanded='true'] { padding-left: 12px; }
+.drawer-handle.quiet { padding: 13px 7px; font-size: 14px; }
+.drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { padding-left: 10px; }
+.drawer-count, .drawer-handle.quiet .drawer-count { font-size: 12px; }
