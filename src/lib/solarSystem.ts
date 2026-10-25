@@ -76,6 +76,15 @@ export function planetsAt(utc: Date): PlanetPosition[] {
   })
 }
 
+/**
+ * Where one planet has stood among the stars seen from Earth (its ecliptic longitude, as geo) at
+ * each of the given moments: the way it has gone, forwards, and back while retrograde.
+ */
+export function seenTrail(key: PlanetKey, times: Date[]): number[] {
+  const body = key === 'earth' ? A.Body.Sun : PLANETS.find((p) => p.key === key)!.body
+  return times.map((utc) => geoLon(body, A.MakeTime(utc)))
+}
+
 /** One orbit of each planet, sampled from the given moment: [x, y] points in AU. */
 export function orbits(utc: Date, samples = 180): Record<PlanetKey, [number, number][]> {
   const out = {} as Record<PlanetKey, [number, number][]>

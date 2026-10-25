@@ -24,6 +24,7 @@ import { ConceptTip } from './GlossaryTips'
 import { PillarTable } from './PillarTable'
 import { DEFAULT_PLACE } from '../lib/place'
 import { toUtc } from '../lib/timeZone'
+import { usePick } from './usePick'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 // 生辰星空 and the 五星: they bring the star catalogue and astronomy-engine, so they load apart
@@ -50,7 +51,9 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     return { utc: toUtc({ year, month, day, hour, minute }, place.timeZone).date, latitude: place.latitude, longitude: place.longitude }
   }, [input])
   // A 五星 (or 日, 月) pointed at in its row, picked out in the sky behind
-  const [skyFocus, setSkyFocus] = useState<string | null>(null)
+  // The body picked out in the 五星 table and the sky above the birth: hovered, or chosen
+  const skyPick = usePick<string>()
+  const skyFocus = skyPick.active
   const unpicked = t('未选 · 不入盘')
   const ageText = (age: number) => t('{age}岁', { age })
   const thisYear = new Date().getFullYear()
@@ -242,7 +245,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             ))}
           </div>
           <Suspense fallback={null}>
-            <FiveStars moment={moment} focus={skyFocus} onFocus={setSkyFocus} />
+            <FiveStars moment={moment} focus={skyFocus} pick={skyPick.props} />
           </Suspense>
 
           <Relations title={term('原局刑冲合会')} items={chart.relations} schools={schools} />

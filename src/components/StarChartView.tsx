@@ -29,6 +29,7 @@ import { loadCharts, sameInput } from '../lib/savedCharts'
 import { DEFAULT_PLACE } from '../lib/place'
 import { zodiacStars } from '../lib/eclipticStars'
 import { STAR_SCHOOLS } from '../lib/starPrefs'
+import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
 import { BirthForm, DateParts } from './BirthForm'
 import { InfoTip, TipLine } from './InfoTip'
@@ -82,15 +83,11 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     setPartnerState(next)
     savePartner(next)
   }
-  // Highlight: a house, or a planet (with the planets it aspects). Mouse hover, or tap / focus.
-  const [focus, setFocus] = useState<Focus>(null)
-  const hover = (f: NonNullable<Focus>) => ({
-    tabIndex: 0,
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(f),
-    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
-    onFocus: () => setFocus(f),
-    onBlur: () => setFocus(null),
-  })
+  // Highlight: a house, or a planet (with the planets it aspects). Hover lights it up; a click keeps
+  // it (usePick), until a click on empty space.
+  const pick = usePick<NonNullable<Focus>>()
+  const focus: Focus = pick.active
+  const hover = (f: NonNullable<Focus>) => ({ tabIndex: 0, ...pick.props(f) })
   const overlay = useMemo<Overlay | null>(() => {
     if (mode === 'natal' || mode === 'composite') return null
     if (mode === 'synastry') return synastry(chart, buildStarChart(partner.wall, partner.place, settings))
@@ -378,14 +375,9 @@ const aspectChip = (t: T, a: Aspect) => t('{glyph}{name}', { glyph: a.type.glyph
 function CompositeCard({ chart, partnerName, settings }: { chart: StarChart; partnerName: string; settings: StarSettings }) {
   const t = useT()
   const { language } = useSettings()
-  const [focus, setFocus] = useState<Focus>(null)
-  const hover = (f: NonNullable<Focus>) => ({
-    tabIndex: 0,
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(f),
-    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
-    onFocus: () => setFocus(f),
-    onBlur: () => setFocus(null),
-  })
+  const pick = usePick<NonNullable<Focus>>()
+  const focus: Focus = pick.active
+  const hover = (f: NonNullable<Focus>) => ({ tabIndex: 0, ...pick.props(f) })
   const hl = useMemo(() => highlight(chart, null, focus), [chart, focus])
   const davison = settings.composite === 'davison'
   const sign = (k: string) => {
