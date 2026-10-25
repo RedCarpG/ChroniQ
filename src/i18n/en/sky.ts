@@ -143,6 +143,8 @@ export const SKY: Record<string, string> = {
   // Zooming the sky
   '滚轮或双指缩放 · 左右拖动转动时间': 'Wheel or pinch to zoom · drag sideways to turn time',
   '拖动移动星图 · 中键左右拖动转动时间': 'Drag to move the map · drag sideways with the middle button to turn time',
+  // The Moon's phase, when it is chosen
+  '照亮 {n}%': '{n}% lit',
   缩放: 'Zoom',
   显示轨迹: 'Show path',
   放大: 'Zoom in',

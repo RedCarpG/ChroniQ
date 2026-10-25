@@ -20,6 +20,8 @@ export interface SkyBody {
   mag: number
   /** Lit fraction of the disc, 0–1 (the Moon's phase) */
   lit: number
+  /** The Moon's phase, as degrees of its ecliptic longitude past the Sun's: 0 new, 90 first quarter, 180 full, 270 last quarter */
+  phase?: number
   /** Right ascension, degrees, J2000 (which 二十八宿 it is in) */
   ra: number
 }
@@ -162,6 +164,7 @@ export function skyAt(utc: Date, latitude: number, longitude: number, below = fa
       alt: hor.altitude,
       mag: illum.mag,
       lit: illum.phase_fraction,
+      ...(key === 'moon' && { phase: A.MoonPhase(time) }),
       ra: A.Equator(body, time, observer, false, true).ra * 15,
     }
   })
@@ -508,6 +511,44 @@ function grainLayout() {
 }
 const grainVectors = () => grainLayout().v
 const grainWeights = () => grainLayout().weight
+
+/** The Moon's phase by name, from its phase angle (degrees past the Sun: 0 new, 180 full) */
+export function moonPhaseName(phase: number): string {
+  const p = ((phase % 360) + 360) % 360
+  if (p < 10 || p >= 350) return '新月'
+  if (p < 80) return '蛾眉月'
+  if (p < 100) return '上弦月'
+  if (p < 170) return '盈凸月'
+  if (p < 190) return '满月'
+  if (p < 260) return '亏凸月'
+  if (p < 280) return '下弦月'
+  return '残月'
+}
+
+/**
+ * The lit part of a disc of radius r, centred on 0,0, with the Sun towards +x: the limb's half on
+ * the Sun's side, closed by the terminator, a half-ellipse across the disc (to the far side when
+ * more than half is lit). lit is the lit fraction, 0 (new) to 1 (full).
+ */
+export function litPart(lit: number, r: number): string {
+  const across = Math.abs(2 * lit - 1) * r
+  return `M0 ${-r}A${r} ${r} 0 0 1 0 ${r}A${across.toFixed(2)} ${r} 0 0 ${lit > 0.5 ? 1 : 0} 0 ${-r}Z`
+}
+
+/** A point a little way along the great circle from one place in the sky towards another (to aim the Moon's lit side at the Sun) */
+export function towards(from: { az: number; alt: number }, to: { az: number; alt: number }, degrees = 0.5) {
+  const v = (p: { az: number; alt: number }) => {
+    const [a, h] = [p.az * RAD, p.alt * RAD]
+    return [Math.cos(h) * Math.cos(a), Math.cos(h) * Math.sin(a), Math.sin(h)]
+  }
+  const [a, b] = [v(from), v(to)]
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  const t = b.map((x, i) => x - dot * a[i])
+  const len = Math.hypot(...t) || 1
+  const [c, s] = [Math.cos(degrees * RAD), Math.sin(degrees * RAD)]
+  const p = a.map((x, i) => x * c + (t[i] / len) * s)
+  return { az: ((Math.atan2(p[1], p[0]) / RAD) + 360) % 360, alt: Math.asin(Math.max(-1, Math.min(1, p[2]))) / RAD }
+}
 
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
 const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
