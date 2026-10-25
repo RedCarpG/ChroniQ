@@ -427,6 +427,7 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
                       .filter(Boolean)
                       .join(' ')}
                     title={mine.map(chartText).join('\n') || undefined}
+                    data-sound="shang"
                     onClick={() => select(c.solar)}
                   >
                     {c.holiday && <span className={`badge ${c.holiday === '休' ? 'off' : 'work'}`}>{t(c.holiday)}</span>}
@@ -624,7 +625,7 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
           <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
           <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
-          <button className="primary block" onClick={() => onPickBazi(selected)}>
+          <button className="primary block" data-sound="gong" onClick={() => onPickBazi(selected)}>
             {t('以此日排八字 →')}
           </button>
         </SmoothHeight>

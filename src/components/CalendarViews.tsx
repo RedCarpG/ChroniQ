@@ -62,6 +62,7 @@ export function WeekView({
           ]
             .filter(Boolean)
             .join(' ')}
+          data-sound="shang"
           onClick={() => onSelect(d.solar)}
         >
           <span className="wd-head">
@@ -166,6 +167,7 @@ export function YearView({
                   ]
                     .filter(Boolean)
                     .join(' ')}
+                  data-sound="shang"
                   onClick={() => onSelect(d.solar)}
                 >
                   {d.day}

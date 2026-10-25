@@ -1029,7 +1029,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <g
                   key={`${c.id}-${part}`}
                   className={`sky-figure${on ? ' on' : ''}${figures === 'mansions' ? ` zone-${zoneOf(c.name)}` : ''}`}
-                  data-sound={on ? 'unpick' : 'sparkle'}
+                  data-sound={figures === 'west' ? (on ? 'unpick' : 'sparkle') : on ? 'gongLow' : 'zhi'}
                   data-tip={figureTip(c)}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -1191,7 +1191,17 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 x={l.anchor === 'start' ? l.x + push : l.anchor === 'end' ? l.x - push : l.x}
                 y={l.anchor !== 'middle' || !spot ? l.y : l.y < spot[1] ? l.y - push : l.y + push}
                 textAnchor={l.anchor}
-                data-sound={l.key === chosen ? 'unpick' : l.kind === 'figure' ? 'sparkle' : 'pick'}
+                data-sound={
+                  l.kind === 'figure' && figures !== 'west'
+                    ? l.key === chosen
+                      ? 'gongLow'
+                      : 'zhi'
+                    : l.key === chosen
+                      ? 'unpick'
+                      : l.kind === 'figure'
+                        ? 'sparkle'
+                        : 'pick'
+                }
                 dominantBaseline="central"
                 onClick={(e) => {
                   e.stopPropagation()

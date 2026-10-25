@@ -290,7 +290,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               })}
               <SchoolMark school="childLimit" settings={schools} />
             </p>
-            <div className="fortune-row">
+            <div className="fortune-row" data-sounds="gong">
               {chart.decades.map((d, i) => (
                 <button
                   key={d.startYear}
@@ -314,7 +314,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.year}
             onToggle={() => toggle('year')}
           >
-            <div className="fortune-row">
+            <div className="fortune-row" data-sounds="shang">
               {decade.years.map((y) => (
                 <button
                   key={y.year}
@@ -337,7 +337,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.month}
             onToggle={() => toggle('month')}
           >
-            <div className="fortune-row months">
+            <div className="fortune-row months" data-sounds="jue">
               {months.map((m) => (
                 <button
                   key={m.index}
@@ -359,7 +359,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.day}
             onToggle={() => toggle('day')}
           >
-            <div className="fortune-row days">
+            <div className="fortune-row days" data-sounds="zhi">
               {days.map((d) => (
                 <button
                   key={d.key}

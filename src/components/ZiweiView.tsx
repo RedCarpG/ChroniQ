@@ -399,7 +399,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           open={open.decade}
           onToggle={() => toggle('decade')}
         >
-          <div className="fortune-row decades">
+          <div className="fortune-row decades" data-sounds="gong">
             {chart.decades.map((d, i) => (
               <button
                 key={d.branch}
@@ -431,7 +431,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           open={open.year}
           onToggle={() => toggle('year')}
         >
-          <div className="fortune-row">
+          <div className="fortune-row" data-sounds="shang">
             {decade.years.map((y) => (
               <button
                 key={y}
@@ -453,7 +453,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           open={open.month}
           onToggle={() => toggle('month')}
         >
-          <div className="fortune-row months">
+          <div className="fortune-row months" data-sounds="jue">
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
               const info = monthInfo(year, m)
               return (
@@ -481,7 +481,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           open={open.day}
           onToggle={() => toggle('day')}
         >
-          <div className="fortune-row days">
+          <div className="fortune-row days" data-sounds="zhi">
             {Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1).map((d) => {
               const info = dayInfo(year, month, d)
               return (
@@ -509,7 +509,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           open={open.hour}
           onToggle={() => toggle('hour')}
         >
-          <div className="fortune-row months">
+          <div className="fortune-row months" data-sounds="yu">
             {Array.from({ length: 12 }, (_, i) => i).map((h) => {
               const info = hourInfo(year, month, day, h)
               return (
@@ -621,6 +621,7 @@ function Palace({
       className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}`}
       style={{ gridRow: row, gridColumn: col }}
       tabIndex={0}
+      data-sound="yu"
       aria-label={t('{palace}，{ganzhi}', { palace: term(p.name), ganzhi: p.stem + p.branch })}
       // Same pattern as the 八字 highlight: mouse hover, or focus for touch and keyboard.
       onPointerEnter={(e) => e.pointerType === 'mouse' && onActive(p.branch)}
