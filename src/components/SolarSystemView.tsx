@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SIGN_ELEMENT, SIGN_GLYPHS, SIGNS } from '../lib/astrology'
 import { enDate } from '../lib/calendar'
 import { zodiacStars } from '../lib/eclipticStars'
-import { PLANETS, lightTime, orbits, planetsAt, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
+import { PLANETS, lightTime, orbits, planetsAt, seenTrail, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
+import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
@@ -57,7 +58,10 @@ export function SolarSystemView() {
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(7)
   const [scale, setScale] = useState<Scale>('inner')
-  const [focus, setFocus] = useState<PlanetKey | null>(null)
+  // The planet picked out: hovered, or chosen (a click; a click on empty space lets go). A chosen
+  // one keeps Earth's line of sight to it and its trail among the stars, also while playing.
+  const pick = usePick<PlanetKey>()
+  const focus = pick.active
 
   // Following now: refresh once a minute
   useEffect(() => {
@@ -131,14 +135,17 @@ export function SolarSystemView() {
     const where = t('{sign} {deg}°', { sign: t(sign), deg })
     return p.key === 'earth' ? t('从地球看，太阳在{where}', { where }) : t('从地球看，在{where}', { where })
   }
-  const hover = (key: PlanetKey) => ({
-    tabIndex: 0,
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(key),
-    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(null),
-    onFocus: () => setFocus(key),
-    onBlur: () => setFocus(null),
-  })
+  const hover = (key: PlanetKey) => ({ tabIndex: 0, ...pick.props(key) })
   const focused = planets.find((p) => p.key === focus)
+  // The chosen planet's way among the stars over the time before (as far back as about ten seconds
+  // of playing at the current speed, at least two months): dots on the zodiac ring, fading into the
+  // past, which double back while it is retrograde
+  const trailSpan = Math.max(60, speed * 10) * DAY
+  const seen = useMemo(() => {
+    if (!pick.picked) return []
+    const times = Array.from({ length: 48 }, (_, i) => new Date(time - ((47 - i) / 47) * trailSpan))
+    return seenTrail(pick.picked, times)
+  }, [pick.picked, time, trailSpan])
   // A short trail behind each planet, along its orbit: the way it is going
   const trail = (p: PlanetPosition) => {
     const pts = paths[p.key]
@@ -276,6 +283,10 @@ export function SolarSystemView() {
               {zodiac.map(([w, d]) => (
                 <path key={w} className="orrery-zodiac-stars" d={d} strokeWidth={w} />
               ))}
+              {seen.map((lon, i) => {
+                const [x, y] = polar(lon, (R_Z1 + R_Z2) / 2)
+                return <circle key={i} className="orrery-seen-dot" cx={x} cy={y} r={1.2 + (i / seen.length) * 1.3} opacity={0.15 + (0.75 * i) / seen.length} fill={BODY_COLOUR[pick.picked!] ?? '#ffcf4a'} />
+              })}
               {focused && (
                 <line
                   className="orrery-seen"
@@ -330,9 +341,19 @@ export function SolarSystemView() {
               </g>
             ))}
             {/* Earth's line of sight to the hovered planet (to its rim mark when off the map) */}
+            {focused && focused.key !== 'earth' && focused.retrograde && (
+              <text
+                className="orrery-retro"
+                x={(xy(earth.x, earth.y)[0] + (shown.includes(focused) ? xy(focused.x, focused.y)[0] : rim(focused)[0])) / 2}
+                y={(xy(earth.x, earth.y)[1] + (shown.includes(focused) ? xy(focused.x, focused.y)[1] : rim(focused)[1])) / 2 - 6}
+                textAnchor="middle"
+              >
+                {t('逆行')}
+              </text>
+            )}
             {focused && focused.key !== 'earth' && (
               <line
-                className="orrery-sight"
+                className={`orrery-sight${focused.retrograde ? ' retro' : ''}`}
                 x1={xy(earth.x, earth.y)[0]}
                 y1={xy(earth.x, earth.y)[1]}
                 x2={shown.includes(focused) ? xy(focused.x, focused.y)[0] : rim(focused)[0]}

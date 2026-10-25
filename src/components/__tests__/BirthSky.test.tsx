@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import './dom'
-import { fireEvent, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { toTrad } from '../../lib/trad'
 import { FIVE_STARS } from '../../lib/fiveStars'
@@ -16,7 +16,7 @@ describe('五星 under the 五行', () => {
   })
 
   it('gives each its 宿 and height at the moment of birth, and the Sun’s and Moon’s 宿', () => {
-    const { container } = render(<FiveStars moment={moment} focus={null} onFocus={() => {}} />)
+    const { container } = render(<FiveStars moment={moment} focus={null} pick={() => ({})} />)
     const rows = [...container.querySelectorAll('.five-star')].map((r) => r.textContent)
     // Names in 繁體, the default; checked against astronomy-engine directly: Jupiter RA 100° alt 15.5°, Mars 350° 39.6°,
     // Saturn 297° −1.3°, Venus 12° 53.3°, Mercury 37° 54.3° (with refraction, a little higher)
@@ -31,13 +31,10 @@ describe('五星 under the 五行', () => {
   })
 
   it('picks a planet out in the sky behind while it is pointed at', () => {
-    const onFocus = vi.fn()
-    const { container } = render(<FiveStars moment={moment} focus={null} onFocus={onFocus} />)
-    const venus = container.querySelectorAll('.five-star')[3]
-    fireEvent.pointerEnter(venus, { pointerType: 'mouse' })
-    expect(onFocus).toHaveBeenLastCalledWith('venus')
-    fireEvent.pointerLeave(venus, { pointerType: 'mouse' })
-    expect(onFocus).toHaveBeenLastCalledWith(null)
+    const pick = vi.fn((key: string) => ({ 'data-key': key }))
+    const { container } = render(<FiveStars moment={moment} focus={null} pick={pick} />)
+    expect(pick).toHaveBeenCalledWith('venus')
+    expect(container.querySelectorAll('.five-star')[3].getAttribute('data-key')).toBe('venus')
   })
 })
 

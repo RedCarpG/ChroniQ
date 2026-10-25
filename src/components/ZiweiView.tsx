@@ -20,6 +20,7 @@ import {
   type ZiweiStar,
 } from '../lib/ziwei'
 import { ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../lib/ziweiSchools'
+import { usePick } from './usePick'
 import { useSettings, useT, useTerm } from '../settingsContext'
 import { BirthForm } from './BirthForm'
 import { FortuneRow } from './FortuneRow'
@@ -104,7 +105,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   const { ziweiColor, language, script } = useSettings()
   const english = language === 'en'
   // The palace whose 三方四正 is shown (hover with a mouse, tap or focus otherwise)
-  const [active, setActive] = useState<string | null>(null)
+  // The palace picked out: hovered, or chosen (a click; a click on empty space lets go)
+  const palacePick = usePick<string>()
+  const active = palacePick.active
   const [mode, setModeState] = useState<BoardMode>(loadMode)
   const setMode = (next: BoardMode) => {
     setModeState(next)
@@ -445,7 +448,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 fly={flies && (p.branch === active ? 'src' : flyInto(flies, p.branch))}
                 showSelf={mode === 'feihua'}
                 layers={layers}
-                onActive={setActive}
+                pick={palacePick.props}
               />
             ))}
             {active && mode === 'sanfang' && <SanFangLines branch={active} />}
@@ -617,7 +620,7 @@ function PalaceView({
   fly,
   showSelf,
   layers,
-  onActive,
+  pick,
 }: {
   palace: ZiweiPalace
   role?: Role
@@ -626,7 +629,8 @@ function PalaceView({
   /** Mark the 自化 of this palace's own 天干 */
   showSelf: boolean
   layers: ZiweiLayer[]
-  onActive: (branch: string | null) => void
+  /** Props that light up a palace (usePick's) */
+  pick: (branch: string) => Record<string, unknown>
 }) {
   const incoming = Array.isArray(fly) ? fly : []
   const selfFlies = showSelf ? p.flies.filter((f) => f.to === p.branch) : []
@@ -646,11 +650,8 @@ function PalaceView({
       tabIndex={0}
       data-sound="yu"
       aria-label={t('{palace}，{ganzhi}', { palace: term(p.name), ganzhi: p.stem + p.branch })}
-      // Same pattern as the 八字 highlight: mouse hover, or focus for touch and keyboard.
-      onPointerEnter={(e) => e.pointerType === 'mouse' && onActive(p.branch)}
-      onPointerLeave={(e) => e.pointerType === 'mouse' && onActive(null)}
-      onFocus={() => onActive(p.branch)}
-      onBlur={() => onActive(null)}
+      // As the 八字 highlight: hover or focus lights it up, a click keeps it
+      {...pick(p.branch)}
     >
       {role && <span className="sf-tag">{ROLE_LABEL[role]}</span>}
       {fly === 'src' && <span className="sf-tag fx-tag">{t('{stem}干飞出', { stem: p.stem })}</span>}

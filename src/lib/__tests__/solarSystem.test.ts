@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lightTime, orbits, planetsAt } from '../solarSystem'
+import { lightTime, orbits, planetsAt, seenTrail } from '../solarSystem'
 
 describe('太阳系', () => {
   const at = (d: string) => Object.fromEntries(planetsAt(new Date(d)).map((p) => [p.key, p]))
@@ -45,5 +45,17 @@ describe('太阳系', () => {
   it('formats light time', () => {
     expect(lightTime(1)).toBe('8.3 分钟')
     expect(lightTime(30)).toBe('4.2 小时')
+  })
+})
+
+describe('the way a planet goes among the stars', () => {
+  it('turns back while it is retrograde', () => {
+    // Mars, retrograde from 2027-01-10 to 2027-04-01 or so: eastwards through December, westwards in February, then east again
+    const day = (d: string) => new Date(`${d}T00:00:00Z`)
+    const [dec1, dec31, feb1, feb28, apr15, may15] = seenTrail('mars', ['2026-12-01', '2026-12-31', '2027-02-01', '2027-02-28', '2027-04-15', '2027-05-15'].map(day))
+    const step = (a: number, b: number) => ((b - a + 540) % 360) - 180
+    expect(step(dec1, dec31)).toBeGreaterThan(0)
+    expect(step(feb1, feb28)).toBeLessThan(0)
+    expect(step(apr15, may15)).toBeGreaterThan(0)
   })
 })

@@ -425,11 +425,12 @@ export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: s
 export function FiveStars({
   moment,
   focus,
-  onFocus,
+  pick,
 }: {
   moment: BirthMoment
   focus: string | null
-  onFocus: (key: string | null) => void
+  /** Props that light up a body (usePick's) */
+  pick: (key: string) => Record<string, unknown>
 }) {
   const t = useT()
   const term = useTerm()
@@ -437,12 +438,7 @@ export function FiveStars({
   const body = (key: string) => sky.bodies.find((b) => b.key === key)!
   const where = (b: SkyBody) => term(mansionOf(b.ra).mansion.name)
   const height = (b: SkyBody) => (b.alt > 0 ? t('地平上 {alt}°', { alt: Math.round(b.alt) }) : t('地平下'))
-  const point = (key: string) => ({
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && onFocus(key),
-    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && onFocus(null),
-    onFocus: () => onFocus(key),
-    onBlur: () => onFocus(null),
-  })
+  const point = pick
   const sun = body('sun')
   const moon = body('moon')
   return (
