@@ -177,7 +177,7 @@ export function App() {
       const foot = footRef.current
       if (foot && (foot.matches(':hover') || foot.contains(document.activeElement))) return
       setFootShown(false)
-    }, 500)
+    }, 150)
   }
   useEffect(() => {
     // The bottom edge is watched rather than covered, so nothing at the foot of a page is kept from the pointer
