@@ -142,9 +142,7 @@ export const SKY: Record<string, string> = {
   取消选中: 'Clear selection',
   '点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。':
     'Click a body, a named star, a constellation’s lines or a row of the table to pick it out and read about it (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
-  // The panel: put away, its tabs, and what it tells of the one chosen
-  隐藏面板: 'Hide panel',
-  显示面板: 'Show panel',
+  // The panels: the settings on the left, and what is told of the one chosen
   '时间·地点': 'Time & place',
   '日月行星前后 12 小时的路径': 'Paths of the Sun, Moon and planets, 12 hours either side',
   全部天体: 'All bodies',

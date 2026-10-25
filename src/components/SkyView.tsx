@@ -189,6 +189,7 @@ const PATH_STEP = 10 * 60_000
 const HOUR = 3600_000
 const PATHS_KEY = 'chroniq-sky-paths'
 const PANEL_KEY = 'chroniq-sky-panel'
+const SHOW_KEY = 'chroniq-sky-show'
 /** Kilometres in an astronomical unit */
 const AU_KM = 149_597_870.7
 
@@ -454,8 +455,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     if (f) glideTo(zoomedAt(v, f.left + f.width / 2 + v.x, f.top + f.height / 2 + v.y, factor))
   }
 
-  // The panel beside the sky, which can be put away to give the sky the whole width (remembered in
-  // this browser), and which of its tabs is open
+  // The settings beside the sky, on the left (the moment and the place, and how the sky is drawn),
+  // which can be put away to a slim tab to give the sky more width (remembered in this browser)
   const [panelOpen, setPanelOpen] = useState(() => {
     try {
       return localStorage.getItem(PANEL_KEY) !== 'hidden'
@@ -472,7 +473,23 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       }
       return !open
     })
-  const [tab, setTab] = useState<'when' | 'show'>('when')
+  // Under the moment and the place, 显示 (how the sky is drawn) folds open and shut (remembered too)
+  const [showOpen, setShowOpen] = useState(() => {
+    try {
+      return localStorage.getItem(SHOW_KEY) === 'open'
+    } catch {
+      return false
+    }
+  })
+  const toggleShow = () =>
+    setShowOpen((open) => {
+      try {
+        localStorage.setItem(SHOW_KEY, open ? 'shut' : 'open')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !open
+    })
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
   const [showPaths, setShowPaths] = useState(() => {
@@ -1528,6 +1545,36 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     </svg>
   )
 
+  // The notes on what the sky shows, at the foot of the settings
+  const notes = (
+    <p className="muted row-note">
+      {t('上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。')}
+      {en && ' '}
+      {below ? t('脚下：地平线以下、被地球挡住的那半边天空，像透过地球往下看；中心是天底，东西因此左右互换。') : lightNote}
+      {(below || lightNote) && en && ' '}
+      {below
+        ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
+        : t('地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+      {en && ' '}
+      {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
+      {paths && en && ' '}
+      {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
+      {historyLine && en && ' '}
+      {historyLine &&
+        t('{name}过去 {span}在星空中走过的路线（画在此刻的星空上）：空心圆是起点，圆点标出日期；行星逆行时会折返或打圈。', {
+          name: t(sky.bodies.find((b) => b.key === historyLine.key)!.name),
+          span: history.days === 30 ? t('1 个月') : history.days === 90 ? t('3 个月') : t('1 年'),
+        })}
+      {figures !== 'none' && en && ' '}
+      {figures === 'west' && t('星座连线来自 d3-celestial。')}
+      {figures === 'china' && t('中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。')}
+      {figures === 'mansions' &&
+        t(
+          '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。',
+        )}
+    </p>
+  )
+
   return (
     <section id="sky-now" className={`sky-stage${panelOpen ? '' : ' panel-hidden'}`}>
       <div className="sky-toolbar">
@@ -1535,121 +1582,136 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <TitleMark />
           {t('此刻天空')}
         </h3>
-        <button
-          type="button"
-          className="ghost sky-panel-toggle"
-          aria-expanded={panelOpen}
-          aria-controls={`${clipId}-panel`}
-          data-sound={panelOpen ? 'off' : 'on'}
-          onClick={togglePanel}
-        >
-          {panelOpen ? t('隐藏面板') : t('显示面板')}
-          <span aria-hidden="true">{panelOpen ? ' ⟩' : ' ⟨'}</span>
-        </button>
       </div>
 
       {/* Left empty: the sky behind the page shows through here */}
       <div className="sky-window" ref={windowRef} />
 
-      <aside className="card sky-panel" id={`${clipId}-panel`} hidden={!panelOpen}>
-        {/* What is shown: the moment and the place, and how the sky is drawn */}
-        <div className="sky-tabs" role="tablist" aria-label={t('设置')}>
-          {(
-            [
-              ['when', t('时间·地点')],
-              ['show', t('显示')],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${clipId}-tab-${key}`}
-              aria-selected={tab === key}
-              aria-controls={`${clipId}-pane-${key}`}
-              className={tab === key ? 'on' : undefined}
-              data-sound="tap"
-              onClick={() => setTab(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="sky-pane" role="tabpanel" id={`${clipId}-pane-when`} aria-labelledby={`${clipId}-tab-when`} hidden={tab !== 'when'}>
-          <div className="overlay-bar sky-controls">
-            <DateParts
-              label={t('日期')}
-              value={ymd(wall.date)}
-              onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
-            />
-            <input type="time" aria-label={t('时间')} value={wall.time} onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })} />
-            <button
-              type="button"
-              className={`ghost toggle${picked ? '' : ' on'}`}
-              aria-pressed={!picked}
-              // Already following the clock: pressing again only refreshes it
-              data-sound={picked ? 'on' : 'tap'}
-              onClick={() => {
-                setNow(new Date())
-                setPicked(null)
-              }}
-            >
-              {t('现在')}
-            </button>
-          </div>
-          {placeControls && <div className="sky-place bazi-form">{placeControls}</div>}
-          <p className="muted row-note sky-when">
-            {t('{place}上空 · 当地时间 {date} {time}', { place: t(place.name), date: wall.date, time: wall.time })}
-            {picked ? '' : t('（随时间更新）')}
-          </p>
-        </div>
-        <div className="sky-pane sky-options" role="tabpanel" id={`${clipId}-pane-show`} aria-labelledby={`${clipId}-tab-show`} hidden={tab !== 'show'}>
-          <span className="sky-option-title">{t('视角')}</span>
-          <div className="seg small" role="group" aria-label={t('视角')}>
-            {(
-              [
-                [false, t('头顶')],
-                [true, t('脚下')],
-              ] as const
-            ).map(([v, label]) => (
-              <button key={label} type="button" className={below === v ? 'on' : undefined} aria-pressed={below === v} onClick={() => setBelow(v)}>
-                {label}
+      {/* On the left: the moment and the place, and under them 显示, how the sky is drawn; put away, a
+          slim tab */}
+      <aside className="sky-settings" aria-label={t('时间·地点')}>
+        {panelOpen ? (
+          <div className="card sky-settings-card" id={`${clipId}-panel`}>
+            <div className="sky-settings-head">
+              <span className="sky-settings-title">{t('时间·地点')}</span>
+              <button
+                type="button"
+                className="ghost sky-settings-close"
+                aria-expanded="true"
+                aria-controls={`${clipId}-panel`}
+                aria-label={t('收起')}
+                title={t('收起')}
+                data-sound="off"
+                onClick={togglePanel}
+              >
+                ‹
               </button>
-            ))}
-          </div>
-          <span className="sky-option-title">{t('星座')}</span>
-          <div className="seg small" role="group" aria-label={t('星座')}>
-            {(
-              [
-                ['none', t('不显示')],
-                ['west', t('西方星座')],
-                ['china', t('中国星官')],
-                ['mansions', t('二十八宿')],
-              ] as const
-            ).map(([v, label]) => (
-              <button key={v} type="button" className={figures === v ? 'on' : undefined} aria-pressed={figures === v} onClick={() => pickFigures(v)}>
-                {label}
+            </div>
+            <div className="sky-when-pane">
+              <div className="overlay-bar sky-controls">
+                <DateParts
+                  label={t('日期')}
+                  value={ymd(wall.date)}
+                  onChange={(d) => setPicked({ ...wall, date: `${d.year}-${pad(d.month)}-${pad(d.day)}` })}
+                />
+                <input type="time" aria-label={t('时间')} value={wall.time} onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })} />
+                <button
+                  type="button"
+                  className={`ghost toggle${picked ? '' : ' on'}`}
+                  aria-pressed={!picked}
+                  // Already following the clock: pressing again only refreshes it
+                  data-sound={picked ? 'on' : 'tap'}
+                  onClick={() => {
+                    setNow(new Date())
+                    setPicked(null)
+                  }}
+                >
+                  {t('现在')}
+                </button>
+              </div>
+              {placeControls && <div className="sky-place bazi-form">{placeControls}</div>}
+              <p className="muted row-note sky-when">
+                {t('{place}上空 · 当地时间 {date} {time}', { place: t(place.name), date: wall.date, time: wall.time })}
+                {picked ? '' : t('（随时间更新）')}
+              </p>
+            </div>
+            <div className="sky-fold">
+              <button
+                type="button"
+                className="sky-fold-head"
+                aria-expanded={showOpen}
+                aria-controls={`${clipId}-show`}
+                data-sound="tap"
+                onClick={toggleShow}
+              >
+                {t('显示')}
+                <span className="sky-fold-mark" aria-hidden="true" />
               </button>
-            ))}
+              <div className="sky-options" id={`${clipId}-show`} hidden={!showOpen}>
+                <span className="sky-option-title">{t('视角')}</span>
+                <div className="seg small" role="group" aria-label={t('视角')}>
+                  {(
+                    [
+                      [false, t('头顶')],
+                      [true, t('脚下')],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button key={label} type="button" className={below === v ? 'on' : undefined} aria-pressed={below === v} onClick={() => setBelow(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span className="sky-option-title">{t('星座')}</span>
+                <div className="seg small" role="group" aria-label={t('星座')}>
+                  {(
+                    [
+                      ['none', t('不显示')],
+                      ['west', t('西方星座')],
+                      ['china', t('中国星官')],
+                      ['mansions', t('二十八宿')],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button key={v} type="button" className={figures === v ? 'on' : undefined} aria-pressed={figures === v} onClick={() => pickFigures(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span className="sky-option-title">{t('轨迹')}</span>
+                <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
+                <span className="sky-option-title">{t('画质')}</span>
+                <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
+                  {(
+                    [
+                      ['clear', t('清晰')],
+                      ['smooth', t('流畅')],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button key={v} type="button" className={quality === v ? 'on' : undefined} aria-pressed={quality === v} onClick={() => pickQuality(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {notes}
           </div>
-          <span className="sky-option-title">{t('轨迹')}</span>
-          <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
-          <span className="sky-option-title">{t('画质')}</span>
-          <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
-            {(
-              [
-                ['clear', t('清晰')],
-                ['smooth', t('流畅')],
-              ] as const
-            ).map(([v, label]) => (
-              <button key={v} type="button" className={quality === v ? 'on' : undefined} aria-pressed={quality === v} onClick={() => pickQuality(v)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        ) : (
+          <button
+            type="button"
+            className="sky-settings-handle"
+            aria-expanded="false"
+            aria-controls={`${clipId}-panel`}
+            data-sound="on"
+            onClick={togglePanel}
+          >
+            <span className="sky-settings-handle-text">{t('时间·地点')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        )}
+      </aside>
 
-        {/* Below: the bodies, or what is chosen, in detail */}
+      {/* On the right, always there: the bodies, or what is chosen, in detail */}
+      <aside className="sky-bodies" aria-label={t('天体')}>
         {pickFigure ? (
           <div className="sky-detail">
             <button type="button" className="ghost sky-back" data-sound="unpick" onClick={() => setChosen(null)}>
@@ -1814,32 +1876,6 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
             </tbody>
           </table>
         )}
-        <p className="muted row-note">
-          {t('上为北、左为东，如仰望天空。这是天体在天上的实际位置，与星盘里以黄道十二宫计的星座不同。')}
-          {en && ' '}
-          {below ? t('脚下：地平线以下、被地球挡住的那半边天空，像透过地球往下看；中心是天底，东西因此左右互换。') : lightNote}
-          {(below || lightNote) && en && ' '}
-          {below
-            ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
-            : t('地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
-          {en && ' '}
-          {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
-          {paths && en && ' '}
-          {paths && t('彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。')}
-          {historyLine && en && ' '}
-          {historyLine &&
-            t('{name}过去 {span}在星空中走过的路线（画在此刻的星空上）：空心圆是起点，圆点标出日期；行星逆行时会折返或打圈。', {
-              name: t(sky.bodies.find((b) => b.key === historyLine.key)!.name),
-              span: history.days === 30 ? t('1 个月') : history.days === 90 ? t('3 个月') : t('1 年'),
-            })}
-          {figures !== 'none' && en && ' '}
-          {figures === 'west' && t('星座连线来自 d3-celestial。')}
-          {figures === 'china' && t('中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。')}
-          {figures === 'mansions' &&
-            t(
-              '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。',
-            )}
-        </p>
       </aside>
 
       {createPortal(
