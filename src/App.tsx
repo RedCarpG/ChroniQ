@@ -160,6 +160,34 @@ export function App() {
     }, 500)
   }
   useEffect(() => () => clearTimeout(barTimer.current), [])
+  // The footer, on every page, kept out of sight under the bottom edge: the mouse at the bottom of the
+  // screen (or the small tab there) brings it up, and it goes again a moment after the mouse leaves
+  // it, unless it holds the focus (the About panel open). Not in the page's flow, so no page is
+  // scrolled to reach it (on the 天象 page, that took the top bar out of reach)
+  const [footShown, setFootShown] = useState(false)
+  const footRef = useRef<HTMLElement>(null)
+  const footTimer = useRef(0)
+  const showFoot = () => {
+    clearTimeout(footTimer.current)
+    setFootShown(true)
+  }
+  const hideFootSoon = () => {
+    clearTimeout(footTimer.current)
+    footTimer.current = window.setTimeout(() => {
+      const foot = footRef.current
+      if (foot && (foot.matches(':hover') || foot.contains(document.activeElement))) return
+      setFootShown(false)
+    }, 500)
+  }
+  useEffect(() => {
+    // The bottom edge is watched rather than covered, so nothing at the foot of a page is kept from the pointer
+    const onMove = (e: PointerEvent) => e.pointerType === 'mouse' && e.clientY >= window.innerHeight - 16 && showFoot()
+    window.addEventListener('pointermove', onMove)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      clearTimeout(footTimer.current)
+    }
+  }, [])
   // The top bar's height, for pages laid out to fill the window under it (the calendar)
   const appRef = useRef<HTMLDivElement>(null)
   const topbarRef = useRef<HTMLElement>(null)
@@ -281,7 +309,29 @@ export function App() {
             </Suspense>
           )}
         </main>
-        <footer className="muted">
+        {!footShown && (
+          <button
+            type="button"
+            className="footer-tab"
+            aria-label={t('展开页脚')}
+            title={t('展开页脚')}
+            onPointerEnter={(e) => e.pointerType === 'mouse' && showFoot()}
+            onClick={showFoot}
+          >
+            <span aria-hidden="true">⌃</span>
+          </button>
+        )}
+        <footer
+          className={`muted${footShown ? ' shown' : ''}`}
+          ref={footRef}
+          inert={!footShown}
+          onPointerEnter={() => clearTimeout(footTimer.current)}
+          onPointerLeave={(e) => e.pointerType === 'mouse' && hideFootSoon()}
+          onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && hideFootSoon()}
+        >
+          <button type="button" className="footer-close" aria-label={t('收起页脚')} title={t('收起页脚')} onClick={() => setFootShown(false)}>
+            <span aria-hidden="true">⌄</span>
+          </button>
           {!online && <span className="offline-badge">{t('离线中 · 排盘与天象照常可用')}</span>}
           <span>
             {creditBefore}
