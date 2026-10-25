@@ -9,6 +9,10 @@ export interface Settings {
   weekStart: 'mon' | 'sun'
   /** 日历格子里显示日干支 */
   dayGanzhi: 'show' | 'hide'
+  /** 日历格子里显示月相 */
+  moonPhase: 'show' | 'hide'
+  /** 日历标题旁显示斗柄指月 */
+  dipper: 'show' | 'hide'
   /** 紫微星曜配色 */
   ziweiColor: 'element' | 'luck'
   /** 显示大小: auto grows the page on large screens */
@@ -17,7 +21,7 @@ export interface Settings {
   sound: 'on' | 'off'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -51,6 +55,20 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
   },
   dayGanzhi: {
     title: '日历显示日干支',
+    options: [
+      { value: 'show', label: '显示' },
+      { value: 'hide', label: '隐藏' },
+    ],
+  },
+  moonPhase: {
+    title: '日历显示月相',
+    options: [
+      { value: 'show', label: '显示' },
+      { value: 'hide', label: '隐藏' },
+    ],
+  },
+  dipper: {
+    title: '日历显示斗柄指月',
     options: [
       { value: 'show', label: '显示' },
       { value: 'hide', label: '隐藏' },

@@ -8,7 +8,7 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/calendar.jpg" alt="日历" /><br /><b>日历</b> · 农历、节气、干支、宜忌、节假日</td>
+    <td width="50%"><img src="docs/images/calendar.jpg" alt="日历" /><br /><b>日历</b> · 农历、节气、月相、干支、宜忌、节假日</td>
     <td width="50%"><img src="docs/images/sky.jpg" alt="天象" /><br /><b>天象</b> · 此刻头顶的星空、太阳系行星</td>
   </tr>
   <tr>

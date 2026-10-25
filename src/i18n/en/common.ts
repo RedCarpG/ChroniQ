@@ -20,6 +20,8 @@ export const COMMON: Record<string, string> = {
   周一: 'Monday',
   周日: 'Sunday',
   日历显示日干支: 'Day 干支 in calendar',
+  日历显示月相: 'Moon phases in calendar',
+  日历显示斗柄指月: 'Dipper in calendar',
   其他地区节日: 'Other holidays',
   不显示: 'Off',
   法国: 'France',

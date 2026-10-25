@@ -81,4 +81,21 @@ export const CALENDAR: Record<string, string> = {
   在日历上显示这张命盘的日子: 'Show this chart’s dates on the calendar',
   地区假日: 'Regional holiday',
   纪念日: 'Notable day',
+
+  // 月相 in the grid and the day panel (北京时间 for the 朔望弦, as the 农历 counts them)
+  月相: 'Moon',
+  新月: 'New moon',
+  蛾眉月: 'Waxing crescent',
+  上弦月: 'First quarter',
+  盈凸月: 'Waxing gibbous',
+  满月: 'Full moon',
+  亏凸月: 'Waning gibbous',
+  下弦月: 'Last quarter',
+  残月: 'Waning crescent',
+  '照亮 {pct}%': '{pct}% lit',
+
+  // 斗柄指月: the Dipper's handle and the month's 辰 (月建)
+  斗柄指月: 'Dipper handle',
+  '斗柄指{branch}': 'Dipper points to {branch}',
+  '黄昏北望，斗柄指{branch}：建{branch}之月，{from}至{to}': "At dusk, facing north, the Dipper's handle points to {branch}: the month of {branch}, {from} to {to}",
 }

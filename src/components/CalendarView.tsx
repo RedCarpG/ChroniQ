@@ -1,6 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
+import { DipperDial } from './DipperDial'
+import { MoonGlyph } from './MoonGlyph'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
 import { MonthOutline } from './MonthOutline'
@@ -31,6 +33,10 @@ import {
   type RegionDay,
 } from '../lib/regionHolidays'
 import type { DayCell, WeekStart } from '../lib/calendar'
+import { monthBuildOf } from '../lib/dipper'
+import { moonOf, type MoonDay } from '../lib/moon'
+import type { Settings } from '../lib/settings'
+import { play } from '../sound'
 import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { useSettings, useT, useTerm } from '../settingsContext'
@@ -46,16 +52,20 @@ const VIEW_MODES: ViewMode[] = ['month', 'week', 'year']
 
 interface Props {
   onPickBazi: (day: SolarDay) => void
-  /** 日历显示日干支 and 每周起始, which are chosen in the calendar's own 显示 tab rather than the settings */
-  onDayGanzhi: (show: boolean) => void
+  /** What the grid shows (日干支, 月相, 斗柄指月) and 每周起始, chosen in the calendar's own 显示 tab rather than the settings */
+  onShow: (key: CalendarShow, show: boolean) => void
   onWeekStart: (start: WeekStart) => void
 }
+type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper'>
 
-export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
+/** 北京时间, as the 朔望弦 are given, is not the time here (taken from now's offset) */
+const notBeijing = new Date().getTimezoneOffset() !== -480
+
+export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
-  const { weekStart, dayGanzhi, language } = useSettings()
+  const { weekStart, dayGanzhi, moonPhase, dipper, language } = useSettings()
   const term = useTerm()
   const t = useT()
   const en = language === 'en'
@@ -188,6 +198,25 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
     en ? enDate(d.getYear(), d.getMonth(), d.getDay(), { day: 'numeric', month: 'short' }) : `${d.getMonth()}月${d.getDay()}日`
   const weekRange = weekDays.length > 0 ? `${monthDay(weekDays[0].solar)} – ${monthDay(weekDays[6].solar)}` : ''
   const detail = useMemo(() => buildDayDetail(selected), [selected])
+  // 月相: what a day's Moon is called, when it falls if it is a 朔, 上弦, 望 or 下弦, and how much is lit
+  const moonText = (m: MoonDay) =>
+    `${t(m.name)}${m.time ? ` ${m.time}${notBeijing ? ' (UTC+8)' : ''}` : ''} · ${t('照亮 {pct}%', { pct: Math.round(m.lit * 100) })}`
+  const selectedMoon = moonOf(selected)
+  // 斗柄指月: for the month shown, or the day picked when it is in that month (and in week and year views)
+  const anchor =
+    mode !== 'month' || (selected.getYear() === view.year && selected.getMonth() === view.month)
+      ? selected
+      : SolarDay.fromYmd(view.year, view.month, 15)
+  const anchorKey = anchor.toString()
+  // (anchor follows its date: a new SolarDay for the same day is the same month)
+  const build = useMemo(() => monthBuildOf(anchor), [anchorKey])
+  // A new 月建 from paging (picking a day has its own note) plucks the 徵 that 星官 have
+  const lastBuild = useRef({ branch: build.branch, selected })
+  useEffect(() => {
+    const was = lastBuild.current
+    lastBuild.current = { branch: build.branch, selected }
+    if (dipper === 'show' && was.branch !== build.branch && was.selected === selected) play('zhi')
+  }, [build.branch, selected, dipper])
   // The selected day's chart dates (all of them, not only those on the grid) and 太岁 by its 干支 year
   const pickedChartDays = chartDays.daysOf(selected, detail.pillars[2].stem.char + detail.pillars[2].branch.char)
   const pickedTaiSui = chartDays.taiSuiOf(detail.pillars[0].branch.char)
@@ -222,6 +251,17 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
       <section className="card calendar">
         <header className="cal-head">
           <div className="cal-title">
+            {dipper === 'show' && (
+              <DipperDial
+                build={build}
+                title={t('黄昏北望，斗柄指{branch}：建{branch}之月，{from}至{to}', {
+                  branch: term(build.name),
+                  from: `${term(build.from.name)} ${monthDay(build.from.day)}`,
+                  to: `${term(build.to.name)} ${monthDay(build.to.day)}`,
+                })}
+              />
+            )}
+            <div className="cal-title-text">
             <h2 className="cal-pickers">
               {mode === 'week' ? (
                 <span className="week-range">{weekRange}</span>
@@ -267,8 +307,9 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
                 ganzhi: lunarYear.getName(),
                 zodiac: term(lunarYear.getEarthBranch().getZodiac().getName()),
               })}
+              {dipper === 'show' && ` · ${t('斗柄指{branch}', { branch: term(build.name) })}`}
             </span>
-
+            </div>
           </div>
           <div className="cal-tools">
             {/* What the calendar shows: a quiet 显示 tab in the left drawer, under 命盘. A change fades the
@@ -276,18 +317,31 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
             <DrawerPageTab
               label={t('显示')}
               title={t('日历上显示')}
-              count={(dayGanzhi === 'show' ? 1 : 0) + (holidays.china ? 1 : 0) + holidays.regions.length + chartDays.items.length}
+              count={
+                [dayGanzhi, moonPhase, dipper].filter((v) => v === 'show').length +
+                (holidays.china ? 1 : 0) +
+                holidays.regions.length +
+                chartDays.items.length
+              }
             >
               <fieldset className="holiday-choice">
                 <legend>{t('日历')}</legend>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={dayGanzhi === 'show'}
-                    onChange={() => smoothUpdate('display', () => onDayGanzhi(dayGanzhi !== 'show'))}
-                  />
-                  {term('日干支')}
-                </label>
+                {(
+                  [
+                    ['dayGanzhi', dayGanzhi, term('日干支')],
+                    ['moonPhase', moonPhase, t('月相')],
+                    ['dipper', dipper, t('斗柄指月')],
+                  ] as const
+                ).map(([key, value, label]) => (
+                  <label key={key}>
+                    <input
+                      type="checkbox"
+                      checked={value === 'show'}
+                      onChange={() => smoothUpdate('display', () => onShow(key, value !== 'show'))}
+                    />
+                    {label}
+                  </label>
+                ))}
               </fieldset>
               <fieldset className="holiday-choice">
                 <legend>{t('每周起始')}</legend>
@@ -439,6 +493,7 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
                         {offTags(rd).map((x) => x.tag).join(' ')}
                       </span>
                     )}
+                    {moonPhase === 'show' && <MoonGlyph moon={moonOf(c.solar)} title={moonText(moonOf(c.solar))} />}
                     <span className="num">{c.day}</span>
                     {regionSub ? (
                       <span className={`sub region ${regionSub.kind}`}>{dayName(regionSub)}</span>
@@ -463,6 +518,7 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
               selected={selected}
               onSelect={select}
               showGanzhi={dayGanzhi === 'show'}
+              moonText={moonPhase === 'show' ? moonText : undefined}
               regionOf={regionOf}
               chartDaysOf={gridDays}
               chartText={chartText}
@@ -617,6 +673,11 @@ export function CalendarView({ onPickBazi, onDayGanzhi, onWeekStart }: Props) {
           <dl className="kv">
             <dt>{term('节气')}</dt>
             <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
+            <dt>{t('月相')}</dt>
+            <dd className="moon-line">
+              <MoonGlyph moon={selectedMoon} />
+              {moonText(selectedMoon)}
+            </dd>
             <dt>{term('建除')}</dt>
             <dd>{term(detail.duty)}日</dd>
             <dt>{term('值神')}</dt>

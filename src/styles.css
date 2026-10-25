@@ -344,6 +344,27 @@ footer {
 .cal-pickers select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cal-title .muted { display: block; margin-top: 4px; font-size: 13px; }
 
+/* 斗柄指月 (DipperDial): the ring of the twelve 辰 facing north, the dipper turning to the month's */
+.cal-title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.dipper-dial { position: relative; flex: none; width: 68px; height: 68px; }
+.dipper-dial svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.dipper-ring .ring { fill: color-mix(in srgb, var(--accent) 7%, var(--surface-2)); stroke: color-mix(in srgb, var(--accent) 50%, transparent); stroke-width: 1; }
+.dipper-ring .tick { fill: color-mix(in srgb, var(--muted) 60%, transparent); }
+.dipper-ring .tick.main { fill: color-mix(in srgb, var(--accent) 70%, transparent); }
+.dipper-ring .pole { fill: var(--moon-lit); }
+.dipper-ring .pointed { animation: dipper-pointed 0.9s ease both; }
+.dipper-ring .pointed circle { fill: var(--surface); stroke: var(--accent); stroke-width: 1; }
+.dipper-ring .pointed text { fill: var(--accent); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+@keyframes dipper-pointed { from { opacity: 0; } }
+.dipper-stars { transition: transform 0.9s cubic-bezier(0.33, 1, 0.68, 1); }
+.dipper-stars .figure { fill: none; stroke: color-mix(in srgb, var(--accent) 75%, transparent); stroke-width: 1.3; stroke-linejoin: round; }
+.dipper-stars .pointer { stroke: var(--accent); stroke-width: 1.1; stroke-dasharray: 1.5 2; stroke-linecap: round; opacity: 0.8; }
+.dipper-stars .star { fill: var(--moon-lit); filter: drop-shadow(0 0 1.5px var(--moon-lit)); }
+@media (prefers-reduced-motion: reduce) {
+  .dipper-stars { transition: none; }
+  .dipper-ring .pointed { animation: none; }
+}
+
 /* 年月展开面板 */
 .month-picker { position: relative; }
 .picker-panel {
@@ -397,6 +418,22 @@ footer {
 .day.weekend .num { color: var(--accent); }
 .day.out { opacity: 0.3; }
 .day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* 月相 (MoonGlyph): a faint dark disc, its lit part in moonlight; the 朔望弦 days ringed, the full moon aglow */
+:root { --moon-lit: #b48a3c; --moon-shade: color-mix(in srgb, var(--muted) 22%, transparent); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --moon-lit: #f2e8cc; --moon-shade: color-mix(in srgb, var(--muted) 26%, transparent); }
+}
+:root[data-theme='dark'], .app.page-sky { --moon-lit: #f2e8cc; --moon-shade: color-mix(in srgb, var(--muted) 26%, transparent); }
+.moon { display: inline-block; flex: none; width: 12px; height: 12px; overflow: visible; }
+.moon .moon-shade { fill: var(--moon-shade); }
+.moon .moon-lit { fill: var(--moon-lit); }
+.moon.quarter .moon-shade { stroke: var(--moon-lit); stroke-width: 0.8; stroke-opacity: 0.6; }
+.moon.full { filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--moon-lit) 75%, transparent)); }
+.day .moon { position: absolute; top: 6px; left: 6px; width: 11px; height: 11px; }
+.day.selected .moon { --moon-lit: #fffaf0; --moon-shade: color-mix(in srgb, var(--on-accent) 28%, transparent); }
+.moon-line { display: flex; align-items: center; gap: 6px; }
+.moon-line .moon { width: 15px; height: 15px; }
 
 /* Kinds of day: one background each, strongest first (CalendarViews dayTone) */
 :root {
@@ -620,6 +657,9 @@ button.fortune:hover { background: var(--surface-2); }
   .kv.inline { grid-template-columns: repeat(2, auto 1fr); }
 }
 @media (max-width: 480px) {
+  .day .moon { top: 2px; left: 2px; width: 7px; height: 7px; }
+  .dipper-dial { width: 56px; height: 56px; }
+  .cal-title { gap: 10px; }
   .day .num { font-size: 16px; }
   .day .sub { font-size: 10px; }
   .day .gz { font-size: 9px; letter-spacing: 0; }
