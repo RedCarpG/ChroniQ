@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { toUtc, type StarPlace } from '../lib/astrology'
 import { WESTERN } from '../lib/constellations'
@@ -37,6 +37,7 @@ import { DrawerPageTab } from './SavedCharts'
 import { useDismiss } from './useDismiss'
 import { play } from '../sound'
 import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour, type SkyCanvasScene } from './skyPaint'
+import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
 
 // The map: the horizon is the rim (radius R), the zenith the centre (C, C), altitude falling off
 // evenly outwards. North is up and east is LEFT, as when looking up at the sky.
@@ -209,6 +210,9 @@ const pathData = (points: { az: number; alt: number }[], pt: (az: number, alt: n
   points.map((p, i) => `${i ? 'L' : 'M'}${pt(p.az, p.alt).map((v) => v.toFixed(1)).join(' ')}`).join('')
 
 const pad = (n: number) => String(n).padStart(2, '0')
+/** A sentence with elements (links) put in its {slots}, as the text came from t() with them kept */
+const withSlots = (text: string, nodes: Record<string, ReactNode>) =>
+  text.split(/\{(\w+)\}/).map((part, i) => (i % 2 ? <Fragment key={i}>{nodes[part]}</Fragment> : part))
 const ymd = (date: string) => {
   const [year, month, day] = date.split('-').map(Number)
   return { year, month, day }
@@ -1523,7 +1527,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       {(below || lightNote) && en && ' '}
       {below
         ? t('地平线下有 {n} 颗 5 等以内的亮星。', { n: sky.stars.length })
-        : t('地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。', { n: sky.stars.length })}
+        : t('地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。', { n: sky.stars.length })}
       {en && ' '}
       {t('点一下天体、有名字的亮星、星座连线或表格里的一行可把它选中，看它的详细信息（开着轨迹时也画出它的轨迹），再点一次、点空白处或按 Esc 取消；左右拖动星空可以转动时间。')}
       {paths && en && ' '}
@@ -1534,13 +1538,45 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           name: t(sky.bodies.find((b) => b.key === historyLine.key)!.name),
           span: history.days === 30 ? t('1 个月') : history.days === 90 ? t('3 个月') : t('1 年'),
         })}
-      {figures !== 'none' && en && ' '}
-      {figures === 'west' && t('星座连线来自 d3-celestial。')}
-      {figures === 'china' && t('中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。')}
+      {figures === 'mansions' && en && ' '}
       {figures === 'mansions' &&
         t(
-          '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。',
+          '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。',
         )}
+    </p>
+  )
+  // A few words on what is chosen (lib/skyIntros), under its details: a body, a named star, a
+  // Western constellation, or a 星官 (the 宿, the 三垣 and the best known of the rest)
+  const intro = pickFigure
+    ? figures === 'west'
+      ? WESTERN_INTRO[pickFigure.id]
+      : CHINA_INTRO[pickFigure.name]
+    : pick
+      ? 'key' in pick
+        ? BODY_INTRO[pick.key]
+        : STAR_INTRO[pick.hip]
+      : undefined
+  const introText = intro && <p className="sky-intro">{en ? intro.en : intro.zh}</p>
+  // Where the stars and the figures come from: a line of its own under the notes, the names linked
+  const sourceLink = (href: string, text: string) => (
+    <a href={href} target="_blank" rel="noreferrer">
+      {text}
+    </a>
+  )
+  const D3 = sourceLink('https://github.com/ofrohn/d3-celestial', 'd3-celestial')
+  const sources = (
+    <p className="muted row-note sky-sources">
+      {withSlots(t('来源：星表 {d3}（{xhip}）', { d3: '{d3}', xhip: '{xhip}' }), {
+        d3: D3,
+        xhip: sourceLink('https://cdsarc.cds.unistra.fr/viz-bin/cat/V/137D', t('XHIP 依巴谷星表')),
+      })}
+      {figures === 'west' && withSlots(t('；星座连线 {d3}', { d3: '{d3}' }), { d3: D3 })}
+      {(figures === 'china' || figures === 'mansions') &&
+        withSlots(t('；星官连线 {stellarium}（{licence}），经 {d3} 整理', { stellarium: '{stellarium}', licence: '{licence}', d3: '{d3}' }), {
+          stellarium: sourceLink('https://github.com/Stellarium/stellarium-skycultures/tree/master/chinese', t('Stellarium 中国星空文化')),
+          licence: sourceLink('https://creativecommons.org/licenses/by-sa/4.0/', 'CC BY-SA 4.0'),
+          d3: D3,
+        })}
     </p>
   )
 
@@ -1634,6 +1670,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               <dt>{t('高度')}</dt>
               <dd>{`${pickFigure.label.alt.toFixed(1)}°`}</dd>
             </dl>
+            {introText}
           </div>
         ) : pick ? (
           <div className="sky-detail">
@@ -1729,6 +1766,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 </>
               )}
             </div>
+            {introText}
           </div>
         ) : (
           <table className="star-table sky-table">
@@ -1817,6 +1855,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         </div>
         </div>
         {notes}
+        {sources}
       </DrawerPageTab>
 
       {createPortal(

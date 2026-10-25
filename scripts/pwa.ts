@@ -3,7 +3,7 @@
 // content hashes in their names), so each deploy that changes anything gets a
 // fresh cache and the old one is dropped.
 import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 
@@ -19,7 +19,11 @@ export function serviceWorker(): Plugin {
     apply: 'build',
     generateBundle(_, bundle) {
       const publicDir = join(process.cwd(), 'public')
-      const publicFiles = readdirSync(publicDir).sort()
+      // Every file in public/, in its folders too (the loading screen's fonts are in public/fonts)
+      const publicFiles = (readdirSync(publicDir, { recursive: true }) as string[])
+        .map((f) => f.split('\\').join('/'))
+        .filter((f) => statSync(join(publicDir, f)).isFile())
+        .sort()
       const built = Object.keys(bundle).filter((f) => !f.endsWith('.map')).sort()
       const hash = createHash('sha256')
       for (const f of built) hash.update(f)
