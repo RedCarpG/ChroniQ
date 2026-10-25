@@ -246,8 +246,8 @@ function monthDays(start: Date, end: Date, timeZone: string) {
 
 /**
  * The Moon's height and the Sun's through the day around the moment (noon to noon): the night
- * shaded, the horizon, the Moon's path above it. Drag along it, or use the arrow keys, to move the
- * time.
+ * shaded, the horizon, the Moon's path above it. Drag along it to move the time within that day, or
+ * use the arrow keys, which go on into the days either side.
  */
 function MoonHeights({
   heights,
@@ -275,10 +275,13 @@ function MoonHeights({
   const nowAlt = s[k].moon + (s[k + 1].moon - s[k].moon) * f
   const svgRef = useRef<SVGSVGElement>(null)
   const dragging = useRef(false)
+  // A drag stays within the day shown, up to a minute before the next noon: at the noon itself the
+  // chart would move on to the next day under a pointer still at its edge, and on, a day a step
   const at = (clientX: number) => {
     const r = svgRef.current!.getBoundingClientRect()
     const x = ((clientX - r.left) / r.width) * W
-    onPick(Math.round((start + ((Math.max(X0, Math.min(X1, x)) - X0) / (X1 - X0)) * span) / 60_000) * 60_000)
+    const ms = Math.round((start + ((Math.max(X0, Math.min(X1, x)) - X0) / (X1 - X0)) * span) / 60_000) * 60_000
+    onPick(Math.min(ms, start + span - 60_000))
   }
   return (
     <div className="moon-heights">

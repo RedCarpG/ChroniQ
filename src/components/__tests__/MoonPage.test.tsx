@@ -49,6 +49,27 @@ describe('观月', () => {
     expect(time()).toBe('18:53')
   })
 
+  it('keeps a drag within the day shown, where the keys go on into the next', () => {
+    // A chart laid out 720 px wide (jsdom lays nothing out)
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 720, 168))
+    const { container, time } = setUp()
+    const slider = container.querySelector<SVGElement>('.moon-heights svg')!
+    const name = () => container.querySelector('.moon-name')!.textContent
+    fireEvent.pointerDown(slider, { pointerId: 1, clientX: 300 })
+    // Past the right edge, and on: a minute before the next noon, the day shown still the same
+    fireEvent.pointerMove(slider, { pointerId: 1, clientX: 900 })
+    expect(time()).toBe('11:59')
+    expect(name()).toBe('满月正月十六')
+    fireEvent.pointerMove(slider, { pointerId: 1, clientX: 1200 })
+    fireEvent.pointerMove(slider, { pointerId: 1, clientX: 1500 })
+    expect(time()).toBe('11:59')
+    expect(name()).toBe('满月正月十六')
+    fireEvent.pointerUp(slider, { pointerId: 1, clientX: 1500 })
+    // The keys step on past noon, and the chart follows
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(time()).toBe('12:14')
+  })
+
   it('lists the lunation’s quarters and goes to a day of it', () => {
     const { container, fact } = setUp()
     expect([...container.querySelectorAll('.moon-quarters b')].map((b) => b.textContent)).toEqual(['朔', '上弦', '望', '下弦', '朔'])
