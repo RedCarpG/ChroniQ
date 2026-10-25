@@ -201,6 +201,7 @@ const MANSION_BY_NAME = new Map(MANSIONS.map((x, i) => [x.name, { ...x, index: i
 const MANSION_TRAD = new Map(MANSION_FIGURES.map((c) => [c.name, c.trad]))
 const zoneOf = (name: string): MansionZone | undefined => MANSION_BY_NAME.get(name)?.zone
 const FIGURES_KEY = 'chroniq-sky-figures'
+const QUALITY_KEY = 'chroniq-sky-quality'
 
 /** SVG path data through the projected points */
 const pathData = (points: { az: number; alt: number }[], pt: (az: number, alt: number) => [number, number] = project) =>
@@ -485,6 +486,25 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [chosen])
+  // 画质 (remembered in this browser): 清晰 draws the sky in full; 流畅 for a slower computer or
+  // phone draws less of it (the star clouds as their cells and thinned, no stars past magnitude 6,
+  // at the screen's CSS pixels; no twinkling or shooting stars), so zooming and dragging keep up
+  const [quality, setQuality] = useState<'clear' | 'smooth'>(() => {
+    try {
+      return localStorage.getItem(QUALITY_KEY) === 'smooth' ? 'smooth' : 'clear'
+    } catch {
+      return 'clear'
+    }
+  })
+  const smooth = quality === 'smooth'
+  const pickQuality = (v: 'clear' | 'smooth') => {
+    setQuality(v)
+    try {
+      localStorage.setItem(QUALITY_KEY, v)
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+  }
   // Constellation figures (remembered in this browser)
   const [figures, setFigures] = useState<FigureSet>(() => {
     try {
@@ -787,8 +807,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // At the full view the star clouds' light is drawn by the cells they are gathered in, and only their
   // brighter points singly; zoomed in, every point. The stars past magnitude 6 only once zoomed in
   // (skyPaint), and not while dragged through time.
-  const allCloud = view.z >= 2
-  const wantField = view.z > 1.5 && !dragging
+  const allCloud = view.z >= 2 && !smooth
+  const wantField = view.z > 1.5 && !dragging && !smooth
   const deepSky = useMemo(
     () =>
       deep && {
@@ -856,7 +876,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const moonGlow = !below && moon.alt > 0 && sky.light !== 'day' ? { at: at(moon.az, moon.alt), strength: 0.22 * moon.lit } : null
   // The brightest stars twinkle: drawn over the map (screen pixels), where the compositor animates them
   const twinkles =
-    below || sky.light === 'day' || !frame
+    below || sky.light === 'day' || !frame || smooth
       ? []
       : sky.stars
           .filter((st) => st.mag < 1.6 && st.alt > 6)
@@ -1081,7 +1101,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // Now and then, at night, a shooting star somewhere high in the sky (animated by the compositor)
   const meteorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (below || sky.light === 'day' || reducedMotion()) return
+    if (below || sky.light === 'day' || smooth || reducedMotion()) return
     let timer = 0
     const fire = () => {
       const el = meteorRef.current
@@ -1108,7 +1128,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     }
     timer = window.setTimeout(fire, 2500 + Math.random() * 3000)
     return () => clearTimeout(timer)
-  }, [below, sky.light])
+  }, [below, sky.light, smooth])
 
   const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
   const mapTransform = `translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`
@@ -1147,11 +1167,12 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       faint: deepSky?.faint ?? null,
       field: deepSky?.field ?? null,
       light: canvasLight,
-      rough: dragging,
+      rough: dragging || smooth,
+      lowRes: smooth,
     })
   }
   // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
-  useLayoutEffect(() => paint.current(), [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging])
+  useLayoutEffect(() => paint.current(), [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth])
   // The canvas fills the screen: drawn again when the screen's size changes (a phone's address bar
   // folding away), which need not move the sky's window
   useEffect(() => {
@@ -1591,6 +1612,19 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           </div>
           <span className="sky-option-title">{t('轨迹')}</span>
           <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
+          <span className="sky-option-title">{t('画质')}</span>
+          <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
+            {(
+              [
+                ['clear', t('清晰')],
+                ['smooth', t('流畅')],
+              ] as const
+            ).map(([v, label]) => (
+              <button key={v} type="button" className={quality === v ? 'on' : undefined} aria-pressed={quality === v} onClick={() => pickQuality(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Below: the bodies, or what is chosen, in detail */}

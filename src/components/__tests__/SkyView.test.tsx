@@ -91,6 +91,23 @@ describe('SkyView panel', () => {
     expect(pane(1).textContent).toContain('视角')
     expect(pane(1).querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
   })
+
+  it('draws the sky sharp, or smooth without the twinkling, as chosen and remembered', () => {
+    localStorage.removeItem('chroniq-sky-quality')
+    const { container } = setUp()
+    const twinkles = () => document.querySelectorAll('.sky-twinkles i').length
+    const button = (label: string) => [...container.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === label)!
+    expect(button('清晰').getAttribute('aria-pressed')).toBe('true')
+    expect(twinkles()).toBeGreaterThan(0)
+    fireEvent.click(button('流畅'))
+    expect(button('流畅').getAttribute('aria-pressed')).toBe('true')
+    expect(twinkles()).toBe(0)
+    expect(localStorage.getItem('chroniq-sky-quality')).toBe('smooth')
+    cleanup()
+    setUp()
+    expect(twinkles()).toBe(0)
+    localStorage.removeItem('chroniq-sky-quality')
+  })
 })
 
 describe('SkyView choosing a body or star', () => {
