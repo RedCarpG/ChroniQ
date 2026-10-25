@@ -28,7 +28,7 @@ export const COMMON: Record<string, string> = {
   其他地区节日: 'Other holidays',
   不显示: 'Off',
   法国: 'France',
-  显示: 'Show',
+  显示: 'Display',
   隐藏: 'Hide',
   紫微星曜配色: '紫微 star colours',
   按五行: 'By element',
