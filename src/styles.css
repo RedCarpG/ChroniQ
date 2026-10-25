@@ -2212,7 +2212,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* 天象: a few words on what is chosen, under its details, set apart by a fine line */
 .sky-intro {
   position: relative; margin: 4px 0 0; padding-top: 10px; font-size: 12px; font-weight: 300; line-height: 1.75;
-  letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 85%, transparent);
+  letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 55%, var(--text));
 }
 .sky-intro::before {
   content: ''; position: absolute; top: 0; left: 0; right: 30%; height: 1px;
@@ -2229,3 +2229,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .drawer-handle.quiet { padding: 13px 7px; font-size: 14px; }
 .drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { padding-left: 10px; }
 .drawer-count, .drawer-handle.quiet .drawer-count { font-size: 12px; }
+
+/* 天象: the names of the bodies, stars and figures on the map, and of the bodies in the list, in the
+   titles' serif (宋体) */
+.sky-labels text, .sky-table tbody td:first-child { font-family: var(--font-title); }
