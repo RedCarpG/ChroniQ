@@ -133,8 +133,8 @@ export function App() {
     soundWas.current = settings.sound
   }, [settings.sound])
   // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky,
-  // and on the 八字 page for the sky of the moment of birth (BirthSky)
-  const realSky = tab === 'sky' || (tab === 'bazi' && settings.birthSky === 'show')
+  // and on the 八字 and 星盘 pages for the sky of the moment of birth (BirthSky)
+  const realSky = tab === 'sky' || ((tab === 'bazi' || tab === 'star') && settings.birthSky === 'show')
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])

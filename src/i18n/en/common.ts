@@ -22,7 +22,7 @@ export const COMMON: Record<string, string> = {
   日历显示日干支: 'Day 干支 in calendar',
   日历显示月相: 'Moon phases in calendar',
   日历显示斗柄指月: 'Dipper in calendar',
-  八字背景: 'Bazi backdrop',
+  命盘背景: 'Chart backdrop',
   生辰星空: 'Sky at birth',
   普通星空: 'Plain stars',
   其他地区节日: 'Other holidays',

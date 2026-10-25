@@ -1218,7 +1218,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .star-wheel .planet-deg { font-size: 8.5px; fill: var(--muted); }
 .star-wheel .planet-tick { stroke: currentColor; stroke-width: 1.4; }
 .star-wheel .planet { cursor: default; }
-.star-wheel .aspect-line { stroke-width: 1.1; }
+.star-wheel .aspect-line { stroke-width: 1.1; stroke-dasharray: 1; }
+/* The real stars along the ecliptic, in the signs' ring */
+.star-wheel .zodiac-stars { fill: none; stroke: var(--bs-zodiac-star, #f4ecd6); stroke-linecap: round; opacity: 0.55; pointer-events: none; }
+:root:not([data-theme='dark']) .star-wheel .zodiac-stars { --bs-zodiac-star: #4a4038; opacity: 0.45; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .star-wheel .zodiac-stars { --bs-zodiac-star: #f4ecd6; opacity: 0.55; } }
+/* 浮现 (StarChartView): the ring turns about the wheel's centre (its box is the whole circle), a body grows from itself */
+.star-wheel .zodiac, .star-wheel .planet { transform-box: fill-box; transform-origin: center; }
 .star-wheel .aspect-line.tone-soft { stroke: var(--water); }
 .star-wheel .aspect-line.tone-hard { stroke: var(--bad); }
 .star-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1483,8 +1489,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media print { .birth-sky { display: none; } }
 /* On a phone the chart covers nearly the whole sky: no names showing through it, only the lights */
 @media (max-width: 640px) { .bs-body b { display: none; } }
-/* The chart reads over the sky: the 八字 page's cards a little more solid than elsewhere */
-.app.page-bazi { --card: color-mix(in srgb, var(--surface) 92%, transparent); }
+/* The chart reads over the sky: the 八字 and 星盘 pages' cards a little more solid than elsewhere */
+.app:is(.page-bazi, .page-star) { --card: color-mix(in srgb, var(--surface) 92%, transparent); }
 
 /* 五星 under the 五行 bars, one under each */
 .five-stars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 8px; }
@@ -1763,21 +1769,48 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .orrery-grid { fill: none; stroke: rgb(255 255 255 / 0.1); stroke-width: 0.6; stroke-dasharray: 2 3; }
 .orrery-au { fill: rgb(255 255 255 / 0.35); font-size: 8px; }
 .orrery-equinox { fill: rgb(255 255 255 / 0.5); font-size: 9px; }
-.orrery-orbit { fill: none; stroke-width: 0.8; stroke-opacity: 0.35; transition: stroke-opacity 0.2s, stroke-width 0.2s; }
+.orrery-orbit { fill: none; stroke-width: 0.8; stroke-opacity: 0.35; stroke-dasharray: 1; transition: stroke-opacity 0.2s, stroke-width 0.2s; }
 .orrery-orbit.on { stroke-opacity: 0.9; stroke-width: 1.4; }
-.orrery-sun { fill: #ffcf4a; filter: drop-shadow(0 0 6px #ffcf4a); }
+/* The zodiac round the map: the signs by element, faintly, and the real stars along the ecliptic */
+.orrery-sign path { stroke: rgb(255 255 255 / 0.08); stroke-width: 0.5; transition: fill 0.25s; }
+.orrery-sign.fire path { fill: rgb(239 115 96 / 0.08); }
+.orrery-sign.earth path { fill: rgb(108 192 139 / 0.07); }
+.orrery-sign.air path { fill: rgb(227 194 92 / 0.07); }
+.orrery-sign.water path { fill: rgb(106 165 234 / 0.08); }
+.orrery-sign text { fill: rgb(255 255 255 / 0.4); font-size: 8px; pointer-events: none; }
+.orrery-sign.on path { fill: rgb(255 243 214 / 0.2); }
+.orrery-sign.on text { fill: #fff3d6; }
+.orrery-zodiac-stars { fill: none; stroke: #f4ecd6; stroke-linecap: round; opacity: 0.6; pointer-events: none; }
+.orrery-seen { stroke-width: 2; stroke-linecap: round; }
+.orrery-trail polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.orrery-trail .t0 { stroke-width: 1.6; stroke-opacity: 0.5; }
+.orrery-trail .t1 { stroke-width: 1.2; stroke-opacity: 0.26; }
+.orrery-trail .t2 { stroke-width: 0.9; stroke-opacity: 0.1; }
+.orrery-night { fill: rgb(6 9 20 / 0.62); pointer-events: none; }
+.orrery-glow { pointer-events: none; }
 .orrery-planet, .orrery-beyond { outline: none; cursor: pointer; transition: opacity 0.2s; }
 .orrery-hit { fill: transparent; }
 .orrery-ring { fill: none; stroke: #ead28f; stroke-width: 1; }
 .orrery-name { fill: #fbeccb; font-size: 9.5px; font-weight: 600; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; }
 .orrery.has-focus .orrery-planet:not(.on, .pl-earth) { opacity: 0.55; }
-.orrery-planet.on circle:not(.orrery-hit) { stroke: #fff; stroke-width: 1.2; }
+.orrery-planet.on circle:not(.orrery-hit, .orrery-glow) { stroke: #fff; stroke-width: 1.2; }
 .orrery-beyond.on circle { stroke: #fff; stroke-width: 1.2; }
 .orrery-beyond-name { fill: rgb(255 255 255 / 0.55); font-size: 8.5px; }
 .orrery-sight { stroke: #fff; stroke-width: 1; stroke-dasharray: 4 3; stroke-opacity: 0.8; }
 .orrery-table tbody tr { cursor: pointer; outline: none; transition: background-color 0.2s; }
 .orrery-table tbody tr.on { background: var(--accent-soft); }
 .orrery-table td.retro { color: var(--bad); font-weight: 600; }
+/* A phone has no room for six columns: the light time goes (the distance from Earth stays) */
+@media (max-width: 520px) {
+  .orrery-table .orrery-light { display: none; }
+  .orrery-table :is(th, td) { padding-left: 4px; padding-right: 4px; }
+}
+/* The sign in words, or on a phone its glyph */
+.orrery-table .sign-short { display: none; }
+@media (max-width: 520px) {
+  .orrery-table .sign-full { display: none; }
+  .orrery-table .sign-short { display: inline; }
+}
 @media (prefers-reduced-motion: reduce) { .orrery-orbit, .orrery-planet, .page-menu-btn .chev { transition: none; } }
 
 /* ---------- 安装与离线 ---------- */

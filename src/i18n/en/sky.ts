@@ -153,4 +153,12 @@ export const SKY: Record<string, string> = {
   '{m} 分': '{m} min',
   '彩色弧线是日月和肉眼可见的行星前后 12 小时在天上走过的路径：虚线已走过，实线将要走，圆点是整点；悬停天体或表格里的一行可看各整点。':
     'The coloured arcs are the paths of the Sun, Moon and naked-eye planets across the sky over 12 hours either side: dashed where they have been, solid where they are going, with a dot on each hour. Hover a body or its row to see the hours.',
+
+  // 太阳系: the zodiac round the map, and where each planet stands in it seen from Earth
+  所在星座: 'Sign',
+  '{sign} {deg}°': '{sign} {deg}°',
+  '从地球看，太阳在{where}': 'Seen from Earth, the Sun is in {where}',
+  '从地球看，在{where}': 'Seen from Earth, in {where}',
+  从地球看太阳所在的星座: 'The sign the Sun is in, seen from Earth',
+  '从地球看它所在的星座，与星盘相同': 'The sign it is in, seen from Earth, as in the birth chart',
 }

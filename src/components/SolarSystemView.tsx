@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { SIGN_ELEMENT, SIGN_GLYPHS, SIGNS } from '../lib/astrology'
 import { enDate } from '../lib/calendar'
+import { zodiacStars } from '../lib/eclipticStars'
 import { PLANETS, lightTime, orbits, planetsAt, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
@@ -9,6 +11,22 @@ import { BODY_COLOUR } from './SkyView'
 const C = 200
 const R = 180
 const DAY = 86400000
+/** The zodiac round the map: the signs and the real stars along the ecliptic, as far off as the stars are */
+const R_Z1 = 193
+const R_Z2 = 211
+const R_ZMID = (R_Z1 + R_Z2) / 2
+/** A point at an ecliptic longitude (counter-clockwise from ♈ 0°, to the right) and a radius */
+const polar = (lon: number, r: number): [number, number] => [
+  C + r * Math.cos((lon * Math.PI) / 180),
+  C - r * Math.sin((lon * Math.PI) / 180),
+]
+/** The ring of a sign, from one longitude to another (counter-clockwise on screen) */
+const sector = (from: number, to: number) => {
+  const [a, b, c, d] = [polar(from, R_Z2), polar(to, R_Z2), polar(to, R_Z1), polar(from, R_Z1)]
+  return `M${a}A${R_Z2} ${R_Z2} 0 0 0 ${b}L${c}A${R_Z1} ${R_Z1} 0 0 1 ${d}Z`
+}
+/** 白羊 12° */
+const signDeg = (lon: number) => [SIGNS[Math.floor((((lon % 360) + 360) % 360) / 30)], Math.floor((((lon % 360) + 360) % 360) % 30)] as const
 
 type Scale = 'inner' | 'all'
 /** inner: true distances out to Mars; all: square-root distances out to Pluto, so the inner planets still show */
@@ -70,8 +88,20 @@ export function SolarSystemView() {
   }, [playing, speed])
 
   const planets = useMemo(() => planetsAt(new Date(time)), [time])
-  // Orbits barely change over a lifetime: one set, sampled once.
-  const paths = useMemo(() => orbits(new Date()), [])
+  // Orbits barely change over a lifetime: one set, sampled once, from the moment the page opened
+  const [t0] = useState(Date.now)
+  const paths = useMemo(() => orbits(new Date(t0)), [t0])
+  // The zodiac's stars move on by precession: made again only for another decade
+  const decade = Math.round(new Date(time).getUTCFullYear() / 10) * 10
+  const zodiac = useMemo(() => {
+    const sizes = new Map<number, string>()
+    for (const st of zodiacStars(decade, 9)) {
+      const [x, y] = polar(st.lon, R_ZMID + st.lat * 0.95)
+      const w = Math.round(Math.max(0.7, 2.4 - 0.36 * st.mag) * 2) / 2
+      sizes.set(w, (sizes.get(w) ?? '') + `M${x.toFixed(1)} ${y.toFixed(1)}h.01`)
+    }
+    return [...sizes]
+  }, [decade])
   const s = SCALE[scale]
   const xy = (x: number, y: number): [number, number] => {
     const d = Math.hypot(x, y)
@@ -94,6 +124,13 @@ export function SolarSystemView() {
   const earth = planets.find((p) => p.key === 'earth')!
   const date = new Date(time)
   const ymd = { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() }
+  const size = (p: PlanetPosition) => (p.key === 'jupiter' || p.key === 'saturn' ? 5.5 : 4.2)
+  /** Where it stands among the stars seen from Earth, as in the 星盘 (for Earth, where the Sun does) */
+  const seenText = (p: PlanetPosition) => {
+    const [sign, deg] = signDeg(p.geo)
+    const where = t('{sign} {deg}°', { sign: t(sign), deg })
+    return p.key === 'earth' ? t('从地球看，太阳在{where}', { where }) : t('从地球看，在{where}', { where })
+  }
   const hover = (key: PlanetKey) => ({
     tabIndex: 0,
     onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && setFocus(key),
@@ -102,6 +139,29 @@ export function SolarSystemView() {
     onBlur: () => setFocus(null),
   })
   const focused = planets.find((p) => p.key === focus)
+  // A short trail behind each planet, along its orbit: the way it is going
+  const trail = (p: PlanetPosition) => {
+    const pts = paths[p.key]
+    const n = pts.length
+    const period = PLANETS.find((x) => x.key === p.key)!.period
+    const at = Math.floor(((((time - t0) / (period * DAY)) % 1) + 1) % 1 * n)
+    const back = Array.from({ length: 11 }, (_, k) => xy(...pts[(((at - k) % n) + n) % n]).join(','))
+    return [`${xy(p.x, p.y).join(',')} ${back.slice(0, 4).join(' ')}`, back.slice(3, 7).join(' '), back.slice(6).join(' ')]
+  }
+  // 浮现: the orbits draw themselves round the Sun and the planets come out on them, on opening the
+  // page and on changing the map's range; only backwards-filled, so nothing is left in effect after
+  const orreryRef = useRef<SVGSVGElement>(null)
+  useLayoutEffect(() => {
+    const svg = orreryRef.current
+    if (!svg?.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    svg.querySelectorAll('.orrery-orbit').forEach((el, i) =>
+      el.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 1200, delay: i * 90, easing: 'ease-out', fill: 'backwards' }),
+    )
+    svg.querySelectorAll('.orrery-planet, .orrery-beyond').forEach((el, i) =>
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 500 + i * 90, fill: 'backwards' }),
+    )
+    svg.querySelector('.orrery-zodiac')?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, fill: 'backwards' })
+  }, [scale])
 
   return (
     <section className="card" id="sky-solar">
@@ -173,8 +233,60 @@ export function SolarSystemView() {
               </button>
             ))}
           </div>
-          <svg className={`orrery${focus ? ' has-focus' : ''}`} viewBox="0 0 400 400" role="img" aria-label={t('太阳系行星位置')}>
-            <rect className="orrery-bg" x="0" y="0" width="400" height="400" rx="16" />
+          <svg
+            ref={orreryRef}
+            className={`orrery${focus ? ' has-focus' : ''}`}
+            viewBox="-18 -18 436 436"
+            role="img"
+            aria-label={t('太阳系行星位置')}
+          >
+            <defs>
+              <radialGradient id="orrery-sun-core">
+                <stop offset="0" stopColor="#fffbea" />
+                <stop offset="0.55" stopColor="#ffd34d" />
+                <stop offset="1" stopColor="#ff9d2e" />
+              </radialGradient>
+              <radialGradient id="orrery-sun-glow">
+                <stop offset="0" stopColor="#ffcf4a" stopOpacity="0.5" />
+                <stop offset="0.35" stopColor="#ff9d2e" stopOpacity="0.16" />
+                <stop offset="1" stopColor="#ff9d2e" stopOpacity="0" />
+              </radialGradient>
+              {PLANETS.map((p) => (
+                <radialGradient key={p.key} id={`orrery-glow-${p.key}`}>
+                  <stop offset="0" stopColor={BODY_COLOUR[p.key]} stopOpacity="0.45" />
+                  <stop offset="1" stopColor={BODY_COLOUR[p.key]} stopOpacity="0" />
+                </radialGradient>
+              ))}
+            </defs>
+            <rect className="orrery-bg" x="-18" y="-18" width="436" height="436" rx="18" />
+            {/* The zodiac: where each planet stands among the stars, seen from Earth, is marked on it */}
+            <g className="orrery-zodiac">
+              {SIGNS.map((name, i) => {
+                const [gx, gy] = polar(i * 30 + 15, R_ZMID)
+                const seen = focused && Math.floor(focused.geo / 30) === i
+                return (
+                  <g key={name} className={`orrery-sign ${SIGN_ELEMENT[i]}${seen ? ' on' : ''}`}>
+                    <path d={sector(i * 30, i * 30 + 30)} />
+                    <text x={gx} y={gy} textAnchor="middle" dominantBaseline="central">
+                      {SIGN_GLYPHS[i]}
+                    </text>
+                  </g>
+                )
+              })}
+              {zodiac.map(([w, d]) => (
+                <path key={w} className="orrery-zodiac-stars" d={d} strokeWidth={w} />
+              ))}
+              {focused && (
+                <line
+                  className="orrery-seen"
+                  x1={polar(focused.geo, R_Z1 - 4)[0]}
+                  y1={polar(focused.geo, R_Z1 - 4)[1]}
+                  x2={polar(focused.geo, R_Z2 + 4)[0]}
+                  y2={polar(focused.geo, R_Z2 + 4)[1]}
+                  stroke={focused.key === 'earth' ? '#ffcf4a' : BODY_COLOUR[focused.key]}
+                />
+              )}
+            </g>
             {scale === 'inner' &&
               [0.5, 1, 1.5].map((au) => (
                 <g key={au}>
@@ -204,9 +316,19 @@ export function SolarSystemView() {
                 className={`orrery-orbit${focus === p.key ? ' on' : ''}`}
                 points={orbitPoints[p.key]}
                 stroke={BODY_COLOUR[p.key]}
+                pathLength={1}
               />
             ))}
-            <circle className="orrery-sun" cx={C} cy={C} r={scale === 'inner' ? 9 : 6} />
+            <circle cx={C} cy={C} r={scale === 'inner' ? 44 : 30} fill="url(#orrery-sun-glow)" />
+            <circle className="orrery-sun" cx={C} cy={C} r={scale === 'inner' ? 9 : 6} fill="url(#orrery-sun-core)" />
+            {/* Trails behind the planets, fading */}
+            {shown.map((p) => (
+              <g key={p.key} className="orrery-trail" stroke={BODY_COLOUR[p.key]}>
+                {trail(p).map((pts, i) => (
+                  <polyline key={i} points={pts} className={`t${i}`} />
+                ))}
+              </g>
+            ))}
             {/* Earth's line of sight to the hovered planet (to its rim mark when off the map) */}
             {focused && focused.key !== 'earth' && (
               <line
@@ -224,9 +346,17 @@ export function SolarSystemView() {
                   <title>
                     {t('{name} · 距太阳 {sun} AU', { name: t(p.name), sun: p.sun.toFixed(2) })}
                     {p.key !== 'earth' && ` · ${t('距地球 {earth} AU', { earth: p.earth.toFixed(2) })}`}
+                    {` · ${seenText(p)}`}
                   </title>
                   <circle cx={x} cy={y} r={11} className="orrery-hit" />
-                  <circle cx={x} cy={y} r={p.key === 'jupiter' || p.key === 'saturn' ? 5.5 : 4.2} fill={BODY_COLOUR[p.key]} />
+                  <circle cx={x} cy={y} r={12} fill={`url(#orrery-glow-${p.key})`} className="orrery-glow" />
+                  <circle cx={x} cy={y} r={size(p)} fill={BODY_COLOUR[p.key]} />
+                  {/* Seen from above, each is lit on the side toward the Sun */}
+                  <path
+                    className="orrery-night"
+                    d={`M0 ${-size(p)}A${size(p)} ${size(p)} 0 0 1 0 ${size(p)}Z`}
+                    transform={`translate(${x} ${y}) rotate(${(-p.lon).toFixed(1)})`}
+                  />
                   {p.key === 'saturn' && <ellipse cx={x} cy={y} rx={9} ry={3} className="orrery-ring" />}
                   {/* On the whole-system map the inner planets crowd the Sun: only Earth keeps its name. */}
                   {(scale === 'inner' || !INNER.includes(p.key) || p.key === 'earth') && (
@@ -244,6 +374,7 @@ export function SolarSystemView() {
                 <g key={p.key} className={`orrery-beyond${focus === p.key ? ' on' : ''}`} {...hover(p.key)}>
                   <title>
                     {t('{name}在这个方向，距太阳 {sun} AU', { name: t(p.name), sun: p.sun.toFixed(1) })}
+                    {` · ${seenText(p)}`}
                   </title>
                   <circle cx={x} cy={y} r={3} fill={BODY_COLOUR[p.key]} />
                   <text
@@ -268,7 +399,8 @@ export function SolarSystemView() {
                 <th>{t('行星')}</th>
                 <th>{t('距太阳')}</th>
                 <th>{t('距地球')}</th>
-                <th>{t('光行时')}</th>
+                <th className="orrery-light">{t('光行时')}</th>
+                <th>{t('所在星座')}</th>
                 <th>{t('视运动')}</th>
               </tr>
             </thead>
@@ -298,7 +430,15 @@ function PlanetRow({ p, on, hover }: { p: PlanetPosition; on: boolean; hover: Re
       </td>
       <td>{p.sun.toFixed(2)} AU</td>
       <td>{p.key === 'earth' ? '—' : `${p.earth.toFixed(2)} AU`}</td>
-      <td>{p.key === 'earth' ? '—' : lightTime(p.earth, language)}</td>
+      <td className="orrery-light">{p.key === 'earth' ? '—' : lightTime(p.earth, language)}</td>
+      <td title={p.key === 'earth' ? t('从地球看太阳所在的星座') : t('从地球看它所在的星座，与星盘相同')}>
+        {p.key === 'earth' && '☉ '}
+        <span className="sign-full">{t('{sign} {deg}°', { sign: t(signDeg(p.geo)[0]), deg: signDeg(p.geo)[1] })}</span>
+        <span className="sign-short">
+          {SIGN_GLYPHS[SIGNS.indexOf(signDeg(p.geo)[0])]}
+          {signDeg(p.geo)[1]}°
+        </span>
+      </td>
       <td className={p.retrograde ? 'retro' : undefined}>{p.key === 'earth' ? '—' : p.retrograde ? t('逆行') : t('顺行')}</td>
     </tr>
   )

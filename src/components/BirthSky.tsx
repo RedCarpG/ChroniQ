@@ -330,8 +330,13 @@ export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: s
   // one would mean a new canvas), and only backwards-filled: an animation left in effect keeps the
   // whole sky a layer with an effect of its own, composited again on every frame the page scrolls
   const rootRef = useRef<HTMLDivElement>(null)
+  const lastChange = useRef(-Infinity)
   useLayoutEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    // Stepping quickly through dates, the sky just changes: it comes in again only after a pause
+    const now = performance.now()
+    const quick = now - lastChange.current < 1500
+    lastChange.current = now
+    if (quick || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     rootRef.current?.animate?.(
       [
         { opacity: 0, transform: 'scale(1.05) rotate(-4deg)' },

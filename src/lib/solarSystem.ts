@@ -39,6 +39,8 @@ export interface PlanetPosition {
   earth: number
   /** Seen from Earth, moving backwards along the ecliptic */
   retrograde: boolean
+  /** Seen from Earth, its ecliptic longitude among the stars, 0–360 (as in the 星盘); for Earth, the Sun's */
+  geo: number
 }
 
 const DAY = 86400000
@@ -69,6 +71,7 @@ export function planetsAt(utc: Date): PlanetPosition[] {
       sun: Math.hypot(x, y, z),
       earth: key === 'earth' ? 0 : Math.hypot(x - ex, y - ey, z - ez),
       retrograde: key !== 'earth' && norm(geoLon(body, after) - geoLon(body, before) + 180) - 180 < 0,
+      geo: key === 'earth' ? geoLon(A.Body.Sun, t) : geoLon(body, t),
     }
   })
 }
