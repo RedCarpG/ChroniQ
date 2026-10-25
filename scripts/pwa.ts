@@ -7,9 +7,11 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 
-/** Large files only some need (the 观月 page's 2K colour map, for a large Moon): not precached, but
- *  cached when first fetched like any other; offline, the page makes do with the 1K map */
-const ON_DEMAND = [/^assets\/lroc_color_2k-/]
+/** Large files only some need, not precached but cached when first fetched like any other: the 观月
+ *  page's 2K colour map, for a large Moon (offline, the page makes do with the 1K map), and the slices
+ *  of the titles' 思源宋体, of which a page needs a few (offline, a slice not yet fetched falls back to
+ *  a system serif) */
+const ON_DEMAND = [/^assets\/lroc_color_2k-/, /^assets\/noto-serif-sc-/]
 
 export function serviceWorker(): Plugin {
   return {
