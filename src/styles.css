@@ -2262,9 +2262,17 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   mix-blend-mode: screen; transform: translateY(-60%); will-change: transform;
   animation: gild-pass 7s ease-in-out infinite;
 }
-.drawer-handle.quiet::before { opacity: 0.6; animation-delay: 1.2s; }
+.drawer-handle.quiet::before { opacity: 0; animation-name: gild-pass-soft; animation-delay: 1.2s; }
 @keyframes gild-pass {
   0% { transform: translateY(-60%); }
   22%, 100% { transform: translateY(60%); }
+}
+/* 显示's: brightest as it crosses the middle of the tab, fading in at the top and out at the bottom
+   (opacity, like transform, is the compositor's to play) */
+@keyframes gild-pass-soft {
+  0% { transform: translateY(-60%); opacity: 0; }
+  11% { transform: translateY(0); opacity: 0.85; }
+  22% { transform: translateY(60%); opacity: 0; }
+  100% { transform: translateY(60%); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .drawer-handle::before { animation: none; display: none; } }
