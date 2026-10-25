@@ -243,7 +243,12 @@ main { view-transition-name: page; }
    room for it. The mouse at the very top (the hot zone) brings it down; on a touch screen, a small tab
    at the top pulls it down and one under it folds it up again */
 .app.page-sky .topbar {
-  position: absolute; top: 16px; left: 16px; right: 16px; z-index: 25; margin: 0;
+  position: absolute; top: 8px; left: 8px; right: 8px; z-index: 25; margin: 0; padding: 8px 10px 10px; border-radius: 12px;
+  /* A light shade under it over the sky, solid in the middle and lighter at the sides, and its gold edge */
+  background:
+    linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat,
+    linear-gradient(90deg, rgb(9 13 26 / 0.42), rgb(9 13 26 / 0.62) 30%, rgb(9 13 26 / 0.62) 70%, rgb(9 13 26 / 0.42));
+  backdrop-filter: blur(4px);
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
 .app.page-sky.bar-folded .topbar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
