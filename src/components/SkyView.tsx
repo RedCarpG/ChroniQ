@@ -525,7 +525,17 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       return 'west'
     }
   })
+  // Another set chosen: its lines draw themselves in and its names fade in (a class on the map for
+  // as long as that takes; the layer is keyed by the set, so all of it is new)
+  const [figuresSwitched, setFiguresSwitched] = useState(false)
+  const switchTimer = useRef(0)
+  useEffect(() => () => clearTimeout(switchTimer.current), [])
   const pickFigures = (v: FigureSet) => {
+    if (v !== figures) {
+      setFiguresSwitched(true)
+      clearTimeout(switchTimer.current)
+      switchTimer.current = window.setTimeout(() => setFiguresSwitched(false), 1600)
+    }
     setFigures(v)
     try {
       localStorage.setItem(FIGURES_KEY, v)
@@ -851,7 +861,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const figuresLayer = useMemo(
     () =>
       figureShapes.length > 0 && (
-        <g className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
+        <g key={figures} className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
           {figureShapes.map(({ c, part, d }) => {
             const on = chosen === `fig${c.id}`
             return (
@@ -1269,7 +1279,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const map = (
     <svg
       ref={svgRef}
-      className={`sky-map ${mapClass}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
+      className={`sky-map ${mapClass}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${figuresSwitched ? ' figures-switched' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
       style={mapStyle}
       // A group rather than an image, so the bodies and named stars can be chosen from the keyboard
       role="group"
