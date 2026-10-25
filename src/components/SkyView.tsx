@@ -105,14 +105,14 @@ const TICKS = Array.from({ length: 72 }, (_, i) => {
 const SKY_STOPS: Record<string, [number, string][]> = {
   night: [[0, '#02040d'], [0.55, '#050a1a'], [0.85, '#0a1128'], [1, '#141d3d']],
   twilight: [[0, '#0b1433'], [0.55, '#182553'], [0.85, '#2c3a6e'], [1, '#4a5486']],
-  day: [[0, '#3c6aa3'], [0.7, '#5e8cc4'], [1, '#a9c7e6']],
+  day: [[0, '#325a8c'], [0.7, '#4f78ab'], [1, '#8eaed0']],
   below: [[0, '#0b0806'], [0.7, '#15100c'], [1, '#221a14']],
 }
 /** The glow low in the sky all round (airglow, a town's light): its colour and strength */
 const HORIZON_GLOW: Record<string, [string, number]> = {
   night: ['#5a6eb0', 0.2],
   twilight: ['#7d84c4', 0.4],
-  day: ['#e8f1ff', 0.35],
+  day: ['#e8f1ff', 0.26],
   below: ['#6a4a30', 0.25],
 }
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -1236,8 +1236,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <stop offset={1} stopColor="#7a4a8a" stopOpacity={0} />
         </radialGradient>
         <radialGradient id={`${clipId}-noon`}>
-          <stop offset={0} stopColor="#fffbea" stopOpacity={0.9} />
-          <stop offset={0.25} stopColor="#fff3c4" stopOpacity={0.35} />
+          <stop offset={0} stopColor="#fffbea" stopOpacity={0.75} />
+          <stop offset={0.25} stopColor="#fff3c4" stopOpacity={0.28} />
           <stop offset={1} stopColor="#ffffff" stopOpacity={0} />
         </radialGradient>
         <radialGradient id={`${clipId}-moon`}>
