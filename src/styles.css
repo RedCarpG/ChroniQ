@@ -1676,6 +1676,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   to { transform: none; }
 }
 .sky-map.entering .sky-figures .line { stroke-dasharray: 1; animation: sky-draw 2.2s 0.7s ease-out both; }
+/* Another set of figures chosen (显示 → 星座): its lines draw themselves in, its names fade in after */
+.sky-map.figures-switched .sky-figures .line { stroke-dasharray: 1; animation: sky-draw 1.1s ease-out both; }
+.sky-map.figures-switched .sky-figure-name { animation: cal-fade 0.7s 0.35s ease both; }
+@media (prefers-reduced-motion: reduce) { .sky-map.figures-switched :is(.sky-figures .line, .sky-figure-name) { animation: none; } }
 .sky-twinkles { position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s ease; }
 .sky-twinkles.entering { opacity: 0; }
 .sky-twinkles i {

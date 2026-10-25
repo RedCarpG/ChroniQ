@@ -110,6 +110,21 @@ describe('SkyView panels', () => {
     expect(bodies.classList.contains('card')).toBe(false)
   })
 
+  it('draws the new figures in when another set is chosen, and not again as the time moves on', async () => {
+    const { map } = setUp()
+    const set = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('[aria-label=星座] button')].find((b) => b.textContent === label)!
+    expect(map.classList.contains('figures-switched')).toBe(false)
+    fireEvent.click(set('中国星官'))
+    expect(map.querySelector('.sky-figures-china')).not.toBeNull()
+    expect(map.classList.contains('figures-switched')).toBe(true)
+    // The same set again is no switch
+    await act(() => new Promise((done) => setTimeout(done, 1700)))
+    expect(map.classList.contains('figures-switched')).toBe(false)
+    fireEvent.click(set('中国星官'))
+    expect(map.classList.contains('figures-switched')).toBe(false)
+    localStorage.removeItem('chroniq-sky-figures')
+  })
+
   it('draws the sky sharp, or smooth without the twinkling, as chosen and remembered', () => {
     localStorage.removeItem('chroniq-sky-quality')
     setUp()
