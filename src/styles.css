@@ -1914,3 +1914,55 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .table-scroll .pillars { min-width: 0; }
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- 观月 (MoonPage) ---------- */
+.moon-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 8px; }
+@media (max-width: 760px) { .moon-layout { grid-template-columns: 1fr; } }
+/* The Moon on a patch of night sky, with a glow about it as bright as it is lit */
+.moon-stage {
+  position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 16px; overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #141b33 0%, #0a0e1c 60%, #05070f 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+}
+.moon-stage::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgb(225 232 255 / calc(var(--glow, 0.3) * 0.32)) 0%, transparent 46%);
+}
+.moon-stage.down { filter: saturate(0.6) brightness(0.72); }
+.moon-down-note { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; color: #c8cede; }
+.moon-globe { position: relative; width: 78%; aspect-ratio: 1; animation: cal-fade 0.6s ease both; }
+.moon-globe canvas, .moon-globe svg { display: block; width: 100%; height: 100%; }
+.moon-globe-dark { fill: #262b3a; }
+.moon-globe-lit { fill: #e9e5d8; }
+.moon-name { display: flex; align-items: baseline; gap: 10px; margin: 2px 4px 10px; }
+.moon-name strong { font-size: 22px; }
+.moon-name span { color: var(--muted); }
+.moon-place { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.moon-place label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.moon-place label :is(select, input) { color: var(--text); }
+.moon-month-title { margin: 18px 0 6px; font-size: 14px; font-weight: 600; }
+.moon-month-title small { font-weight: 400; }
+/* The Moon's height through the day: the night shaded, the time dragged along it */
+.moon-heights svg { display: block; width: 100%; height: auto; touch-action: pan-y; cursor: ew-resize; border-radius: 10px; outline: none; }
+.moon-heights svg:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.mh-day { fill: rgb(120 160 255 / 0.1); }
+.mh-twilight { fill: rgb(80 100 170 / 0.2); }
+.mh-night { fill: rgb(8 12 28 / 0.55); }
+.mh-horizon { stroke: var(--muted); stroke-width: 1; }
+.mh-grid { stroke: var(--border); stroke-dasharray: 2 4; }
+.mh-moon { fill: none; stroke: #e8cf96; stroke-width: 2; stroke-linejoin: round; }
+.mh-now { stroke: var(--accent); stroke-width: 1.2; }
+.mh-dot { fill: #f6ecd2; stroke: #0a0e1c; stroke-width: 1.5; }
+.mh-label { fill: var(--muted); font-size: 10px; }
+/* The month of phases from one 朔 to the next */
+.moon-quarters { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; padding: 0; list-style: none; font-size: 13px; }
+.moon-quarters b { color: var(--accent); font-weight: 600; margin-right: 2px; }
+.moon-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 4px; }
+.moon-day {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 2px; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: inherit; font-size: 11px; cursor: pointer;
+}
+.moon-day .moon { width: 22px; height: 22px; }
+.moon-day small { color: var(--muted); font-size: 10px; }
+.moon-day:hover { background: var(--surface-2); }
+.moon-day.on { border-color: var(--accent); background: var(--accent-soft); }

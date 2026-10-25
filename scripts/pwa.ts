@@ -7,6 +7,10 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 
+/** Large files only some need (the 观月 page's 2K colour map, for a large Moon): not precached, but
+ *  cached when first fetched like any other; offline, the page makes do with the 1K map */
+const ON_DEMAND = [/^assets\/lroc_color_2k-/]
+
 export function serviceWorker(): Plugin {
   return {
     name: 'chroniq-service-worker',
@@ -18,7 +22,7 @@ export function serviceWorker(): Plugin {
       const hash = createHash('sha256')
       for (const f of built) hash.update(f)
       for (const f of publicFiles) hash.update(f).update(readFileSync(join(publicDir, f)))
-      const precache = ['./', ...built.filter((f) => f !== 'index.html'), ...publicFiles]
+      const precache = ['./', ...built.filter((f) => f !== 'index.html' && !ON_DEMAND.some((re) => re.test(f))), ...publicFiles]
       const source = readFileSync(join(process.cwd(), 'scripts/sw-template.js'), 'utf8')
         .replace('__CACHE__', `chroniq-${hash.digest('hex').slice(0, 12)}`)
         .replace('__PRECACHE__', JSON.stringify(precache, null, 2))

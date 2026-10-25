@@ -1,0 +1,30 @@
+// 观月: the Moon page (MoonPage, MoonGlobe)
+export const MOON: Record<string, string> = {
+  观月: 'Moon',
+  '月相、月出月落、天平动': 'Phase, moonrise and moonset, libration',
+  '{phase}，照亮 {n}%': '{phase}, {n}% lit',
+  此刻月亮在地平线下: 'The Moon is below the horizon now',
+  月龄: 'Age',
+  '{n} 天': '{n} days',
+  照亮: 'Lit',
+  月出: 'Moonrise',
+  中天: 'Highest',
+  月落: 'Moonset',
+  '视直径 {d}′': 'looks {d}′ across',
+  下次近地点: 'Next perigee',
+  下次远地点: 'Next apogee',
+  天平动: 'Libration',
+  '天平动让我们能多看到月面边缘的一点：经度为正时东缘（危海一侧）转过来，纬度为正时北缘转过来。':
+    'Libration lets us see a little past the Moon’s edge: with a positive longitude its eastern limb (by Mare Crisium) turns towards us, with a positive latitude its northern one.',
+  '经 {lon}° · 纬 {lat}°': 'longitude {lon}° · latitude {lat}°',
+  本月月相: 'This lunation',
+  朔: 'New moon',
+  上弦: 'First quarter',
+  望: 'Full moon',
+  下弦: 'Last quarter',
+  月亮的高度: 'The Moon’s height',
+  拖动或用方向键改变时间: 'drag, or use the arrow keys, to change the time',
+  '月亮按你在此地所见画出：天顶在上，亮面朝向太阳，并随天平动微微转动。':
+    'The Moon as seen from this place: the zenith up, the lit side towards the Sun, turned a little by its libration.',
+  '月面图像：NASA 科学可视化工作室（CGI Moon Kit，LRO 数据）。': 'Moon maps: NASA’s Scientific Visualization Studio (CGI Moon Kit, from LRO data).',
+}
