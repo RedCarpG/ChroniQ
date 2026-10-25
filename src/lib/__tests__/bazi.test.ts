@@ -210,8 +210,10 @@ describe('神煞说明', () => {
     const seen = new Set<string>()
     const variants = [DEFAULT_SCHOOLS, ...Object.entries(SCHOOLS).flatMap(([k, info]) =>
       info.options.map((o) => ({ ...DEFAULT_SCHOOLS, [k]: o.value })))]
+    // Three years, every month and day: every star turns up within one year already (measured), so
+    // three leave room for a star that needs some year, at a third of the time of the nine there were
     for (const schools of variants)
-      for (const year of sixty.filter((_, i) => i % 7 === 0))
+      for (const year of sixty.filter((_, i) => i % 20 === 0))
         for (const month of sixty.filter((_, i) => i < 12))
           for (const day of sixty)
             for (const s of computeShenSha([year, month, day, sixty[(sixty.indexOf(day) + 5) % 60]], schools).flat())
@@ -379,9 +381,10 @@ describe('紫微斗数', () => {
   it('explains every star, 亮度 and 四化 iztro can place', async () => {
     const { buildZiwei } = await import('../ziwei')
     const missing = new Set<string>()
+    // Six charts each way: every name has turned up by the second (measured); iztro takes ~40 ms a chart
     for (const algorithm of ['default', 'zhongzhou'] as const)
-      for (let i = 0; i < 24; i++) {
-        const input = { ...base, year: 1960 + i * 2, month: 1 + (i % 12), hour: i, gender: (i % 2) as 0 | 1 }
+      for (let i = 0; i < 6; i++) {
+        const input = { ...base, year: 1960 + i * 7, month: 1 + ((i * 5) % 12), hour: (i * 5) % 24, gender: (i % 2) as 0 | 1 }
         const z = buildZiwei(input, { ...DEFAULT_ZIWEI_SCHOOLS, algorithm })
         for (const p of Object.values(z.palaces))
           for (const s of [...p.major, ...p.minor, ...p.adjective]) {

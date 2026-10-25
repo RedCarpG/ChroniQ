@@ -1,11 +1,11 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import './dom'
 import { fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PLACE } from '../../lib/place'
 import { MoonPage } from '../MoonPage'
 
-// jsdom has no WebGL: the Moon is drawn flat
+// No WebGL in the test DOM: the Moon is drawn flat
 beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -50,7 +50,7 @@ describe('观月', () => {
   })
 
   it('keeps a drag within the day shown, where the keys go on into the next', () => {
-    // A chart laid out 720 px wide (jsdom lays nothing out)
+    // A chart laid out 720 px wide (the test DOM lays nothing out)
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 720, 168))
     const { container, time } = setUp()
     const slider = container.querySelector<SVGElement>('.moon-heights svg')!

@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import './dom'
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -42,7 +42,7 @@ describe('生辰星空', () => {
   it('draws the sky behind the page, with the bodies above the horizon over it', () => {
     render(<BirthSky moment={moment} focus="venus" />)
     const sky = document.querySelector('.birth-sky')!
-    // Born by day; the stars, Milky Way and 二十八宿 go to the canvas (drawn in a browser, not in jsdom)
+    // Born by day; the stars, Milky Way and 二十八宿 go to the canvas (drawn in a browser, not in the test DOM)
     expect(sky.classList.contains('day')).toBe(true)
     expect(sky.querySelector('canvas')).not.toBeNull()
     // Sun and four planets up; the Moon and Saturn below
