@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ASPECT_INFO, HOUSE_INFO, PLANET_INFO, SIGN_INFO } from '../lib/astroInfo'
 import {
   BODY_INFO,
@@ -27,6 +27,7 @@ import {
 import type { BaziInput } from '../lib/bazi'
 import { loadCharts, sameInput } from '../lib/savedCharts'
 import { DEFAULT_PLACE } from '../lib/place'
+import { zodiacStars } from '../lib/eclipticStars'
 import { STAR_SCHOOLS } from '../lib/starPrefs'
 import { useSettings, useT } from '../settingsContext'
 import { BirthForm, DateParts } from './BirthForm'
@@ -36,6 +37,9 @@ import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
 import { PlacePicker } from './PlacePicker'
+
+// 生辰星空, shared with the 八字 page: loaded apart, as it brings the star catalogue
+const BirthSky = lazy(() => import('./BirthSky').then((m) => ({ default: m.BirthSky })))
 
 type T = ReturnType<typeof useT>
 
@@ -65,6 +69,7 @@ interface Props {
 /** 西洋占星 natal chart: the shared birth form, a birthplace, the wheel and the tables. */
 export function StarChartView({ input, onChange, settings, onSettingsChange }: Props) {
   const t = useT()
+  const { birthSky } = useSettings()
   // The chart's own birthplace, shared with 八字 / 紫微 and saved with the chart
   const place = input.place ?? DEFAULT_PLACE
   const chart = useMemo(() => buildStarChart(input, place, settings), [input, place, settings])
@@ -113,8 +118,20 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     n: bodies.filter((p) => p.key !== 'node' && p.key !== 'southNode' && SIGN_ELEMENT[p.sign] === e).length,
   }))
 
+  // The sky at birth behind the page; a natal body pointed at in the wheel or the table is picked out in it
+  const moment = useMemo(
+    () => ({ utc: chart.utc, latitude: place.latitude, longitude: place.longitude }),
+    [chart.utc, place.latitude, place.longitude],
+  )
+  const skyFocus = focus && 'planet' in focus && focus.layer === 'natal' ? focus.planet : null
+
   return (
     <div className="bazi-layout">
+      {birthSky === 'show' && (
+        <Suspense fallback={null}>
+          <BirthSky moment={moment} focus={skyFocus} />
+        </Suspense>
+      )}
       <BirthForm
         input={input}
         onChange={onChange}
@@ -591,15 +608,68 @@ function StarWheel({
     ? overlay.aspects.filter((a) => a.type.key !== 'conjunction' && !angles.has(a.a.key) && !angles.has(a.b.key))
     : chart.aspects.filter((a) => a.type.key !== 'conjunction' && !angles.has(a.a.key) && !angles.has(a.b.key))
   const pad = overlay ? 34 : 0
+  // The real stars along the ecliptic in the signs' ring, north of it outwards: dots by brightness
+  const year = chart.utc.getUTCFullYear()
+  const stars = useMemo(() => {
+    const sizes = new Map<number, string>()
+    for (const st of zodiacStars(year)) {
+      const [x, y] = at(st.lon, (R_OUT + R_SIGN) / 2 + st.lat * 1.35)
+      const w = Math.round(Math.max(0.8, 3 - 0.45 * st.mag) * 2) / 2
+      sizes.set(w, (sizes.get(w) ?? '') + `M${x.toFixed(1)} ${y.toFixed(1)}h.01`)
+    }
+    return [...sizes]
+    // at follows the ascendant
+  }, [year, chart.asc])
+
+  // 浮现: a new chart comes in as the sky turning into place: the signs' ring turns to its place,
+  // the bodies appear one by one, and the aspects draw themselves between them. Not for a new 行运
+  // or 推运 moment (the chart stays); only backwards-filled, so nothing is left in effect after.
+  const svgRef = useRef<SVGSVGElement>(null)
+  const lastChange = useRef(-Infinity)
+  useLayoutEffect(() => {
+    const svg = svgRef.current
+    // Stepping quickly through dates, the wheel just changes: it comes in again only after a pause
+    const now = performance.now()
+    const quick = now - lastChange.current < 1500
+    lastChange.current = now
+    if (quick || !svg?.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const ease = 'cubic-bezier(0.2, 0.7, 0.2, 1)'
+    svg.querySelector('.zodiac')?.animate([{ transform: 'rotate(-35deg)', opacity: 0.15 }, { transform: 'none', opacity: 1 }], {
+      duration: 1500,
+      easing: ease,
+      fill: 'backwards',
+    })
+    svg.querySelectorAll('.houses').forEach((el) =>
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 300, fill: 'backwards' }),
+    )
+    svg.querySelectorAll('.planet').forEach((el, i) =>
+      el.animate([{ opacity: 0, transform: 'scale(1.9)' }, { opacity: 1, transform: 'none' }], {
+        duration: 650,
+        delay: 550 + i * 70,
+        easing: ease,
+        fill: 'backwards',
+      }),
+    )
+    svg.querySelectorAll('.aspect-line').forEach((el, i) =>
+      el.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], {
+        duration: 900,
+        delay: 1250 + i * 25,
+        easing: 'ease-out',
+        fill: 'backwards',
+      }),
+    )
+  }, [chart])
 
   return (
     <svg
+      ref={svgRef}
       className={`star-wheel${overlay ? ` with-${overlay.kind}` : ''}${hl.active ? ' has-focus' : ''}`}
       viewBox={`${-pad} ${-pad} ${400 + pad * 2} ${400 + pad * 2}`}
       role="img"
       aria-label={t('星盘')}
     >
       {overlay && <circle cx={C} cy={C} r={R_OUTER} className="outer-band" />}
+      <g className="zodiac">
       {SIGNS.map((name, i) => {
         const el = SIGN_ELEMENT[i]
         const [gx, gy] = at(i * 30 + 15, (R_OUT + R_SIGN) / 2)
@@ -614,14 +684,19 @@ function StarWheel({
           </g>
         )
       })}
+      {stars.map(([w, d]) => (
+        <path key={w} className="zodiac-stars" d={d} strokeWidth={w} />
+      ))}
       {Array.from({ length: 72 }, (_, i) => {
         const [x1, y1] = at(i * 5, R_SIGN)
         const [x2, y2] = at(i * 5, R_SIGN - (i % 2 ? 3 : 6))
         return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="tick" />
       })}
+      </g>
       <circle cx={C} cy={C} r={R_SIGN} className="ring" />
       <circle cx={C} cy={C} r={R_HOUSE} className="ring faint" />
       <circle cx={C} cy={C} r={R_ASPECT} className="ring" />
+      <g className="houses">
       {chart.cusps.map((c, i) => (
         <path
           key={`sector-${i}`}
@@ -653,6 +728,7 @@ function StarWheel({
           </g>
         )
       })}
+      </g>
       {(['asc', 'mc'] as const).map((k) => {
         const lon = k === 'asc' ? chart.asc : chart.mc
         const [x, y] = at(lon, R_OUT + 1)
@@ -673,6 +749,7 @@ function StarWheel({
               y1={y1}
               x2={x2}
               y2={y2}
+              pathLength={1}
               className={`aspect-line tone-${a.type.tone}${(overlay ? hl.cross(a) : hl.aspect(a)) ? ' on' : ''}`}
               strokeOpacity={Math.max(0.25, 1 - a.orb / (!overlay ? 8 : overlay.kind === 'synastry' ? 7 : 2.5))}
             />

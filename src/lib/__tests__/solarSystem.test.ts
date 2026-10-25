@@ -26,6 +26,16 @@ describe('太阳系', () => {
     expect(at('2025-06-01T00:00:00Z').mars.retrograde).toBe(false)
   })
 
+  it('gives each its place among the stars seen from Earth, and Earth the Sun’s', () => {
+    // At the March equinox the Sun, seen from Earth, is at 0°
+    expect(Math.abs(((at('2026-03-20T14:46:00Z').earth.geo + 180) % 360) - 180)).toBeLessThan(0.05)
+    // Venus at inferior conjunction (24 Oct 2026): seen from Earth, beside the Sun
+    const p = at('2026-10-24T12:00:00Z')
+    expect(Math.abs(((p.venus.geo - p.earth.geo + 540) % 360) - 180)).toBeLessThan(2)
+    // …while from the Sun, Venus and Earth are in the same direction
+    expect(Math.abs(((p.venus.lon - p.earth.lon + 540) % 360) - 180)).toBeLessThan(1)
+  })
+
   it('samples closed orbits', () => {
     const o = orbits(new Date('2026-01-01T00:00:00Z'), 60)
     const [x0, y0] = o.mars[0]

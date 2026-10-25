@@ -13,7 +13,7 @@ export interface Settings {
   moonPhase: 'show' | 'hide'
   /** 日历标题旁显示斗柄指月 */
   dipper: 'show' | 'hide'
-  /** 八字页背景: the sky at the moment of birth (BirthSky), or the plain starfield */
+  /** 八字 and 星盘 pages' backdrop: the sky at the moment of birth (BirthSky), or the plain starfield */
   birthSky: 'show' | 'hide'
   /** 紫微星曜配色 */
   ziweiColor: 'element' | 'luck'
@@ -77,7 +77,7 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
     ],
   },
   birthSky: {
-    title: '八字背景',
+    title: '命盘背景',
     options: [
       { value: 'show', label: '生辰星空' },
       { value: 'hide', label: '普通星空' },
