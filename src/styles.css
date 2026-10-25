@@ -1501,6 +1501,40 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .sky-figure-mark { flex: none; width: 8px; height: 8px; margin: 0 1px; transform: rotate(45deg); border: 1.5px solid #c9a768; }
 .sky-figure-mark-west { border-color: #7f9be0; }
+/* 二十八宿: each in the colour of its 四象 (东方苍龙 青, 北方玄武 蓝, 西方白虎 白, 南方朱雀 红) */
+:root { --zone-east: 98 214 186; --zone-north: 140 152 245; --zone-west: 232 230 242; --zone-south: 242 122 92; }
+.sky-figures-mansions .zone-east path.line { stroke: rgb(var(--zone-east) / 0.6); }
+.sky-figures-mansions .zone-north path.line { stroke: rgb(var(--zone-north) / 0.65); }
+.sky-figures-mansions .zone-west path.line { stroke: rgb(var(--zone-west) / 0.55); }
+.sky-figures-mansions .zone-south path.line { stroke: rgb(var(--zone-south) / 0.62); }
+.sky-figures-mansions .sky-figure:hover .line { stroke-width: calc(2px * var(--k, 1)); filter: brightness(1.3); }
+.sky-figure-name-mansions { fill: rgb(240 225 200 / 0.8); }
+.sky-figure-name-mansions.zone-east { fill: rgb(var(--zone-east) / 0.9); }
+.sky-figure-name-mansions.zone-north { fill: rgb(var(--zone-north) / 0.95); }
+.sky-figure-name-mansions.zone-west { fill: rgb(var(--zone-west) / 0.85); }
+.sky-figure-name-mansions.zone-south { fill: rgb(var(--zone-south) / 0.9); }
+.sky-mansions { pointer-events: none; }
+.sky-mansions path { fill: none; stroke-width: calc(1px * var(--k, 1)); }
+.sky-mansions .equator { stroke: rgb(255 255 255 / 0.22); stroke-dasharray: calc(1.5px * var(--k, 1)) calc(3px * var(--k, 1)); }
+.sky-mansions .bound { stroke-dasharray: calc(4px * var(--k, 1)) calc(4px * var(--k, 1)); stroke-opacity: 0.4; }
+.sky-mansions .bound.zone-east { stroke: rgb(var(--zone-east)); }
+.sky-mansions .bound.zone-north { stroke: rgb(var(--zone-north)); }
+.sky-mansions .bound.zone-west { stroke: rgb(var(--zone-west)); }
+.sky-mansions .bound.zone-south { stroke: rgb(var(--zone-south)); }
+.sky-mansions .mansion-char.zone-east { fill: rgb(var(--zone-east) / 0.6); }
+.sky-mansions .mansion-char.zone-north { fill: rgb(var(--zone-north) / 0.65); }
+.sky-mansions .mansion-char.zone-west { fill: rgb(var(--zone-west) / 0.55); }
+.sky-mansions .mansion-char.zone-south { fill: rgb(var(--zone-south) / 0.65); }
+.sky-mansions .mansion-char { stroke: none; font-size: calc(10px * var(--k, 1)); font-weight: 600; }
+.sky-figure-mark-mansions.zone-east { border-color: rgb(var(--zone-east)); }
+.sky-figure-mark-mansions.zone-north { border-color: rgb(var(--zone-north)); }
+.sky-figure-mark-mansions.zone-west { border-color: rgb(var(--zone-west)); }
+.sky-figure-mark-mansions.zone-south { border-color: rgb(var(--zone-south)); }
+.sky-table .sky-mansion-cell { font-weight: 600; }
+.sky-table .sky-mansion-cell.zone-east { color: rgb(var(--zone-east)); }
+.sky-table .sky-mansion-cell.zone-north { color: rgb(var(--zone-north)); }
+.sky-table .sky-mansion-cell.zone-west { color: rgb(var(--zone-west)); }
+.sky-table .sky-mansion-cell.zone-south { color: rgb(var(--zone-south)); }
 /* One body's way among the stars over the past days */
 .sky-history path { fill: none; stroke: currentColor; stroke-width: calc(2.6px * var(--k, 1)); stroke-linejoin: round; opacity: 0.9; }
 .sky-history .tick { fill: currentColor; }

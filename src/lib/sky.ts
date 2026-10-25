@@ -6,6 +6,7 @@
 import * as A from 'astronomy-engine'
 import { BODY_INFO, type BodyKey } from './astrology'
 import { BRIGHT_STARS, STAR_FIELDS } from './brightStars'
+import { MANSIONS, mansionWidth } from './mansions'
 
 export interface SkyBody {
   key: BodyKey
@@ -19,6 +20,8 @@ export interface SkyBody {
   mag: number
   /** Lit fraction of the disc, 0–1 (the Moon's phase) */
   lit: number
+  /** Right ascension, degrees, J2000 (which 二十八宿 it is in) */
+  ra: number
 }
 
 export interface SkyStar {
@@ -100,6 +103,7 @@ export function skyAt(utc: Date, latitude: number, longitude: number, below = fa
       alt: hor.altitude,
       mag: illum.mag,
       lit: illum.phase_fraction,
+      ra: A.Equator(body, time, observer, false, true).ra * 15,
     }
   })
 
@@ -177,6 +181,26 @@ export function constellationsAt(
     out.push({ id: c.id, name: c.name, trad: c.trad, en: c.en, rank: c.rank, label: toHorizon(...c.label), lines })
   }
   return out
+}
+
+/**
+ * 二十八宿 on the sky at a moment and place: each mansion's boundary, the hour circle through its
+ * 距星, drawn as on old Chinese star maps from the circle of always-visible stars (内规, declination
+ * 90° − latitude) to its mirror in the south (外规); the celestial equator they divide; and the
+ * middle of each mansion on the equator, where its name goes.
+ */
+export function mansionsAt(utc: Date, latitude: number, longitude: number) {
+  const toHorizon = horizonOf(utc, latitude, longitude)
+  const reach = Math.max(30, 90 - Math.abs(latitude))
+  const bounds = MANSIONS.map((x) => {
+    const pts: { az: number; alt: number }[] = []
+    for (let dec = -reach; dec <= reach + 0.01; dec += 2.5) pts.push(toHorizon(x.ra, dec))
+    return pts
+  })
+  const equator: { az: number; alt: number }[] = []
+  for (let ra = 0; ra <= 360; ra += 2.5) equator.push(toHorizon(ra, 0))
+  const middles = MANSIONS.map((x, i) => toHorizon(x.ra + mansionWidth(i) / 2, 0))
+  return { bounds, equator, middles }
 }
 
 /**

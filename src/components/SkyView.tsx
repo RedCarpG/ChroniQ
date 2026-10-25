@@ -7,6 +7,7 @@ import {
   constellationsAt,
   formatAzimuth,
   historyTrack,
+  mansionsAt,
   milkyWayAt,
   skyAt,
   trackOf,
@@ -14,6 +15,7 @@ import {
   type SkyBody,
   type SkyStar,
 } from '../lib/sky'
+import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
@@ -177,8 +179,14 @@ const PATH_STEP = 10 * 60_000
 const HOUR = 3600_000
 const PATHS_KEY = 'chroniq-sky-paths'
 
-// Constellation figures: Western, the Chinese 星官, or none
-type FigureSet = 'none' | 'west' | 'china'
+// Constellation figures: Western, the Chinese 星官, the 二十八宿 alone, or none
+type FigureSet = 'none' | 'west' | 'china' | 'mansions'
+/** The 28 mansions' figures (rank 1 in the 星官), each with its mansion, for its 四象 colour */
+const MANSION_FIGURES = XINGGUAN.filter((c) => c.rank === 1)
+const MANSION_BY_NAME = new Map(MANSIONS.map((x, i) => [x.name, { ...x, index: i }]))
+/** 角宿 → 角宿 / 角宿 in the 星官 data's 繁體 */
+const MANSION_TRAD = new Map(MANSION_FIGURES.map((c) => [c.name, c.trad]))
+const zoneOf = (name: string): MansionZone | undefined => MANSION_BY_NAME.get(name)?.zone
 const FIGURES_KEY = 'chroniq-sky-figures'
 
 /** SVG path data through the projected points */
@@ -372,7 +380,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const [figures, setFigures] = useState<FigureSet>(() => {
     try {
       const v = localStorage.getItem(FIGURES_KEY)
-      return v === 'china' || v === 'none' ? v : 'west'
+      return v === 'china' || v === 'none' || v === 'mansions' ? v : 'west'
     } catch {
       return 'west'
     }
@@ -389,14 +397,31 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     () =>
       figures === 'none'
         ? []
-        : constellationsAt(figures === 'west' ? WESTERN : XINGGUAN, utc, place.latitude, place.longitude, below),
+        : constellationsAt(
+            figures === 'west' ? WESTERN : figures === 'mansions' ? MANSION_FIGURES : XINGGUAN,
+            utc,
+            place.latitude,
+            place.longitude,
+            below,
+          ),
     [figures, utc, place.latitude, place.longitude, below],
   )
+  // 二十八宿: the mansions' boundaries along the equator, with their names (lib/sky.ts mansionsAt)
+  const mansionView = useMemo(
+    () => (figures === 'mansions' ? mansionsAt(utc, place.latitude, place.longitude) : null),
+    [figures, utc, place.latitude, place.longitude],
+  )
+  const mansionName = (name: string) => (script === 'trad' ? (MANSION_TRAD.get(name) ?? name) : name)
   // 星官 names stay Chinese in English, as proper nouns; both sets follow the 繁體 / 简体 setting
   const figureName = (c: { name: string; trad: string; en: string }) =>
     figures === 'west' && en ? c.en : script === 'trad' ? c.trad : c.name
   // A 星官's English gloss goes with its name in English
-  const figureTip = (c: { name: string; trad: string; en: string }) => (figures === 'china' && en ? `${figureName(c)} · ${c.en}` : figureName(c))
+  const figureTip = (c: { name: string; trad: string; en: string }) =>
+    figures === 'mansions'
+      ? `${figureName(c)} · ${en ? c.en : (MANSION_BY_NAME.get(c.name)?.animal ?? '')}`
+      : figures === 'china' && en
+        ? `${figureName(c)} · ${c.en}`
+        : figureName(c)
 
   // One body's way among the stars over the past days, drawn on tonight's sky
   const [history, setHistory] = useState<{ body: SkyBody['key'] | null; days: number }>({ body: null, days: 90 })
@@ -974,6 +999,23 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           <circle cx={C} cy={C} />
           <line x1={C} y1={C} />
         </g>
+        {mansionView && (
+          <g className="sky-mansions" aria-hidden="true">
+            <path className="equator" d={pathData(mansionView.equator, at)} />
+            {mansionView.bounds.map((b, i) => (
+              <path key={i} className={`bound zone-${MANSIONS[i].zone}`} d={pathData(b, at)} />
+            ))}
+            {mansionView.middles.map((p, i) => {
+              if (!shown(p.alt)) return null
+              const [x, y] = at(p.az, p.alt)
+              return (
+                <text key={i} className={`mansion-char zone-${MANSIONS[i].zone}`} x={x} y={y} textAnchor="middle" dominantBaseline="central">
+                  {mansionName(MANSIONS[i].name).slice(0, 1)}
+                </text>
+              )
+            })}
+          </g>
+        )}
         {figureViews.length > 0 && (
           <g className={`sky-figures sky-figures-${figures}${pickFigure ? ' has-chosen' : ''}`} aria-hidden="true">
             {figureViews.map((c, i) => {
@@ -986,7 +1028,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               return (
                 <g
                   key={`${c.id}-${part}`}
-                  className={`sky-figure${on ? ' on' : ''}`}
+                  className={`sky-figure${on ? ' on' : ''}${figures === 'mansions' ? ` zone-${zoneOf(c.name)}` : ''}`}
                   data-sound={on ? 'unpick' : 'sparkle'}
                   data-tip={figureTip(c)}
                   onClick={(e) => {
@@ -1138,7 +1180,11 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               <text
                 key={l.key}
                 className={
-                  (l.kind === 'body' ? 'sky-body-name' : l.kind === 'figure' ? `sky-figure-name sky-figure-name-${figures}` : 'sky-star-name') +
+                  (l.kind === 'body'
+                    ? 'sky-body-name'
+                    : l.kind === 'figure'
+                      ? `sky-figure-name sky-figure-name-${figures}${figures === 'mansions' ? ` zone-${zoneOf(figureViews.find((c) => `fig${c.id}` === l.key)?.name ?? '')}` : ''}`
+                      : 'sky-star-name') +
                   (l.key === chosen ? ' on' : '') +
                   (l.key === focus ? ' hover' : '')
                 }
@@ -1161,7 +1207,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
       {pickFigure && (
         <text
           key={chosen}
-          className={`sky-figure-name sky-figure-name-${figures} chosen`}
+          className={`sky-figure-name sky-figure-name-${figures} chosen${figures === 'mansions' ? ` zone-${zoneOf(pickFigure.name)}` : ''}`}
           x={at(pickFigure.label.az, pickFigure.label.alt)[0]}
           y={at(pickFigure.label.az, pickFigure.label.alt)[1]}
           textAnchor="middle"
@@ -1245,6 +1291,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 ['none', t('不显示')],
                 ['west', t('西方星座')],
                 ['china', t('中国星官')],
+                ['mansions', t('二十八宿')],
               ] as const
             ).map(([v, label]) => (
               <button key={v} type="button" className={figures === v ? 'on' : undefined} aria-pressed={figures === v} onClick={() => pickFigures(v)}>
@@ -1292,11 +1339,20 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
 
         {pickFigure && (
           <div className="sky-chosen-info">
-            <span className={`sky-figure-mark sky-figure-mark-${figures}`} aria-hidden="true" />
+            <span
+              className={`sky-figure-mark sky-figure-mark-${figures}${figures === 'mansions' ? ` zone-${zoneOf(pickFigure.name)}` : ''}`}
+              aria-hidden="true"
+            />
             <strong>{figureName(pickFigure)}</strong>
             <span className="muted">
-              {figures === 'west' ? t('西方星座') : t('中国星官')}
-              {!(figures === 'west' && en) && ` · ${pickFigure.en}`}
+              {figures === 'mansions' ? (
+                <MansionFacts name={pickFigure.name} />
+              ) : (
+                <>
+                  {figures === 'west' ? t('西方星座') : t('中国星官')}
+                  {!(figures === 'west' && en) && ` · ${pickFigure.en}`}
+                </>
+              )}
               {' · '}
               {azimuth(pickFigure.label.az)} · {t('高 {altitude}°', { altitude: pickFigure.label.alt.toFixed(1) })}
             </span>
@@ -1330,6 +1386,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
               <th>{t('方位')}</th>
               <th>{t('高度')}</th>
               <th>{t('星等')}</th>
+              {figures === 'mansions' && <th>{t('宿')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -1351,6 +1408,9 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
                 <td>{azimuth(b.az)}</td>
                 <td>{b.alt < 0 ? t('地平线下') : `${b.alt.toFixed(1)}°`}</td>
                 <td>{b.mag.toFixed(1)}</td>
+                {figures === 'mansions' && (
+                  <td className={`sky-mansion-cell zone-${mansionOf(b.ra).mansion.zone}`}>{mansionName(mansionOf(b.ra).mansion.name)}</td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -1376,6 +1436,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
           {figures !== 'none' && en && ' '}
           {figures === 'west' && t('星座连线来自 d3-celestial。')}
           {figures === 'china' && t('中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。')}
+          {figures === 'mansions' &&
+            t(
+              '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。',
+            )}
         </p>
       </aside>
 
@@ -1469,5 +1533,22 @@ function Star({
       <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
       <circle cx={x} cy={y} r={r} fill={starColour(s.bv)} />
     </g>
+  )
+}
+
+/** What a chosen mansion is: its 四象, its 七曜 animal, its 距星 and its 宿度 */
+function MansionFacts({ name }: { name: string }) {
+  const t = useT()
+  const { language } = useSettings()
+  const x = MANSIONS.findIndex((m) => m.name === name)
+  if (x < 0) return null
+  const m = MANSIONS[x]
+  const en = language === 'en'
+  return (
+    <>
+      {t('二十八宿')} · {en ? ZONES[m.zone].en : ZONES[m.zone].name} · {m.animal} ·{' '}
+      {t('距星 {star}', { star: en ? m.starWestEn : `${m.star}（${m.starWest}）` })} ·{' '}
+      {t('宿度 {width}°', { width: mansionWidth(x).toFixed(1) })}
+    </>
   )
 }

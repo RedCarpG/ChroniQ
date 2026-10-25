@@ -115,6 +115,12 @@ export const SKY: Record<string, string> = {
   不显示: 'Off',
   西方星座: 'Western',
   中国星官: 'Chinese 星官',
+  二十八宿: '28 mansions',
+  宿: 'Mansion',
+  '距星 {star}': 'determinative star {star}',
+  '宿度 {width}°': '{width}° wide',
+  '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。':
+    'The 28 lunar mansions (二十八宿) are coloured by their quarter of the sky: teal for the Azure Dragon of the East, blue for the Black Tortoise of the North, white for the White Tiger of the West, red for the Vermilion Bird of the South. The dashed lines are the hour circles through each mansion’s determinative star, dividing the celestial equator (dotted) into 28 parts; each part’s width is the mansion’s extent. The table’s Mansion column says which mansion the Sun, Moon and planets are in now. Figures after Stellarium’s Chinese sky culture (CC BY-SA 4.0).',
   历史轨迹: 'Past track',
   时长: 'Span',
   '1 个月': '1 month',
