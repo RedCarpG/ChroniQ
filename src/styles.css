@@ -2238,6 +2238,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* 天象: the names of the bodies, stars and figures on the map, and of the bodies in the list, in the
    titles' serif (宋体) */
 .sky-labels text, .sky-table tbody td:first-child { font-family: var(--font-title); }
+/* 紫微: the stars, the 流耀 and the palaces' names, and the centre's title, likewise; and the 运限 rows'
+   headings (大限, 流年…, shared with 八字) */
+.ziwei-board .star-name, .flow-star, .palace-name, .zc-title, .fortune-title { font-family: var(--font-title); }
 
 /* ---------- 鎏金: the left drawer's tabs, larger, their words gilded, a light passing down them ----------
    The gold of the words is a still gradient clipped to the text; the passing light is a band moved by
