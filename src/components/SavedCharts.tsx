@@ -122,7 +122,7 @@ export function SavedChartsDrawer({
   }
 
   return (
-    <div className={`drawer${open ? ' open' : ''}`} ref={ref}>
+    <div className={`drawer${open ? ' open' : ''}${withCharts ? '' : ' bare'}`} ref={ref}>
       <aside className="drawer-panel" inert={!open}>
         <div id="saved-charts" className="drawer-section" aria-label={t('已保存的命盘')} hidden={tab === 'page' || !withCharts}>
         <div className="drawer-head">
