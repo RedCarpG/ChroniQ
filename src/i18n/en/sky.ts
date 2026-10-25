@@ -144,6 +144,8 @@ export const SKY: Record<string, string> = {
     'Click a body, a named star, a constellation’s lines or a row of the table to pick it out and read about it (with its path, while paths are on); click it again, click the empty sky or press Esc to let go. Drag the sky sideways to turn time.',
   // The panels: the settings on the left, and what is told of the one chosen
   '时间·地点': 'Time & place',
+  地点: 'Place',
+  星图上显示: 'On the sky map',
   '日月行星前后 12 小时的路径': 'Paths of the Sun, Moon and planets, 12 hours either side',
   全部天体: 'All bodies',
   恒星: 'Star',

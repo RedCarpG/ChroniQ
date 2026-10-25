@@ -27,6 +27,9 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 function setUp() {
+  // The left drawer's slots, where the page puts its 显示 (App renders the drawer)
+  for (const id of ['drawer-rail-slot', 'drawer-page-panel'])
+    if (!document.getElementById(id)) document.body.appendChild(Object.assign(document.createElement('div'), { id }))
   const { container } = render(<SkyView place={DEFAULT_PLACE} />)
   // The map is the page's backdrop, rendered into <body> rather than in the page
   const map = document.querySelector<SVGSVGElement>('.sky-backdrop .sky-map')!
@@ -64,47 +67,38 @@ describe('SkyView as the backdrop', () => {
 })
 
 describe('SkyView panels', () => {
-  it('keeps the settings on the left, put away to a slim tab and back, and remembers that', () => {
+  it('puts the moment and the place in a bar above the sky, 地点 opening the place’s details', () => {
     const { container } = setUp()
-    const settings = container.querySelector('.sky-settings')!
-    expect(settings.querySelector('.sky-settings-card input[type=time]')).not.toBeNull()
-    fireEvent.click(settings.querySelector('.sky-settings-close')!)
-    expect(settings.querySelector('.sky-settings-card')).toBeNull()
-    expect(container.querySelector('.sky-stage')!.classList.contains('panel-hidden')).toBe(true)
-    const handle = settings.querySelector<HTMLButtonElement>('.sky-settings-handle')!
-    expect(handle.getAttribute('aria-expanded')).toBe('false')
-    // The bodies stay, on the right, with no card of their own
+    const bar = container.querySelector('.sky-toolbar .sky-timebar')!
+    expect(bar.querySelector('input[type=time]')).not.toBeNull()
+    const place = bar.querySelector<HTMLButtonElement>('.sky-place-button')!
+    expect(place.textContent).toContain('地点')
+    expect(place.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(place)
+    expect(place.getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelector('.sky-place-pop')!.textContent).toContain('上空')
+    // A press elsewhere shuts it
+    fireEvent.pointerDown(document.body)
+    expect(container.querySelector('.sky-place-pop')).toBeNull()
+  })
+
+  it('has 显示 in the drawer on the left, and the bodies on the right with no card', () => {
+    const { container } = setUp()
+    const handle = document.querySelector('#drawer-rail-slot .drawer-handle')!
+    expect(handle.textContent).toBe('显示')
+    const options = document.querySelector('#drawer-page-panel .sky-drawer-options')!
+    expect(options.textContent).toContain('视角')
+    expect(options.querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
     const bodies = container.querySelector('.sky-bodies')!
     expect(bodies.querySelector('.sky-table')).not.toBeNull()
     expect(bodies.classList.contains('card')).toBe(false)
-    cleanup()
-    const again = setUp().container
-    expect(again.querySelector('.sky-settings-card')).toBeNull()
-    fireEvent.click(again.querySelector('.sky-settings-handle')!)
-    expect(again.querySelector('.sky-settings-card input[type=time]')).not.toBeNull()
-  })
-
-  it('folds 显示 open and shut under the moment and the place, and remembers that', () => {
-    const { container } = setUp()
-    const head = container.querySelector<HTMLButtonElement>('.sky-fold-head')!
-    const options = () => container.querySelector<HTMLElement>(`#${CSS.escape(head.getAttribute('aria-controls')!)}`)!
-    expect(head.textContent).toBe('显示')
-    expect(head.getAttribute('aria-expanded')).toBe('false')
-    expect(options().hidden).toBe(true)
-    fireEvent.click(head)
-    expect(head.getAttribute('aria-expanded')).toBe('true')
-    expect(options().hidden).toBe(false)
-    expect(options().textContent).toContain('视角')
-    expect(options().querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
-    cleanup()
-    expect(setUp().container.querySelector('.sky-fold-head')!.getAttribute('aria-expanded')).toBe('true')
   })
 
   it('draws the sky sharp, or smooth without the twinkling, as chosen and remembered', () => {
     localStorage.removeItem('chroniq-sky-quality')
-    const { container } = setUp()
+    setUp()
     const twinkles = () => document.querySelectorAll('.sky-twinkles i').length
-    const button = (label: string) => [...container.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === label)!
+    const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === label)!
     expect(button('清晰').getAttribute('aria-pressed')).toBe('true')
     expect(twinkles()).toBeGreaterThan(0)
     fireEvent.click(button('流畅'))

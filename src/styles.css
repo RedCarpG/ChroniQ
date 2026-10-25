@@ -238,6 +238,19 @@ main { view-transition-name: page; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding-bottom: 10px;
   background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat;
 }
+/* On the 天象 page the top bar folds up (App): a small tab at the top pulls it down, one under it
+   folds it up again. Folded, it takes no room, and the sky's stage grows into it (--topbar-h) */
+.app.bar-folded .topbar { display: none; }
+.app.page-sky .topbar { position: relative; animation: topbar-in 0.25s ease both; }
+@keyframes topbar-in { from { transform: translateY(-60%); opacity: 0; } }
+.topbar-fold {
+  display: flex; align-items: center; justify-content: center; width: 46px; height: 18px; padding: 0 0 4px; border: 1px solid var(--border);
+  border-top: 0; border-radius: 0 0 10px 10px; background: rgb(9 13 26 / 0.75); color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer;
+}
+.topbar-fold:hover { color: var(--accent); }
+.topbar-fold.down { position: fixed; top: 0; left: 50%; z-index: 30; transform: translateX(-50%); }
+.topbar-fold.up { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { .app.page-sky .topbar { animation: none; } }
 .topbar h1 { margin: 0; font-size: 22px; letter-spacing: 3px; display: flex; align-items: center; gap: 8px; }
 .topbar h1 .logo { flex: none; }
 .brand-en { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; color: var(--muted); }
@@ -793,6 +806,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   transition: padding 0.2s, filter 0.2s;
 }
 .drawer-handle:hover, .drawer-handle[aria-expanded='true'] { filter: brightness(1.1); padding-left: 10px; }
+/* Not on the 天象 page, whose drawer holds only its own 显示 */
+.drawer-handle[hidden] { display: none; }
 /* A page's own tab under it (the calendar's 显示): there, but quiet beside 命盘 */
 .drawer-handle.quiet {
   padding: 10px 5px; border: 1px solid var(--border); border-left: 0;
@@ -1387,64 +1402,48 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .app.page-sky > :not(main), .app.page-sky main > :not(.sky-page), .app.page-sky .sky-page > :not(.sky-stage),
 .app.page-sky .sky-stage > :not(.sky-window) { pointer-events: auto; }
 .sky-stage {
-  display: grid; grid-template-columns: clamp(250px, 22vw, 300px) minmax(0, 1fr) clamp(240px, 21vw, 290px);
+  display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 21vw, 290px);
   grid-template-rows: auto minmax(0, 1fr); gap: 10px 16px;
   height: calc(100dvh / var(--ui-zoom) - var(--topbar-h, 52px) - 48px); min-height: 520px;
 }
-.sky-toolbar { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+/* The top bar folded up: the stage takes its room too */
+.app.bar-folded .sky-stage { height: calc(100dvh / var(--ui-zoom) - 48px); }
+.sky-toolbar { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .sky-toolbar .section-title { margin: 0; }
 .sky-controls { margin: 0; }
-.sky-window { grid-column: 2; grid-row: 2; min-height: 0; }
-/* On the left, the settings: the moment and the place, and 显示 folding open under them. Put away, a
-   slim tab, and the sky takes the room */
-.sky-settings { grid-column: 1; grid-row: 1 / span 2; min-height: 0; display: flex; flex-direction: column; align-items: flex-start; }
-.sky-stage.panel-hidden { grid-template-columns: auto minmax(0, 1fr) clamp(240px, 21vw, 290px); }
-.sky-settings [hidden] { display: none !important; }
-.sky-settings-card {
-  align-self: stretch; max-height: 100%; min-height: 0; overflow-y: auto; scrollbar-width: thin;
-  display: flex; flex-direction: column; gap: 12px; padding: 14px; animation: sky-info-in 0.25s ease;
-}
-.sky-settings-card > * { margin: 0; }
-.sky-settings-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sky-settings-title { font-size: 14px; font-weight: 600; }
-.sky-settings-close { width: 28px; height: 28px; margin: 0; padding: 0 0 2px; font-size: 18px; line-height: 1; }
-.sky-settings-handle {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--border); border-radius: 10px;
-  background: rgb(9 13 26 / 0.7); color: var(--muted); font-size: 13px; cursor: pointer; transition: color 0.2s, border-color 0.2s;
-}
-.sky-settings-handle:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
-.sky-settings-handle-text { writing-mode: vertical-rl; letter-spacing: 0.12em; }
-.sky-when-pane { display: flex; flex-direction: column; gap: 8px; }
-/* The moment's and the place's controls, small */
-.sky-settings .sky-controls { gap: 6px; }
-.sky-settings .overlay-bar :is(input, select), .sky-settings .sky-place :is(input, select) { height: 28px; padding: 0 6px; font-size: 13px; }
-.sky-settings .date-parts select { padding-right: 18px; }
-.sky-settings .overlay-bar .date-parts .year-input { width: 62px; }
-.sky-settings :is(.sky-controls, .sky-place) .ghost { height: 28px; margin: 0; padding: 0 10px; font-size: 13px; }
-.sky-settings .sky-place { gap: 6px 8px; }
-.sky-settings .sky-place label { gap: 3px; font-size: 12px; }
-.sky-settings .row-note { font-size: 12px; }
-/* 显示: a heading that folds its options open and shut */
-.sky-fold { padding-top: 8px; border-top: 1px solid var(--border); }
-.sky-fold-head {
-  display: flex; align-items: center; justify-content: space-between; width: 100%; height: 30px; padding: 0 2px; border: 0;
-  background: none; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
-}
+.sky-window { grid-column: 1; grid-row: 2; min-height: 0; }
+/* Above the sky, the moment and the place: small controls, and 地点 opening the place's details */
+.sky-timebar { gap: 6px; }
+.sky-timebar :is(input, select), .sky-place-pop :is(input, select) { height: 28px; padding: 0 6px; font-size: 13px; }
+.sky-timebar .date-parts select { padding-right: 18px; }
+.sky-timebar .date-parts .year-input { width: 62px; }
+.sky-timebar .ghost, .sky-place-pop .ghost { height: 28px; margin: 0; padding: 0 10px; font-size: 13px; }
+.sky-place-menu { position: relative; }
+.sky-place-button { display: inline-flex; align-items: center; gap: 6px; }
+.sky-place-label { color: var(--muted); }
 .sky-fold-mark {
   width: 7px; height: 7px; margin-right: 4px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted);
   transform: translateY(-2px) rotate(45deg); transition: transform 0.2s ease;
 }
-.sky-fold-head[aria-expanded='true'] .sky-fold-mark { transform: translateY(2px) rotate(-135deg); }
-.sky-fold-head:hover .sky-fold-mark { border-color: var(--accent); }
-.sky-fold .sky-options { margin-top: 8px; animation: sky-info-in 0.25s ease; }
-/* Narrow as the panel is: each option's name over its choices, the choices filling the width */
-.sky-settings .sky-options { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-.sky-settings .sky-options .sky-option-title:not(:first-child) { margin-top: 6px; }
-.sky-settings .sky-options .seg { justify-self: stretch; height: 30px; }
-.sky-settings .sky-options .seg button { padding: 0 4px; font-size: 12.5px; }
+.sky-place-button[aria-expanded='true'] .sky-fold-mark { transform: translateY(2px) rotate(-135deg); }
+.sky-place-button:hover .sky-fold-mark { border-color: var(--accent); }
+.sky-place-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: min(330px, 86vw); margin: 0;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; animation: sky-info-in 0.2s ease;
+}
+.app.page-sky .sky-place-pop { background: rgb(9 13 26 / 0.94); }
+.sky-place-pop .sky-place { gap: 6px 8px; }
+.sky-place-pop .sky-place label { gap: 3px; font-size: 12px; }
+.sky-place-pop .row-note { margin: 0; font-size: 12px; }
+/* 显示 in the drawer on the left: each option's name over its choices, the choices filling the width */
+.sky-options.sky-drawer-options { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.sky-drawer-options .sky-option-title:not(:first-child) { margin-top: 8px; }
+.sky-options.sky-drawer-options .seg { justify-self: stretch; height: 30px; }
+.sky-options.sky-drawer-options .seg button { flex: 1 1 auto; padding: 0 4px; font-size: 12.5px; white-space: nowrap; }
+.sky-drawer-options + .row-note { font-size: 12px; }
 /* On the right, always there: the bodies, or what is chosen, on the sky itself, no card behind them */
 .sky-bodies {
-  grid-column: 3; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 10px;
+  grid-column: 2; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 10px;
   padding: 4px 2px; text-shadow: 0 1px 3px rgb(2 3 8 / 0.9), 0 0 8px rgb(2 3 8 / 0.6);
 }
 .sky-bodies > * { margin: 0; }
@@ -1523,13 +1522,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (max-width: 860px), (max-height: 599px) {
   .sky-stage { display: flex; flex-direction: column; height: auto; min-height: 0; }
   .sky-window { width: 100%; aspect-ratio: 1; flex: none; }
-  .sky-settings-card, .sky-bodies { overflow: visible; }
-  .sky-toolbar { order: 0; }
-  .sky-window { order: 1; }
-  .sky-settings { order: 2; align-items: stretch; }
-  .sky-bodies { order: 3; }
-  .sky-settings-handle { flex-direction: row; justify-content: center; }
-  .sky-settings-handle-text { writing-mode: horizontal-tb; }
+  .sky-bodies { overflow: visible; }
 }
 @media print { .sky-backdrop { display: none; } }
 
@@ -1659,7 +1652,6 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(214 226 255 / 0.5) 60%, #fff); opacity: 0; pointer-events: none;
 }
 /* The panel lets more of the sky through */
-.app.page-sky .sky-settings-card { background: linear-gradient(90deg, transparent 8%, var(--edge), transparent 92%) top / 100% 1px no-repeat, rgb(9 13 26 / 0.7); }
 /* Hovering: a name tag, and a readout of where the pointer points with its altitude circle and
    azimuth line; dragging: the time it has been turned to */
 .sky-tip {
@@ -1842,7 +1834,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (prefers-reduced-motion: reduce) {
   .sky-stars, .sky-canvas { transition: none; }
   .sky-twinkles { display: none; }
-  .sky-chosen .pulse, .sky-chosen-info, .sky-settings-card, .sky-fold .sky-options, .sky-detail, .sky-switch-track, .sky-switch-track::after, .sky-chosen circle, .sky-body.on .disc, .sky-star.on .disc, .sky-backdrop,
+  .sky-chosen .pulse, .sky-chosen-info, .sky-place-pop, .sky-detail, .sky-switch-track, .sky-switch-track::after, .sky-chosen circle, .sky-body.on .disc, .sky-star.on .disc, .sky-backdrop,
   .sky-figure.on .line, .sky-figure-name.chosen { animation: none; }
 }
 

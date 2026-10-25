@@ -141,6 +141,9 @@ export function App() {
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])
+  // The top bar, folded up on the 天象 page until pulled down (each visit starts folded)
+  const [barShown, setBarShown] = useState(false)
+  const barFolded = tab === 'sky' && !barShown
   // The top bar's height, for pages laid out to fill the window under it (the calendar)
   const appRef = useRef<HTMLDivElement>(null)
   const topbarRef = useRef<HTMLElement>(null)
@@ -157,7 +160,14 @@ export function App() {
 
   return (
     <SettingsContext.Provider value={settings}>
-      <div className={`app page-${tab}`} ref={appRef}>
+      <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
+        {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): a small tab
+            pulls it down, and one under it folds it up again */}
+        {barFolded && (
+          <button type="button" className="topbar-fold down" aria-label={t('展开标题栏')} title={t('展开标题栏')} onClick={() => setBarShown(true)}>
+            <span aria-hidden="true">⌄</span>
+          </button>
+        )}
         <header className="topbar" ref={topbarRef}>
           <h1>
             <Logo />
@@ -174,6 +184,11 @@ export function App() {
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
+          {tab === 'sky' && (
+            <button type="button" className="topbar-fold up" aria-label={t('收起标题栏')} title={t('收起标题栏')} onClick={() => setBarShown(false)}>
+              <span aria-hidden="true">⌃</span>
+            </button>
+          )}
         </header>
         <main>
           {tab === 'calendar' ? (
@@ -238,7 +253,10 @@ export function App() {
         </footer>
       </div>
       {/* Outside .app: the drawer is fixed to the screen edge and takes the zoom itself */}
-      {tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} />}
+      {/* On the 天象 page the drawer holds only the page's own 显示 */}
+      {tab !== 'moon' && tab !== 'solar' && (
+        <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} charts={tab !== 'sky'} />
+      )}
       <SplashOverlay />
     </SettingsContext.Provider>
   )
