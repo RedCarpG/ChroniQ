@@ -51,7 +51,7 @@ const starColour = (bv: number) =>
           : bv < 1.4
             ? '#ffd6a8'
             : '#ffb98a'
-const starRadius = (mag: number) => Math.max(0.55, 2.3 - 0.4 * mag)
+const starRadius = (mag: number) => Math.max(0.7, 2.8 - 0.45 * mag)
 
 function useViewport() {
   const read = () => ({ w: window.innerWidth, h: window.innerHeight })

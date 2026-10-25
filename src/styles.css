@@ -1194,7 +1194,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .big-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .b3 {
   display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: 12px;
-  background: color-mix(in srgb, currentColor 8%, var(--surface));
+  background: color-mix(in srgb, currentColor 8%, var(--plate, var(--surface)));
 }
 .b3 small { color: var(--muted); }
 .b3-glyph { font-size: 28px; line-height: 1.1; }
@@ -1204,10 +1204,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (max-width: 760px) { .star-layout { grid-template-columns: minmax(0, 1fr); } }
 .star-wheel { width: 100%; max-width: 520px; justify-self: center; height: auto; overflow: visible; }
 .star-wheel .sign-band { stroke: var(--border); stroke-width: 0.6; }
-.star-wheel .band-fire { fill: color-mix(in srgb, var(--fire) 10%, var(--surface)); }
-.star-wheel .band-earth { fill: color-mix(in srgb, var(--wood) 10%, var(--surface)); }
-.star-wheel .band-air { fill: color-mix(in srgb, var(--metal) 12%, var(--surface)); }
-.star-wheel .band-water { fill: color-mix(in srgb, var(--water) 10%, var(--surface)); }
+.star-wheel .band-fire { fill: color-mix(in srgb, var(--fire) 10%, var(--plate, var(--surface))); }
+.star-wheel .band-earth { fill: color-mix(in srgb, var(--wood) 10%, var(--plate, var(--surface))); }
+.star-wheel .band-air { fill: color-mix(in srgb, var(--metal) 12%, var(--plate, var(--surface))); }
+.star-wheel .band-water { fill: color-mix(in srgb, var(--water) 10%, var(--plate, var(--surface))); }
 .star-wheel .sign-glyph { font-size: 15px; fill: currentColor; }
 .star-wheel .tick { stroke: var(--muted); stroke-width: 0.5; opacity: 0.6; }
 .star-wheel .ring { fill: none; stroke: var(--border); stroke-width: 1; }
@@ -1430,23 +1430,23 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
    star charts were drawn: black stars, the 二十八宿 in vermilion. The Sun, Moon and 五星 keep the
    colours of their 五行 in both. */
 :root {
-  --bs-star: #2f2b33; --bs-star-alpha: 0.5; --bs-milky-alpha: 0.45;
+  --bs-star: #2f2b33; --bs-star-alpha: 0.75; --bs-milky-alpha: 0.7;
   --bs-mw-haze: #c9a86a; --bs-mw-body: #b8924f; --bs-mw-core: #9a7536; --bs-mw-grain: #6b5a3e;
-  --bs-figure: rgb(178 58 46 / 0.3); --bs-label: rgb(178 58 46 / 0.55); --bs-sun: #c9821e;
+  --bs-figure: rgb(178 58 46 / 0.5); --bs-label: rgb(178 58 46 / 0.75); --bs-sun: #c9821e;
   --bs-moon-shade: rgb(0 0 0 / 0.08); --bs-daylight: rgb(255 196 110 / 0.16);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bs-star: initial; --bs-star-alpha: 0.9; --bs-milky-alpha: 0.6;
+    --bs-star: initial; --bs-star-alpha: 1; --bs-milky-alpha: 0.9;
     --bs-mw-haze: #8496d8; --bs-mw-body: #b9c5f2; --bs-mw-core: #f1eedf; --bs-mw-grain: #d6defc;
-    --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0.42); --bs-sun: #ffcf4a;
+    --bs-figure: rgb(216 191 140 / 0.38); --bs-label: rgb(216 191 140 / 0.62); --bs-sun: #ffcf4a;
     --bs-moon-shade: rgb(255 255 255 / 0.1); --bs-daylight: rgb(120 160 255 / 0.1);
   }
 }
 :root[data-theme='dark'] {
-  --bs-star: initial; --bs-star-alpha: 0.9; --bs-milky-alpha: 0.6;
+  --bs-star: initial; --bs-star-alpha: 1; --bs-milky-alpha: 0.9;
   --bs-mw-haze: #8496d8; --bs-mw-body: #b9c5f2; --bs-mw-core: #f1eedf; --bs-mw-grain: #d6defc;
-  --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0.42); --bs-sun: #ffcf4a;
+  --bs-figure: rgb(216 191 140 / 0.38); --bs-label: rgb(216 191 140 / 0.62); --bs-sun: #ffcf4a;
   --bs-moon-shade: rgb(255 255 255 / 0.1); --bs-daylight: rgb(120 160 255 / 0.1);
 }
 .birth-sky {
@@ -1460,7 +1460,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   background: radial-gradient(circle at var(--sun-x) var(--sun-y), var(--bs-daylight), transparent 75%);
 }
 .birth-sky.twilight::before { opacity: 0.5; }
-.birth-sky.day canvas { opacity: 0.65; }
+.birth-sky.day canvas { opacity: 0.85; }
 /* The Sun, Moon and 五星: a point each, centred on its place, in the colour of its 五行 */
 .bs-body { position: absolute; width: 0; height: 0; }
 .bs-body > * { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
@@ -1497,8 +1497,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media print { .birth-sky { display: none; } }
 /* On a phone the chart covers nearly the whole sky: no names showing through it, only the lights */
 @media (max-width: 640px) { .bs-body b { display: none; } }
-/* The chart reads over the sky: the 八字 and 星盘 pages' cards a little more solid than elsewhere */
-.app:is(.page-bazi, .page-star) { --card: color-mix(in srgb, var(--surface) 92%, transparent); }
+/* The chart over the sky: the 八字 and 星盘 pages' cards are mostly see-through, so the sky of the
+   birth shows behind the chart */
+.app:is(.page-bazi, .page-star) {
+  --card: color-mix(in srgb, var(--surface) 42%, transparent);
+  /* Tinted plates inside them (三巨头, the zodiac band) as see-through */
+  --plate: color-mix(in srgb, var(--surface) 30%, transparent);
+}
 
 /* 五星 under the 五行 bars, one under each */
 .five-stars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 8px; }
