@@ -824,7 +824,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   text-shadow: 0 1px 3px rgb(2 3 8 / 0.9), 0 0 8px rgb(2 3 8 / 0.6);
 }
 .drawer.bare.open .drawer-panel { box-shadow: none; }
-.drawer.bare .drawer-panel :is(.seg, .sky-switch-track) { background: rgb(9 13 26 / 0.45); }
+.drawer.bare .drawer-panel .sky-switch-track { background: rgb(9 13 26 / 0.45); }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; }
 .drawer-head h3 { margin: 0; font-size: 16px; }
 /* The 命盘 tab plus any page tabs below it, a little below the middle of the left edge. */
@@ -2038,3 +2038,136 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .moon-day small { color: var(--muted); font-size: 10px; }
 .moon-day:hover { background: var(--surface-2); }
 .moon-day.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- 静: quiet controls, the footer's way, wherever they fit ----------
+   Words rather than boxes and pills: spaced letters, muted until hovered. A fine gold line, fading at
+   its ends, draws in under what is hovered and stays under what is chosen; what is chosen (or switched
+   on) also has a faint gold wash behind it, solid in the middle and clear at the sides, so it is never
+   taken for something only hovered. Small gold stars set words apart. These come last, over the
+   boxes and fills drawn for the same controls further up. */
+:root {
+  --quiet-line: linear-gradient(90deg, transparent, var(--accent), transparent);
+  --quiet-wash: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent) 25%, color-mix(in srgb, var(--accent) 16%, transparent) 75%, transparent);
+}
+/* The line under a word: drawn in on hover, kept while chosen */
+:is(.ghost, .seg button, .page-menu-btn, .cal-nav button)::after {
+  content: ''; position: absolute; left: 14%; right: 14%; bottom: 4px; height: 1px; pointer-events: none;
+  background: var(--quiet-line); transform: scaleX(0); transition: transform 0.3s ease;
+}
+:is(.ghost, .seg button, .page-menu-btn, .cal-nav button):is(:hover, :focus-visible, [aria-expanded='true'], .on)::after { transform: none; }
+
+/* Buttons: words */
+.ghost {
+  position: relative; border: 0; border-radius: 0; background: none; color: var(--muted); letter-spacing: 0.06em;
+  transition: color 0.2s, background-color 0.2s;
+}
+.ghost:hover, .ghost:focus-visible, .ghost[aria-expanded='true'], .ghost.on { border: 0; background: none; color: var(--text); outline: none; }
+.ghost.on { color: var(--accent); }
+.ghost:disabled { opacity: 0.45; cursor: default; }
+.ghost:disabled::after { transform: scaleX(0); }
+/* Switched on: gold, its line kept, and the wash behind it */
+.ghost.toggle.on, .ghost.toggle.on:hover { border: 0; color: var(--accent); background: var(--quiet-wash); filter: none; }
+
+/* Choices side by side: words parted by hairlines; the chosen one gold, lined and washed */
+.seg { border: 0; border-radius: 0; overflow: visible; }
+.seg button { position: relative; color: var(--muted); letter-spacing: 0.06em; transition: color 0.2s; }
+.seg button + button::before {
+  content: ''; position: absolute; left: 0; top: 30%; bottom: 30%; width: 1px; pointer-events: none;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--quiet-wash); color: var(--accent); font-weight: 600; }
+
+/* The main action: gold words between two fine gold lines, on the wash */
+.primary {
+  position: relative; border: 0; border-radius: 0; background: var(--quiet-wash); color: var(--accent);
+  letter-spacing: 0.12em; transition: color 0.2s, background-color 0.2s;
+}
+.primary::before, .primary::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: var(--quiet-line); pointer-events: none; }
+.primary::before { top: 0; }
+.primary::after { bottom: 0; }
+.primary:hover { filter: none; color: color-mix(in srgb, var(--accent) 75%, var(--text)); }
+
+/* The top bar: the page's name and the icons, without their pills and circles */
+.page-menu-btn { position: relative; border: 0; border-radius: 0; background: none; letter-spacing: 0.1em; }
+.page-menu-btn:hover, .page-menu-btn[aria-expanded='true'] { border: 0; background: none; color: var(--accent); }
+.icon-btn { border: 0; border-radius: 0; background: none; color: var(--muted); transition: color 0.2s; }
+.icon-btn:hover, .icon-btn[aria-expanded='true'] { background: none; color: var(--accent); }
+
+/* The calendar's year and month, and its arrows: words on a hairline, not pills and boxes */
+.cal-pickers select {
+  border: 0; border-radius: 0; background-color: transparent; padding-left: 4px;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--border) 80%, transparent); transition: box-shadow 0.2s;
+}
+.cal-pickers select:hover { background-color: transparent; box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 60%, transparent); }
+.cal-nav button { position: relative; border: 0; border-radius: 0; background: none; color: var(--muted); transition: color 0.2s; }
+.cal-nav button:hover { background: none; color: var(--accent); }
+
+/* Fields: a hairline under them rather than a box, gold while in use */
+:is(.bazi-form, .overlay-bar, .moon-place) :is(input:not([type='checkbox'], [type='radio']), select), .saved-form input {
+  border: 0; border-radius: 0; background-color: transparent;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--border) 85%, transparent); transition: box-shadow 0.2s;
+}
+:is(.bazi-form, .overlay-bar, .moon-place) :is(input:not([type='checkbox'], [type='radio']), select):hover, .saved-form input:hover {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 55%, transparent);
+}
+:is(.bazi-form, .overlay-bar, .moon-place) :is(input:not([type='checkbox'], [type='radio']), select):focus, .saved-form input:focus {
+  outline: none; box-shadow: inset 0 -1px 0 var(--accent);
+}
+
+/* Labels: the day's 宜 / 忌 and the like in their colours, over a fine line, not in filled blocks */
+.tag-title { position: relative; background: none; border-radius: 0; color: var(--text); font-weight: 700; letter-spacing: 0.04em; }
+.tag-title::after {
+  content: ''; position: absolute; left: 12%; right: 12%; bottom: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, currentColor, transparent); opacity: 0.7;
+}
+.tag-title.good { background: none; color: var(--good); }
+.tag-title.bad { background: none; color: var(--bad); }
+.tag-title.neutral { background: none; color: var(--muted); }
+/* Tags: words after a small star, not pills */
+.tag, .tag.region, .tag.region.observance { padding: 2px 0; border-radius: 0; background: none; letter-spacing: 0.04em; }
+.tag::before { content: '✦'; margin-right: 4px; font-size: 8px; vertical-align: 2px; opacity: 0.8; }
+.tags { gap: 4px 12px; }
+
+/* The left drawer's tabs: upright words on a fine line down the edge, 命盘 in gold, the page's own muted */
+.drawer-handle, .drawer-handle.quiet {
+  position: relative; border: 0; border-radius: 0; box-shadow: none;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface) 80%, transparent) 20%, color-mix(in srgb, var(--surface) 80%, transparent) 80%, transparent);
+}
+.drawer-handle { color: var(--accent); letter-spacing: 0.1em; }
+.drawer-handle.quiet { color: var(--muted); }
+.drawer-handle::after {
+  content: ''; position: absolute; top: 6%; bottom: 6%; right: 0; width: 1px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+}
+.drawer-handle.quiet::after { background: linear-gradient(180deg, transparent, var(--border), transparent); }
+.drawer-handle:hover, .drawer-handle[aria-expanded='true'] { filter: none; color: color-mix(in srgb, var(--accent) 75%, var(--text)); }
+.drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { color: var(--accent); }
+.drawer-handle.quiet:is(:hover, [aria-expanded='true'])::after { background: linear-gradient(180deg, transparent, var(--accent), transparent); }
+.drawer-count, .drawer-handle.quiet .drawer-count { min-width: 0; height: auto; padding: 0; border-radius: 0; background: none; color: inherit; font-size: 11px; line-height: 1.2; }
+
+/* The small tabs that bring the top bar and the footer out: a glyph over a fine line, no box */
+.topbar-fold, .footer-tab, .footer-close { border: 0; border-radius: 0; background: none; }
+.topbar-fold::before, .footer-tab::before, .footer-close::before {
+  content: ''; position: absolute; left: 0; right: 0; height: 1px; pointer-events: none; background: var(--quiet-line); opacity: 0.6;
+}
+.topbar-fold::before { top: 0; }
+.footer-tab::before, .footer-close::before { bottom: 0; }
+
+/* The jump links down the left edge (八字 / 紫微 / 星盘): no box, a fine line down the edge; the section
+   in view marked by a soft wash and a short gold line at the edge, not a filled block */
+.section-nav {
+  position: relative; border: 0; border-radius: 0; box-shadow: none;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface) 80%, transparent) 15%, color-mix(in srgb, var(--surface) 80%, transparent) 85%, transparent);
+}
+.section-nav::after {
+  content: ''; position: absolute; top: 4%; bottom: 4%; right: 0; width: 1px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--border), transparent);
+}
+.section-nav button { border-radius: 0; letter-spacing: 0.06em; }
+.section-nav-end:hover { background: none !important; color: var(--accent); }
+.section-nav-thumb { border-radius: 0; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent), transparent); }
+.section-nav-thumb::after {
+  content: ''; position: absolute; top: 15%; bottom: 15%; right: -4px; width: 1px; z-index: 1;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+}
