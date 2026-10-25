@@ -47,6 +47,15 @@ describe('SkyView as the backdrop', () => {
     expect(container.contains(map)).toBe(false)
     expect(container.querySelector('.sky-window')).not.toBeNull()
   })
+
+  it('keeps the sky itself (its colour and the Milky Way) in a layer of its own under the map', () => {
+    const { map } = setUp()
+    const back = map.previousElementSibling!
+    expect(back.classList.contains('sky-map-back')).toBe(true)
+    expect(back.querySelector('.sky-disc')).not.toBeNull()
+    expect(back.querySelector('.sky-milkyway')).not.toBeNull()
+    expect(map.querySelector('.sky-milkyway')).toBeNull()
+  })
 })
 
 describe('SkyView choosing a body or star', () => {
@@ -76,7 +85,7 @@ describe('SkyView choosing a body or star', () => {
     fireEvent.click(sirius())
     expect(info()).toContain('天狼星')
     expect(ringed()).toBe(true)
-    fireEvent.click(map.querySelector('.sky-disc')!)
+    fireEvent.click(map)
     expect(info()).toBeNull()
 
     fireEvent.click(sirius())
@@ -253,7 +262,7 @@ describe('SkyView dragged through time', () => {
     expect(time()).toBe('05:57')
     expect(document.querySelector('.sky-drag-chip')!.textContent).toContain('+3 小时')
     fireEvent.pointerUp(map, { pointerId: 1, pointerType: 'touch', clientX: 270, clientY: 200 })
-    fireEvent.click(map.querySelector('.sky-disc')!)
+    fireEvent.click(map)
     flush()
     flush()
     expect(info()).toContain('木星')
