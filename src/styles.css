@@ -820,7 +820,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .drawer.open .drawer-panel { box-shadow: 8px 0 32px rgb(0 0 0 / 0.18); }
 /* The 天象 page's drawer (only its 显示): see-through, on the sky, a shade at the edge and under the text */
 .drawer.bare .drawer-panel {
-  background: linear-gradient(90deg, rgb(2 3 8 / 0.55), rgb(2 3 8 / 0.12) 85%, transparent); border-right: 0;
+  background: linear-gradient(90deg, rgb(9 13 26 / 0.74), rgb(9 13 26 / 0.52) 80%, rgb(9 13 26 / 0.28)); border-right: 0;
+  backdrop-filter: blur(3px);
   text-shadow: 0 1px 3px rgb(2 3 8 / 0.9), 0 0 8px rgb(2 3 8 / 0.6);
 }
 .drawer.bare.open .drawer-panel { box-shadow: none; }
@@ -2184,7 +2185,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .drawer-handle:not(.quiet)::after { display: none; }
-.drawer-handle:not(.quiet):is(:hover, [aria-expanded='true']) { background: var(--accent-soft); border-color: var(--accent); }
+.drawer-handle:not(.quiet):hover { background: var(--accent-soft); border-color: var(--accent); }
+/* Open: the tab more solid, the panel it opens more see-through (blurring what is behind it) */
+.drawer-handle:not(.quiet)[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); border-color: var(--accent); }
+.drawer:not(.bare) .drawer-panel { background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(10px); }
 
 /* ---------- 题字: the titles in a serif ----------
    Cormorant Garamond for the Latin letters and figures (ChroniQ, the dates; its figures are old-style),
@@ -2203,7 +2207,8 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 
 /* 天象: a few words on what is chosen, under its details, set apart by a fine line */
 .sky-intro {
-  position: relative; margin: 4px 0 0; padding-top: 10px; font-size: 13px; line-height: 1.7; color: var(--text);
+  position: relative; margin: 4px 0 0; padding-top: 10px; font-size: 12px; font-weight: 300; line-height: 1.75;
+  letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 85%, transparent);
 }
 .sky-intro::before {
   content: ''; position: absolute; top: 0; left: 0; right: 30%; height: 1px;
