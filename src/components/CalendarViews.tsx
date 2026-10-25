@@ -1,6 +1,8 @@
 import type { SolarDay } from 'tyme4ts'
 import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type DayCell, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
 import type { ChartDay } from '../lib/chartDays'
+import { moonOf, type MoonDay } from '../lib/moon'
+import { MoonGlyph } from './MoonGlyph'
 import { offTags, type RegionDay, type TaggedRegionDay } from '../lib/regionHolidays'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
@@ -27,6 +29,7 @@ export function WeekView({
   selected,
   onSelect,
   showGanzhi,
+  moonText,
   regionOf,
   chartDaysOf,
   chartText,
@@ -35,6 +38,8 @@ export function WeekView({
   selected: SolarDay
   onSelect: (day: SolarDay) => void
   showGanzhi: boolean
+  /** With 月相 shown: a day's Moon in words */
+  moonText?: (m: MoonDay) => string
   /** The chosen countries' days on a date */
   regionOf: (day: SolarDay) => TaggedRegionDay[]
   /** The saved charts' dates on a day, and their wording */
@@ -62,9 +67,11 @@ export function WeekView({
           ]
             .filter(Boolean)
             .join(' ')}
+          data-sound="shang"
           onClick={() => onSelect(d.solar)}
         >
           <span className="wd-head">
+            {moonText && <MoonGlyph moon={moonOf(d.solar)} title={moonText(moonOf(d.solar))} />}
             <span className="wd-name">
               {en ? WEEKDAYS_EN[d.solar.getWeek().getIndex()] : `周${WEEKDAYS[d.solar.getWeek().getIndex()]}`}
             </span>
@@ -166,6 +173,7 @@ export function YearView({
                   ]
                     .filter(Boolean)
                     .join(' ')}
+                  data-sound="shang"
                   onClick={() => onSelect(d.solar)}
                 >
                   {d.day}

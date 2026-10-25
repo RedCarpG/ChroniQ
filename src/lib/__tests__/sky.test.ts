@@ -169,7 +169,10 @@ describe('the Milky Way', () => {
     // (HIP 90185, RA 276.0°, Dec −34.4°) lies about 10° from the centre, so points near it are near it
     const sky = skyAt(at, ...BEIJING, true)
     const kaus = [...sky.stars, ...skyAt(at, ...BEIJING).stars].find((s) => s.hip === 90185)!
-    const centre = grain.filter((p) => Math.abs(p.l) < 2 || Math.abs(p.l - 360) < 2)
+    // The grain comes as flat arrays in the model's order: pair them with the model's galactic l, b
+    const centre = milkyWayModel()
+      .grain.map((p, i) => ({ l: p.l, b: p.b, az: grain.az[i], alt: grain.alt[i] }))
+      .filter((p) => Math.abs(p.l) < 2 || Math.abs(p.l - 360) < 2)
     const sep = (a: { az: number; alt: number }, b: { az: number; alt: number }) => {
       const r = Math.PI / 180
       return Math.acos(Math.sin(a.alt * r) * Math.sin(b.alt * r) + Math.cos(a.alt * r) * Math.cos(b.alt * r) * Math.cos((a.az - b.az) * r)) / r

@@ -259,6 +259,9 @@ export function startStarfield(): () => void {
   let shown: Box | null = null
   let raf = 0
   let last = 0
+  /** The far canvas's drift against the pointer: asked for by each move, written once a frame */
+  let drift = ''
+  let drifted = ''
 
   /** Draws whatever of the bright stars and lines falls in the box (all of them with none) */
   function drawNear(box: Box | null) {
@@ -351,6 +354,7 @@ export function startStarfield(): () => void {
 
   function frame(now: number) {
     raf = 0
+    if (drift !== drifted) far.style.transform = drifted = drift
     const dt = last ? Math.min(64, now - last) : 16.7
     last = now
     const k = reduceMotion.matches ? 1 : 1 - Math.pow(0.8, dt / 16.7)
@@ -389,7 +393,7 @@ export function startStarfield(): () => void {
     if (e.pointerType !== 'mouse' || root.classList.contains('aside')) return
     pointer = { x: e.clientX, y: e.clientY }
     if (!reduceMotion.matches) {
-      far.style.transform = `translate(${(-(e.clientX / w - 0.5) * 2 * DRIFT).toFixed(1)}px, ${(-(e.clientY / h - 0.5) * 2 * DRIFT).toFixed(1)}px)`
+      drift = `translate(${(-(e.clientX / w - 0.5) * 2 * DRIFT).toFixed(1)}px, ${(-(e.clientY / h - 0.5) * 2 * DRIFT).toFixed(1)}px)`
     }
     kick()
   }

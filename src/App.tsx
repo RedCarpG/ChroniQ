@@ -132,10 +132,12 @@ export function App() {
     if (settings.sound === 'on' && soundWas.current === 'off') play('on')
     soundWas.current = settings.sound
   }, [settings.sound])
-  // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky
+  // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky,
+  // and on the 八字 page for the sky of the moment of birth (BirthSky)
+  const realSky = tab === 'sky' || (tab === 'bazi' && settings.birthSky === 'show')
   useEffect(() => {
-    document.querySelector('.starfield')?.classList.toggle('aside', tab === 'sky')
-  }, [tab])
+    document.querySelector('.starfield')?.classList.toggle('aside', realSky)
+  }, [realSky])
   // The top bar's height, for pages laid out to fill the window under it (the calendar)
   const appRef = useRef<HTMLDivElement>(null)
   const topbarRef = useRef<HTMLElement>(null)
@@ -173,7 +175,7 @@ export function App() {
         <main>
           {tab === 'calendar' ? (
             <CalendarView
-              onDayGanzhi={(show) => changeSettings({ ...settings, dayGanzhi: show ? 'show' : 'hide' })}
+              onShow={(key, show) => changeSettings({ ...settings, [key]: show ? 'show' : 'hide' })}
               onWeekStart={(weekStart) => changeSettings({ ...settings, weekStart })}
               onPickBazi={(day) => {
                 setBaziInput((prev) => ({ ...prev, year: day.getYear(), month: day.getMonth(), day: day.getDay() }))

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { SectionNav } from './SectionNav'
@@ -22,7 +22,14 @@ import { SchoolMark, SchoolSettingsPanel } from './Schools'
 import { HighlightScope, useHighlight, useTrigger } from './highlight'
 import { ConceptTip } from './GlossaryTips'
 import { PillarTable } from './PillarTable'
+import { DEFAULT_PLACE } from '../lib/place'
+import { toUtc } from '../lib/timeZone'
 import { useSettings, useT, useTerm } from '../settingsContext'
+
+// 生辰星空 and the 五星: they bring the star catalogue and astronomy-engine, so they load apart
+const loadBirthSky = () => import('./BirthSky')
+const BirthSky = lazy(() => loadBirthSky().then((m) => ({ default: m.BirthSky })))
+const FiveStars = lazy(() => loadBirthSky().then((m) => ({ default: m.FiveStars })))
 
 interface Props {
   input: BaziInput
@@ -35,7 +42,15 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
   const chart = useMemo(() => buildBazi(input, schools), [input, schools])
   const term = useTerm()
   const t = useT()
-  const { language } = useSettings()
+  const { language, birthSky } = useSettings()
+  // The moment of birth on the clock at the birthplace (the sky as it was; 真太阳时 is for the 八字)
+  const moment = useMemo(() => {
+    const place = input.place ?? DEFAULT_PLACE
+    const { year, month, day, hour, minute } = input
+    return { utc: toUtc({ year, month, day, hour, minute }, place.timeZone).date, latitude: place.latitude, longitude: place.longitude }
+  }, [input])
+  // A 五星 (or 日, 月) pointed at in its row, picked out in the sky behind
+  const [skyFocus, setSkyFocus] = useState<string | null>(null)
   const unpicked = t('未选 · 不入盘')
   const ageText = (age: number) => t('{age}岁', { age })
   const thisYear = new Date().getFullYear()
@@ -166,6 +181,11 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
 
   return (
     <div className="bazi-layout">
+      {birthSky === 'show' && (
+        <Suspense fallback={null}>
+          <BirthSky moment={moment} focus={skyFocus} />
+        </Suspense>
+      )}
       <BirthForm
         input={input}
         onChange={update}
@@ -221,6 +241,9 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               </div>
             ))}
           </div>
+          <Suspense fallback={null}>
+            <FiveStars moment={moment} focus={skyFocus} onFocus={setSkyFocus} />
+          </Suspense>
 
           <Relations title={term('原局刑冲合会')} items={chart.relations} schools={schools} />
         </HighlightScope>
@@ -290,7 +313,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               })}
               <SchoolMark school="childLimit" settings={schools} />
             </p>
-            <div className="fortune-row">
+            <div className="fortune-row" data-sounds="gong">
               {chart.decades.map((d, i) => (
                 <button
                   key={d.startYear}
@@ -314,7 +337,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.year}
             onToggle={() => toggle('year')}
           >
-            <div className="fortune-row">
+            <div className="fortune-row" data-sounds="shang">
               {decade.years.map((y) => (
                 <button
                   key={y.year}
@@ -337,7 +360,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.month}
             onToggle={() => toggle('month')}
           >
-            <div className="fortune-row months">
+            <div className="fortune-row months" data-sounds="jue">
               {months.map((m) => (
                 <button
                   key={m.index}
@@ -359,7 +382,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             open={open.day}
             onToggle={() => toggle('day')}
           >
-            <div className="fortune-row days">
+            <div className="fortune-row days" data-sounds="zhi">
               {days.map((d) => (
                 <button
                   key={d.key}

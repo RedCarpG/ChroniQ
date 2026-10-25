@@ -6,6 +6,7 @@
 import * as A from 'astronomy-engine'
 import { BODY_INFO, type BodyKey } from './astrology'
 import { BRIGHT_STARS, STAR_FIELDS } from './brightStars'
+import { MANSIONS, mansionWidth } from './mansions'
 
 export interface SkyBody {
   key: BodyKey
@@ -19,6 +20,8 @@ export interface SkyBody {
   mag: number
   /** Lit fraction of the disc, 0–1 (the Moon's phase) */
   lit: number
+  /** Right ascension, degrees, J2000 (which 二十八宿 it is in) */
+  ra: number
 }
 
 export interface SkyStar {
@@ -84,6 +87,65 @@ export const STAR_NAMES: Record<number, string> = {
   67301: '摇光',
 }
 
+/* ---------- Turning J2000 directions into the local sky, fast ---------- */
+
+/** A J2000 RA / Dec (degrees) as a unit vector, as astronomy-engine's VectorFromSphere makes it */
+function unitVector(ra: number, dec: number, out: Float64Array, at: number) {
+  const radlat = dec * A.DEG2RAD
+  const radlon = ra * A.DEG2RAD
+  const rcoslat = Math.cos(radlat)
+  out[at] = rcoslat * Math.cos(radlon)
+  out[at + 1] = rcoslat * Math.sin(radlon)
+  out[at + 2] = Math.sin(radlat)
+}
+
+/** The bright stars' unit vectors, worked out once: three numbers a star, in catalogue order */
+let starVectors: Float64Array | null = null
+function brightStarVectors() {
+  if (starVectors) return starVectors
+  const count = BRIGHT_STARS.length / STAR_FIELDS
+  starVectors = new Float64Array(count * 3)
+  for (let s = 0; s < count; s++) unitVector(BRIGHT_STARS[s * STAR_FIELDS + 1], BRIGHT_STARS[s * STAR_FIELDS + 2], starVectors, s * 3)
+  return starVectors
+}
+
+/** A figure line's points ([RA, Dec, …]) as unit vectors, worked out once a line */
+const lineVectors = new WeakMap<readonly number[], Float64Array>()
+function vectorsOf(line: readonly number[]) {
+  let v = lineVectors.get(line)
+  if (!v) {
+    v = new Float64Array((line.length / 2) * 3)
+    for (let i = 0; i < line.length; i += 2) unitVector(line[i], line[i + 1], v, (i / 2) * 3)
+    lineVectors.set(line, v)
+  }
+  return v
+}
+
+/**
+ * The J2000 → horizon rotation for a moment and place. The map's layers (stars, figures, 二十八宿,
+ * Milky Way) all ask for the same one when the sky is redrawn, so the last one is kept.
+ */
+let lastRotation: { key: string; time: A.AstroTime; rot: number[][] } | null = null
+function rotationFor(utc: Date, latitude: number, longitude: number) {
+  const key = `${utc.getTime()} ${latitude} ${longitude}`
+  if (lastRotation?.key !== key) {
+    const time = A.MakeTime(utc)
+    lastRotation = { key, time, rot: A.Rotation_EQJ_HOR(time, new A.Observer(latitude, longitude, 0)).rot }
+  }
+  return lastRotation
+}
+
+/** A J2000 unit vector → azimuth / altitude, refraction included (RotateVector + HorizonFromVector) */
+function toHorizonOf({ time, rot: r }: { time: A.AstroTime; rot: number[][] }) {
+  return (x: number, y: number, z: number) => {
+    const hor = A.HorizonFromVector(
+      new A.Vector(r[0][0] * x + r[1][0] * y + r[2][0] * z, r[0][1] * x + r[1][1] * y + r[2][1] * z, r[0][2] * x + r[1][2] * y + r[2][2] * z, time),
+      'normal',
+    )
+    return { az: hor.lon, alt: hor.lat }
+  }
+}
+
 /** below: list the stars under the horizon instead (the half of the sky beneath one's feet) */
 export function skyAt(utc: Date, latitude: number, longitude: number, below = false): Sky {
   const time = A.MakeTime(utc)
@@ -100,17 +162,18 @@ export function skyAt(utc: Date, latitude: number, longitude: number, below = fa
       alt: hor.altitude,
       mag: illum.mag,
       lit: illum.phase_fraction,
+      ra: A.Equator(body, time, observer, false, true).ra * 15,
     }
   })
 
-  const toHorizon = A.Rotation_EQJ_HOR(time, observer)
+  const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
+  const vectors = brightStarVectors()
   const stars: SkyStar[] = []
-  for (let i = 0; i < BRIGHT_STARS.length; i += STAR_FIELDS) {
-    const [hip, ra, dec, mag, bv] = BRIGHT_STARS.slice(i, i + STAR_FIELDS)
-    const j2000 = A.VectorFromSphere(new A.Spherical(dec, ra, 1), time)
-    const hor = A.HorizonFromVector(A.RotateVector(toHorizon, j2000), 'normal')
-    if (hor.lat < 0 !== below) continue
-    stars.push({ hip, name: STAR_NAMES[hip], az: hor.lon, alt: hor.lat, mag, bv })
+  for (let i = 0, s = 0; i < BRIGHT_STARS.length; i += STAR_FIELDS, s += 3) {
+    const { az, alt } = toHorizon(vectors[s], vectors[s + 1], vectors[s + 2])
+    if (alt < 0 !== below) continue
+    const hip = BRIGHT_STARS[i]
+    stars.push({ hip, name: STAR_NAMES[hip], az, alt, mag: BRIGHT_STARS[i + 3], bv: BRIGHT_STARS[i + 4] })
   }
 
   const sunAlt = bodies[0].alt
@@ -148,11 +211,11 @@ export interface ConstellationView {
 
 /** J2000 RA / Dec (degrees) → azimuth / altitude at a moment and place, refraction included */
 function horizonOf(utc: Date, latitude: number, longitude: number) {
-  const time = A.MakeTime(utc)
-  const rotation = A.Rotation_EQJ_HOR(time, new A.Observer(latitude, longitude, 0))
+  const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
+  const v = new Float64Array(3)
   return (ra: number, dec: number) => {
-    const hor = A.HorizonFromVector(A.RotateVector(rotation, A.VectorFromSphere(new A.Spherical(dec, ra, 1), time)), 'normal')
-    return { az: hor.lon, alt: hor.lat }
+    unitVector(ra, dec, v, 0)
+    return toHorizon(v[0], v[1], v[2])
   }
 }
 
@@ -165,18 +228,40 @@ export function constellationsAt(
   /** keep the figures under the horizon instead */
   below = false,
 ): ConstellationView[] {
-  const toHorizon = horizonOf(utc, latitude, longitude)
+  const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
+  const labelOf = horizonOf(utc, latitude, longitude)
   const out: ConstellationView[] = []
   for (const c of set) {
     const lines = c.lines.map((line) => {
+      const v = vectorsOf(line)
       const pts: { az: number; alt: number }[] = []
-      for (let i = 0; i < line.length; i += 2) pts.push(toHorizon(line[i], line[i + 1]))
+      for (let i = 0; i < v.length; i += 3) pts.push(toHorizon(v[i], v[i + 1], v[i + 2]))
       return pts
     })
     if (!lines.some((l) => l.some((p) => (below ? p.alt < 0 : p.alt > 0)))) continue
-    out.push({ id: c.id, name: c.name, trad: c.trad, en: c.en, rank: c.rank, label: toHorizon(...c.label), lines })
+    out.push({ id: c.id, name: c.name, trad: c.trad, en: c.en, rank: c.rank, label: labelOf(...c.label), lines })
   }
   return out
+}
+
+/**
+ * 二十八宿 on the sky at a moment and place: each mansion's boundary, the hour circle through its
+ * 距星, drawn as on old Chinese star maps from the circle of always-visible stars (内规, declination
+ * 90° − latitude) to its mirror in the south (外规); the celestial equator they divide; and the
+ * middle of each mansion on the equator, where its name goes.
+ */
+export function mansionsAt(utc: Date, latitude: number, longitude: number) {
+  const toHorizon = horizonOf(utc, latitude, longitude)
+  const reach = Math.max(30, 90 - Math.abs(latitude))
+  const bounds = MANSIONS.map((x) => {
+    const pts: { az: number; alt: number }[] = []
+    for (let dec = -reach; dec <= reach + 0.01; dec += 2.5) pts.push(toHorizon(x.ra, dec))
+    return pts
+  })
+  const equator: { az: number; alt: number }[] = []
+  for (let ra = 0; ra <= 360; ra += 2.5) equator.push(toHorizon(ra, 0))
+  const middles = MANSIONS.map((x, i) => toHorizon(x.ra + mansionWidth(i) / 2, 0))
+  return { bounds, equator, middles }
 }
 
 /**
@@ -378,7 +463,7 @@ export function milkyWayModel() {
  * without refraction, which a soft glow does not need).
  */
 export function milkyWayAt(utc: Date, latitude: number, longitude: number) {
-  const r = A.Rotation_EQJ_HOR(A.MakeTime(utc), new A.Observer(latitude, longitude, 0)).rot
+  const r = rotationFor(utc, latitude, longitude).rot
   const place = <T extends MilkyWayPoint>({ v: [x, y, z], ...rest }: T) => {
     const hx = r[0][0] * x + r[1][0] * y + r[2][0] * z
     const hy = r[0][1] * x + r[1][1] * y + r[2][1] * z
@@ -386,14 +471,43 @@ export function milkyWayAt(utc: Date, latitude: number, longitude: number) {
     return { ...rest, az: (360 - ((Math.atan2(hy, hx) / RAD + 360) % 360)) % 360, alt: Math.atan2(hz, Math.hypot(hx, hy)) / RAD }
   }
   const m = milkyWayModel()
+  // The grain is some 1,700 points: worked through as plain numbers rather than an object each
+  const g = grainVectors()
+  const count = m.grain.length
+  const az = new Float64Array(count)
+  const alt = new Float64Array(count)
+  for (let i = 0, j = 0; i < count; i++, j += 3) {
+    const x = g[j]
+    const y = g[j + 1]
+    const z = g[j + 2]
+    const hx = r[0][0] * x + r[1][0] * y + r[2][0] * z
+    const hy = r[0][1] * x + r[1][1] * y + r[2][1] * z
+    const hz = r[0][2] * x + r[1][2] * y + r[2][2] * z
+    az[i] = (360 - ((Math.atan2(hy, hx) / RAD + 360) % 360)) % 360
+    alt[i] = Math.atan2(hz, Math.sqrt(hx * hx + hy * hy)) / RAD
+  }
   return {
-    grain: m.grain.map(place),
+    grain: { az, alt, weight: grainWeights() },
     glow: m.glow.map(place),
     dust: m.dust.map(place),
     spine: m.spine.map(place),
     rift: m.rift.map(place),
   }
 }
+
+/** The grain's unit vectors and brightness levels, laid out flat once */
+let grainFlat: { v: Float64Array; weight: Uint8Array } | null = null
+function grainLayout() {
+  if (!grainFlat) {
+    const grain = milkyWayModel().grain
+    const v = new Float64Array(grain.length * 3)
+    grain.forEach((p, i) => v.set(p.v, i * 3))
+    grainFlat = { v, weight: Uint8Array.from(grain, (p) => p.weight) }
+  }
+  return grainFlat
+}
+const grainVectors = () => grainLayout().v
+const grainWeights = () => grainLayout().weight
 
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
 const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']

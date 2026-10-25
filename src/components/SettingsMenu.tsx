@@ -3,6 +3,9 @@ import { SETTING_OPTIONS, type Settings } from '../lib/settings'
 import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
+/** Chosen on the calendar itself (its 显示 tab), not here */
+const CALENDAR_ONLY: (keyof Settings)[] = ['dayGanzhi', 'moonPhase', 'dipper', 'weekStart']
+
 /** Gear button in the top bar opening display settings. */
 export function SettingsMenu({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
   const t = useT()
@@ -30,8 +33,8 @@ export function SettingsMenu({ settings, onChange }: { settings: Settings; onCha
       </button>
       {open && (
         <div className="settings-panel" role="dialog" aria-label={t('设置')}>
-          {/* 日历显示日干支 and 每周起始 are chosen on the calendar itself (its 显示 tab) */}
-          {(Object.keys(SETTING_OPTIONS) as (keyof Settings)[]).filter((key) => key !== 'dayGanzhi' && key !== 'weekStart').map((key) => (
+          {/* What the calendar shows and 每周起始 are chosen on the calendar itself (its 显示 tab) */}
+          {(Object.keys(SETTING_OPTIONS) as (keyof Settings)[]).filter((key) => !CALENDAR_ONLY.includes(key)).map((key) => (
             <div key={key} className="setting-row">
               <span className="setting-title">{t(SETTING_OPTIONS[key].title)}</span>
               <div className="seg small" role="group" aria-label={t(SETTING_OPTIONS[key].title)}>
