@@ -299,7 +299,7 @@ footer {
   background:
     linear-gradient(90deg, transparent 8%, var(--edge) 35%, var(--edge) 65%, transparent 92%) top / 100% 1px no-repeat,
     linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg) 95%, transparent) 30%, color-mix(in srgb, var(--bg) 95%, transparent) 70%, transparent);
-  transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0s 0.25s;
+  transform: translateY(100%); visibility: hidden; transition: transform 0.18s ease-in, visibility 0s 0.18s;
 }
 footer.shown { transform: none; visibility: visible; transition: transform 0.25s ease; }
 footer .about-badges { margin-left: 0; }
