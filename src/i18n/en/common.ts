@@ -32,6 +32,9 @@ export const COMMON: Record<string, string> = {
   // The top bar on the 天象 page, folded up and pulled down
   展开标题栏: 'Show the top bar',
   收起标题栏: 'Hide the top bar',
+  // The footer, kept under the bottom edge
+  展开页脚: 'Show the footer',
+  收起页脚: 'Hide the footer',
   隐藏: 'Hide',
   紫微星曜配色: '紫微 star colours',
   按五行: 'By element',

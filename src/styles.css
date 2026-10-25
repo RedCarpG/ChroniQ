@@ -290,10 +290,26 @@ main { view-transition-name: page; }
 .page-menu-item.on { background: var(--accent-soft); }
 .page-menu-item.on b { color: var(--accent); }
 
+/* The footer, on every page, under the bottom edge until called up (App): by the mouse at the bottom
+   of the screen or the small tab there; it lies over the page, its contents in the middle */
 footer {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
-  font-size: 13px; margin-top: 24px;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 26; margin: 0; padding: 14px 16px 16px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; font-size: 13px;
+  background: linear-gradient(90deg, transparent, var(--edge), transparent) top / 100% 1px no-repeat, color-mix(in srgb, var(--bg) 94%, transparent);
+  box-shadow: 0 -16px 24px -18px rgb(0 0 0 / 0.35);
+  transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0s 0.25s;
 }
+footer.shown { transform: none; visibility: visible; transition: transform 0.25s ease; }
+footer .about-badges { margin-left: 0; }
+.footer-tab, .footer-close {
+  display: flex; align-items: center; justify-content: center; width: 46px; height: 18px; padding: 4px 0 0; border: 1px solid var(--border);
+  border-bottom: 0; border-radius: 10px 10px 0 0; background: color-mix(in srgb, var(--surface) 80%, transparent); color: var(--muted);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.footer-tab:hover, .footer-close:hover { color: var(--accent); }
+.footer-tab { position: fixed; bottom: 0; left: 50%; z-index: 27; transform: translateX(-50%); }
+.footer-close { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { footer, footer.shown { transition: none; } }
 /* 作者与 About 小角标 */
 .about-badges { position: relative; display: flex; gap: 6px; margin-left: auto; }
 .badge-pill {
@@ -329,8 +345,7 @@ footer {
 
 /* The calendar page fills the window on screens big enough for it: the top bar and the
    calendar stay where they are, the month grid's rows stretch to the height, the day panel
-   and the long year view scroll inside, and the footer slides up over the calendar when the
-   page is scrolled. (--topbar-h is the top bar's height, set by App.) */
+   and the long year view scroll inside; the footer comes up over it when called (see footer). (--topbar-h is the top bar's height, set by App.) */
 @media (min-width: 861px) and (min-height: 600px) {
   .app.page-calendar .topbar { position: sticky; top: 16px; z-index: 5; }
   .app.page-calendar main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
@@ -346,11 +361,6 @@ footer {
   .app.page-calendar .month-window:not(.scrolling) .grid.days { height: 100%; grid-template-rows: repeat(6, minmax(0, 1fr)); }
   .app.page-calendar .grid.days .day { aspect-ratio: auto; min-height: 0; }
   .app.page-calendar .detail { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-  .app:is(.page-calendar, .page-sky) footer {
-    position: relative; z-index: 6; margin-top: 16px; padding: 14px 0 4px;
-    background: linear-gradient(90deg, transparent, var(--edge), transparent) top / 100% 1px no-repeat, var(--bg);
-    box-shadow: 0 -16px 24px -18px rgb(0 0 0 / 0.35);
-  }
 }
 
 .cal-head { position: relative; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
