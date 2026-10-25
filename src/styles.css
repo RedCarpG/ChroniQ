@@ -2238,3 +2238,33 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* 天象: the names of the bodies, stars and figures on the map, and of the bodies in the list, in the
    titles' serif (宋体) */
 .sky-labels text, .sky-table tbody td:first-child { font-family: var(--font-title); }
+
+/* ---------- 鎏金: the left drawer's tabs, larger, their words gilded, a light passing down them ----------
+   The gold of the words is a still gradient clipped to the text; the passing light is a band moved by
+   transform alone, so the compositor plays it without drawing anything again. 命盘 the larger and
+   brighter, the page's own tab (显示) a step below and fainter. */
+.drawer-handle { padding: 18px 11px; font-size: 18px; gap: 8px; overflow: hidden; isolation: isolate; }
+.drawer-handle:hover, .drawer-handle[aria-expanded='true'] { padding-left: 14px; }
+.drawer-handle.quiet { padding: 15px 9px; font-size: 16px; }
+.drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { padding-left: 12px; }
+.drawer-count, .drawer-handle.quiet .drawer-count { font-size: 13px; }
+.drawer-handle .drawer-handle-text {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 55%, #fff6dc), var(--accent) 45%,
+    color-mix(in srgb, var(--accent) 70%, #7a5420) 70%, color-mix(in srgb, var(--accent) 60%, #fff3cf));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.drawer-handle.quiet .drawer-handle-text { opacity: 0.8; }
+.drawer-handle.quiet:is(:hover, [aria-expanded='true']) .drawer-handle-text { opacity: 1; }
+.drawer-handle::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -50%; height: 200%; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, transparent 38%, rgb(255 238 196 / 0.32) 48%, rgb(255 250 230 / 0.5) 50%, rgb(255 238 196 / 0.32) 52%, transparent 62%);
+  mix-blend-mode: screen; transform: translateY(-60%); will-change: transform;
+  animation: gild-pass 7s ease-in-out infinite;
+}
+.drawer-handle.quiet::before { opacity: 0.6; animation-delay: 1.2s; }
+@keyframes gild-pass {
+  0% { transform: translateY(-60%); }
+  22%, 100% { transform: translateY(60%); }
+}
+@media (prefers-reduced-motion: reduce) { .drawer-handle::before { animation: none; display: none; } }
