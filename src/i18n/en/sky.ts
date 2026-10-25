@@ -28,8 +28,8 @@ export const SKY: Record<string, string> = {
   '太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。':
     'The Sun is up: stars can’t be seen by eye in daylight, so the map only hints at where they are.',
   '晨昏蒙影中，只有最亮的星和行星可见。': 'In twilight only the brightest stars and planets show.',
-  '地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。星表来自 d3-celestial（XHIP 依巴谷星表）。':
-    '{n} stars to magnitude 5 are above the horizon, with the fainter ones to magnitude 6 and the Milky Way’s star clouds; a star’s size shows its brightness and its colour its temperature. Zoom in to see more and fainter stars. Star catalogue from d3-celestial (XHIP, from Hipparcos).',
+  '地平线上有 {n} 颗 5 等以内的亮星，另有 6 等以内的暗星和银河的星云，星点大小示亮度、颜色示温度；放大可看到更多更暗的星。':
+    '{n} stars to magnitude 5 are above the horizon, with the fainter ones to magnitude 6 and the Milky Way’s star clouds; a star’s size shows its brightness and its colour its temperature. Zoom in to see more and fainter stars.',
 
   // Sun, Moon and planets (the same English as the 星盘 page)
   太阳: 'Sun',
@@ -123,8 +123,8 @@ export const SKY: Record<string, string> = {
   宿: 'Mansion',
   '距星 {star}': 'determinative star {star}',
   '宿度 {width}°': '{width}° wide',
-  '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。星官连线据 Stellarium 中国星空文化（CC BY-SA 4.0）。':
-    'The 28 lunar mansions (二十八宿) are coloured by their quarter of the sky: teal for the Azure Dragon of the East, blue for the Black Tortoise of the North, white for the White Tiger of the West, red for the Vermilion Bird of the South. The dashed lines are the hour circles through each mansion’s determinative star, dividing the celestial equator (dotted) into 28 parts; each part’s width is the mansion’s extent. The table’s Mansion column says which mansion the Sun, Moon and planets are in now. Figures after Stellarium’s Chinese sky culture (CC BY-SA 4.0).',
+  '二十八宿按四象着色：青为东方苍龙、蓝为北方玄武、白为西方白虎、红为南方朱雀。虚线是各宿距星所在的赤经线，把天赤道（点线）分成二十八段，每段的宽窄就是宿度；表格里的「宿」是日月五星此刻所在的宿。':
+    'The 28 lunar mansions (二十八宿) are coloured by their quarter of the sky: teal for the Azure Dragon of the East, blue for the Black Tortoise of the North, white for the White Tiger of the West, red for the Vermilion Bird of the South. The dashed lines are the hour circles through each mansion’s determinative star, dividing the celestial equator (dotted) into 28 parts; each part’s width is the mansion’s extent. The table’s Mansion column says which mansion the Sun, Moon and planets are in now.',
   历史轨迹: 'Past track',
   时长: 'Span',
   '1 个月': '1 month',
@@ -132,9 +132,12 @@ export const SKY: Record<string, string> = {
   '1 年': '1 year',
   '{name}过去 {span}在星空中走过的路线（画在此刻的星空上）：空心圆是起点，圆点标出日期；行星逆行时会折返或打圈。':
     'The line is {name}’s way among the stars over the past {span}, drawn on the sky as it is now: the hollow circle is where it started, dots mark dates, and a planet turning retrograde doubles back or loops.',
-  '星座连线来自 d3-celestial。': 'Constellation figures from d3-celestial.',
-  '中国星官据 Stellarium 中国星空文化（CC BY-SA 4.0），经 d3-celestial 整理。':
-    'Chinese 星官 from Stellarium’s Chinese sky culture (CC BY-SA 4.0), via d3-celestial.',
+  // Where the stars and the figures come from, a line under the notes (its names linked)
+  '来源：星表 {d3}（{xhip}）': 'Sources: stars from {d3} ({xhip})',
+  'XHIP 依巴谷星表': 'XHIP, from Hipparcos',
+  '；星座连线 {d3}': '; constellation figures from {d3}',
+  '；星官连线 {stellarium}（{licence}），经 {d3} 整理': '; 星官 from {stellarium} ({licence}), by way of {d3}',
+  'Stellarium 中国星空文化': 'Stellarium’s Chinese sky culture',
   '{h}时': '{h}:00',
   // Choosing a body or star on the map
   '高 {altitude}°': 'altitude {altitude}°',

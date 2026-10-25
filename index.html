@@ -14,6 +14,9 @@
     <meta name="theme-color" content="#0a0e1b" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#eee9df" media="(prefers-color-scheme: light)" />
     <title>星曆 ChroniQ · 萬年曆、八字、紫微與星盤</title>
+    <!-- The loading screen's own fonts, a few kB, cut to just what it shows (scripts/gen-splash-font.py) -->
+    <link rel="preload" href="./fonts/splash-zh.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/splash-en.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       // Apply the saved colour mode before the first paint, so the loading screen matches it too.
       try {
@@ -64,8 +67,20 @@
       .splash-mark { width: 88px; height: 88px; overflow: visible; }
       .splash-ring { transform-origin: 32px 32px; animation: splash-spin 6s linear infinite; }
       .splash-star { transform-origin: 32px 32px; animation: splash-pulse 1.6s ease-in-out infinite; }
-      .splash-title { margin: 18px 0 0; padding-left: 0.2em; font-size: 40px; font-weight: 700; letter-spacing: 0.2em; line-height: 1.2; }
-      .splash-en { margin-top: 4px; font-size: 22px; font-weight: 600; color: var(--splash-en); letter-spacing: 0.02em; }
+      /* Its words in the titles' typefaces (styles.css 题字), from two tiny files holding only them:
+         思源宋体 for 星曆 and its line, Cormorant Garamond for ChroniQ. Held back (block) the moment
+         they take to come, rather than shown first in another face */
+      @font-face {
+        font-family: 'ChroniQ Splash'; font-weight: 600; font-display: block; src: url(./fonts/splash-zh.woff2) format('woff2');
+        unicode-range: U+00B7, U+5BDF, U+6578, U+661F, U+6642, U+66C6, U+77E5, U+89C0, U+8B8A, U+8C61;
+      }
+      @font-face {
+        font-family: 'ChroniQ Splash'; font-weight: 600; font-display: block; src: url(./fonts/splash-en.woff2) format('woff2');
+        unicode-range: U+0043, U+0051, U+0068-0069, U+006E-006F, U+0072;
+      }
+      .splash-title, .splash-en, .splash-tag { font-family: 'ChroniQ Splash', 'Songti SC', 'STSong', serif; }
+      .splash-title { margin: 18px 0 0; padding-left: 0.2em; font-size: 42px; font-weight: 600; letter-spacing: 0.2em; line-height: 1.2; }
+      .splash-en { margin-top: 4px; font-size: 24px; font-weight: 600; color: var(--splash-en); letter-spacing: 0.12em; }
       .splash-tag { margin-top: 12px; padding-left: 0.15em; font-size: 14px; color: var(--splash-muted); letter-spacing: 0.15em; }
       @keyframes splash-in { from { opacity: 0; } }
       @keyframes splash-spin { to { transform: rotate(360deg); } }

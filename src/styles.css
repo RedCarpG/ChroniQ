@@ -2200,3 +2200,16 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .brand-en { letter-spacing: 0.12em; }
 .detail-hero .big { font-size: 52px; font-weight: 600; }
+
+/* 天象: a few words on what is chosen, under its details, set apart by a fine line */
+.sky-intro {
+  position: relative; margin: 4px 0 0; padding-top: 10px; font-size: 13px; line-height: 1.7; color: var(--text);
+}
+.sky-intro::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 30%; height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, transparent), transparent);
+}
+/* The notes' sources, a line of their own, the names linked */
+.sky-sources { margin-top: 8px; font-size: 12px; }
+.sky-sources a { color: color-mix(in srgb, var(--accent) 85%, var(--muted)); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.sky-sources a:hover { color: var(--accent); border-bottom-color: var(--accent); }
