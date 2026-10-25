@@ -171,6 +171,24 @@ describe('SkyView zoomed', () => {
     expect(scale()).toBeCloseTo(full)
     expect(map.classList.contains('zoomed')).toBe(false)
   })
+
+  it('zooms with the wheel by moving the map as drawn, and draws it anew once the wheel rests', async () => {
+    const { map } = setUp()
+    const zoomer = document.querySelector<HTMLElement>('.sky-zoomer')!
+    const scale = () => Number(/scale\(([\d.]+)\)/.exec(map.querySelector('g')!.getAttribute('transform')!)![1])
+    const full = scale()
+    fireEvent.wheel(map, { deltaY: -100, clientX: 200, clientY: 200 })
+    fireEvent.wheel(map, { deltaY: -100, clientX: 200, clientY: 200 })
+    // On screen at once, by one transform; the map itself is not drawn again yet
+    expect(zoomer.style.transform).toMatch(/scale\(1\.3\d*\)/)
+    expect(scale()).toBe(full)
+    expect(map.classList.contains('zoomed')).toBe(false)
+    await act(() => new Promise((rest) => setTimeout(rest, 250)))
+    // At rest: drawn at the new zoom, and the transform gone
+    expect(scale()).toBeCloseTo(full * Math.exp(0.3))
+    expect(zoomer.style.transform).toBe('')
+    expect(map.classList.contains('zoomed')).toBe(true)
+  })
 })
 
 describe('SkyView hovered while one is chosen', () => {

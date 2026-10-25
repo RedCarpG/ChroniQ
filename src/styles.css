@@ -1405,6 +1405,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-history-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .sky-backdrop { position: fixed; inset: 0; z-index: 0; background: #020308; animation: cal-fade 0.5s ease both; }
 .sky-backdrop.unplaced { visibility: hidden; }
+/* The map's layers together, moved and scaled as one while a zoom or drag is under way (SkyView) */
+.sky-zoomer { position: absolute; inset: 0; transform-origin: 0 0; }
+.sky-zoomer.moving { will-change: transform; }
 .sky-map { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 /* The sky under the map (its colour, glows and Milky Way): an SVG on a layer of its own, so what
    changes on the map above does not repaint it */
