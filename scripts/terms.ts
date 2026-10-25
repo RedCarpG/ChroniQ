@@ -24,6 +24,7 @@ import { SHENSHA_INFO } from '../src/lib/shenshaInfo'
 import { buildZiwei } from '../src/lib/ziwei'
 import { DEFAULT_ZIWEI_SCHOOLS } from '../src/lib/ziweiSchools'
 import { FIVE_STARS } from '../src/lib/fiveStars'
+import { PAGE_GROUPS } from '../src/components/PageMenu'
 
 const STEMS = '甲乙丙丁戊己庚辛壬癸'
 const BRANCHES = '子丑寅卯辰巳午未申酉戌亥'
@@ -49,6 +50,8 @@ function literalTerms(): string[] {
 export function collectTerms(years: [number, number] = [1990, 2035], ziweiCharts = 300): string[] {
   const terms = new Set<string>(literalTerms())
   const add = (s: string | undefined) => s && terms.add(s)
+  // The page names, which the page menu puts through term()
+  for (const g of PAGE_GROUPS) for (const p of g.pages) add(p.name)
 
   // Complete name tables
   const tables: { fromIndex(i: number): { getName(): string } }[] = [

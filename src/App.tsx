@@ -25,7 +25,7 @@ import { play, setSoundEnabled, startClickSounds } from './sound'
 
 type Tab = Page
 /** Order of the pages, which sets the way a page switch slides. */
-const TAB_ORDER: Tab[] = ['calendar', 'sky', 'solar', 'bazi', 'ziwei', 'star']
+const TAB_ORDER: Tab[] = ['calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
 
 // 紫微斗数 pulls in iztro (~150 KB gzip); load it only when the tab is opened.
 const loadZiwei = () => import('./components/ZiweiView')
@@ -40,7 +40,10 @@ const SkyPage = lazy(() => loadSky().then((m) => ({ default: m.SkyPage })))
 // 太阳系, its own page since the sky became the 天象 page's backdrop
 const loadSolar = () => import('./components/SolarSystemView')
 const SolarSystemView = lazy(() => loadSolar().then((m) => ({ default: m.SolarSystemView })))
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei, star: loadStar, sky: loadSky, solar: loadSolar }
+// 观月, with its maps of the Moon
+const loadMoon = () => import('./components/MoonPage')
+const MoonPage = lazy(() => loadMoon().then((m) => ({ default: m.MoonPage })))
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -163,7 +166,7 @@ export function App() {
           </h1>
           <div className="topbar-right">
             <PageMenu page={tab} onPick={goTab} />
-            {tab !== 'calendar' && tab !== 'sky' && tab !== 'solar' && (
+            {tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
               <>
                 <ExportButton chart={{ tab, input: baziInput }} />
                 <ShareButton chart={{ tab, input: baziInput }} />
@@ -193,6 +196,10 @@ export function App() {
           ) : tab === 'sky' ? (
             <Suspense fallback={<SplashSignal />}>
               <SkyPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />
+            </Suspense>
+          ) : tab === 'moon' ? (
+            <Suspense fallback={<SplashSignal />}>
+              <MoonPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />
             </Suspense>
           ) : tab === 'solar' ? (
             <Suspense fallback={<SplashSignal />}>
@@ -231,7 +238,7 @@ export function App() {
         </footer>
       </div>
       {/* Outside .app: the drawer is fixed to the screen edge and takes the zoom itself */}
-      {tab !== 'sky' && tab !== 'solar' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} />}
+      {tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} />}
       <SplashOverlay />
     </SettingsContext.Provider>
   )
