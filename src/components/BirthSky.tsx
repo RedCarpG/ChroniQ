@@ -8,9 +8,10 @@ import type { ElementName } from '../lib/bazi'
 import { FIVE_STARS } from '../lib/fiveStars'
 import { mansionOf } from '../lib/mansions'
 import { litPath } from '../lib/moon'
+import { WESTERN } from '../lib/constellations'
 import { constellationsAt, milkyWayAt, skyAt, type Sky, type SkyBody } from '../lib/sky'
 import { XINGGUAN } from '../lib/xingguan'
-import { useT, useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm } from '../settingsContext'
 
 /** The moment and place of birth (clock time at the birthplace: the sky as it was, not 真太阳时) */
 export interface BirthMoment {
@@ -119,8 +120,18 @@ function useThemeVersion() {
  * cost; the Sun, Moon and 五星, in the colours of their 五行, are a few elements over it. A new
  * chart's sky turns and fades into place (浮现), after the chart itself has changed.
  */
-export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: string | null }) {
+export function BirthSky({
+  moment: now,
+  focus,
+  figures: set = 'mansions',
+}: {
+  moment: BirthMoment
+  focus: string | null
+  /** The figures drawn on the sky: the 二十八宿 (八字), or the Western constellations (星盘) */
+  figures?: 'mansions' | 'west'
+}) {
   const term = useTerm()
+  const { language, script } = useSettings()
   const moment = useDeferredValue(now)
   const { w, h } = useViewport()
   const theme = useThemeVersion()
@@ -185,7 +196,7 @@ export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: s
       { kind: 'body', blur: 10, groups: layer(1.7, (a) => Math.min(0.55, 0.1 + 0.28 * a)) },
       { kind: 'core', blur: 5, groups: layer(0.75, (a) => (a > 0.55 ? Math.min(0.6, 0.5 * (a - 0.55)) : 0)) },
     ] as const
-    const figures = constellationsAt(MANSION_FIGURES, moment.utc, moment.latitude, moment.longitude)
+    const figures = constellationsAt(set === 'west' ? WESTERN : MANSION_FIGURES, moment.utc, moment.latitude, moment.longitude)
     const twinkles = sky.stars
       .filter((st) => st.mag < 1.6 && st.alt > 5)
       .map((st) => ({ hip: st.hip, at: at(st.az, st.alt), colour: starColour(st.bv), size: 7 + (1.6 - st.mag) * 3 }))
@@ -212,12 +223,13 @@ export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: s
         )
         .join(''),
       labels: figures
-        .filter((f) => f.label.alt > 2)
-        .map((f) => ({ id: f.id, name: f.name, at: at(f.label.az, f.label.alt) })),
+        // Of the Western constellations, only the better known are named, as on the 天象 map
+        .filter((f) => f.label.alt > 2 && (set === 'mansions' || f.rank <= 2))
+        .map((f) => ({ id: f.id, name: f.name, trad: f.trad, en: f.en, at: at(f.label.az, f.label.alt) })),
       twinkles,
     }
     // at follows R, w and h
-  }, [key, w, h])
+  }, [key, w, h, set])
 
   // Drawn to the canvas when the sky, the screen size or the colour mode changes
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -300,15 +312,18 @@ export function BirthSky({ moment: now, focus }: { moment: BirthMoment; focus: s
       ctx.stroke(new Path2D(g.d))
     }
     ctx.globalAlpha = 1
-    // The 宿 names, but not on a phone, where the chart covers nearly all the sky
+    // The 宿 (or constellation) names, but not on a phone, where the chart covers nearly all the sky
     if (w > 640) {
       ctx.fillStyle = c.label
       ctx.font = `13px ${getComputedStyle(canvas).fontFamily}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      for (const l of still.labels) ctx.fillText(term(l.name.slice(0, 1)), l.at[0], l.at[1])
+      if (set === 'west') ctx.font = `12px ${getComputedStyle(canvas).fontFamily}`
+      const name = (l: (typeof still.labels)[number]) =>
+        set === 'mansions' ? term(l.name.slice(0, 1)) : language === 'en' ? l.en : script === 'trad' ? l.trad : l.name
+      for (const l of still.labels) ctx.fillText(name(l), l.at[0], l.at[1])
     }
-  }, [still, theme, term])
+  }, [still, theme, term, set, language, script])
 
   const sun = sky.bodies.find((b) => b.key === 'sun')!
   const moon = sky.bodies.find((b) => b.key === 'moon')!
