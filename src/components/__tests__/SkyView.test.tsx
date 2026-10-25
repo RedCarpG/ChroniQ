@@ -63,33 +63,41 @@ describe('SkyView as the backdrop', () => {
   })
 })
 
-describe('SkyView panel', () => {
-  it('can be put away, leaving the sky the whole width, and remembers that', () => {
+describe('SkyView panels', () => {
+  it('keeps the settings on the left, put away to a slim tab and back, and remembers that', () => {
     const { container } = setUp()
-    const toggle = container.querySelector<HTMLButtonElement>('.sky-panel-toggle')!
-    expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    fireEvent.click(toggle)
-    expect(container.querySelector<HTMLElement>('.sky-panel')!.hidden).toBe(true)
+    const settings = container.querySelector('.sky-settings')!
+    expect(settings.querySelector('.sky-settings-card input[type=time]')).not.toBeNull()
+    fireEvent.click(settings.querySelector('.sky-settings-close')!)
+    expect(settings.querySelector('.sky-settings-card')).toBeNull()
     expect(container.querySelector('.sky-stage')!.classList.contains('panel-hidden')).toBe(true)
-    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    const handle = settings.querySelector<HTMLButtonElement>('.sky-settings-handle')!
+    expect(handle.getAttribute('aria-expanded')).toBe('false')
+    // The bodies stay, on the right, with no card of their own
+    const bodies = container.querySelector('.sky-bodies')!
+    expect(bodies.querySelector('.sky-table')).not.toBeNull()
+    expect(bodies.classList.contains('card')).toBe(false)
     cleanup()
-    expect(setUp().container.querySelector<HTMLElement>('.sky-panel')!.hidden).toBe(true)
+    const again = setUp().container
+    expect(again.querySelector('.sky-settings-card')).toBeNull()
+    fireEvent.click(again.querySelector('.sky-settings-handle')!)
+    expect(again.querySelector('.sky-settings-card input[type=time]')).not.toBeNull()
   })
 
-  it('has a tab for the moment and place, and one for how the sky is drawn', () => {
+  it('folds 显示 open and shut under the moment and the place, and remembers that', () => {
     const { container } = setUp()
-    const tabs = [...container.querySelectorAll<HTMLButtonElement>('[role=tab]')]
-    expect(tabs.map((b) => b.textContent)).toEqual(['时间·地点', '显示'])
-    const pane = (i: number) => container.querySelector<HTMLElement>(`#${CSS.escape(tabs[i].getAttribute('aria-controls')!)}`)!
-    expect(pane(0).hidden).toBe(false)
-    expect(pane(0).querySelector('input[type=time]')).not.toBeNull()
-    expect(pane(1).hidden).toBe(true)
-    fireEvent.click(tabs[1])
-    expect(tabs[1].getAttribute('aria-selected')).toBe('true')
-    expect(pane(0).hidden).toBe(true)
-    expect(pane(1).hidden).toBe(false)
-    expect(pane(1).textContent).toContain('视角')
-    expect(pane(1).querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
+    const head = container.querySelector<HTMLButtonElement>('.sky-fold-head')!
+    const options = () => container.querySelector<HTMLElement>(`#${CSS.escape(head.getAttribute('aria-controls')!)}`)!
+    expect(head.textContent).toBe('显示')
+    expect(head.getAttribute('aria-expanded')).toBe('false')
+    expect(options().hidden).toBe(true)
+    fireEvent.click(head)
+    expect(head.getAttribute('aria-expanded')).toBe('true')
+    expect(options().hidden).toBe(false)
+    expect(options().textContent).toContain('视角')
+    expect(options().querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
+    cleanup()
+    expect(setUp().container.querySelector('.sky-fold-head')!.getAttribute('aria-expanded')).toBe('true')
   })
 
   it('draws the sky sharp, or smooth without the twinkling, as chosen and remembered', () => {
