@@ -295,6 +295,37 @@ describe('SkyView zoomed', () => {
     expect(zoomer.style.transform).toBe('')
     expect(map.classList.contains('zoomed')).toBe(true)
   })
+
+  it('draws the map past the screen, and draws it anew mid-drag once a drag goes past that', async () => {
+    // A window for the sky as on a screen (jsdom lays nothing out), so that zoomed in it can be panned
+    const laidOut = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 700, 700))
+    const { map } = setUp()
+    const zoomer = document.querySelector<HTMLElement>('.sky-zoomer')!
+    // The layers reach past the screen: 15% of its larger side
+    expect(zoomer.style.getPropertyValue('--over')).toBe(`${Math.round(1024 * 0.15)}px`)
+    const drawn = () => map.querySelector('g')!.getAttribute('transform')
+    fireEvent.wheel(map, { deltaY: -600, clientX: 200, clientY: 200 })
+    await act(() => new Promise((rest) => setTimeout(rest, 250)))
+    map.setPointerCapture = () => {}
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+    const flush = () => act(() => frames.splice(0).forEach((cb) => cb(0)))
+    const before = drawn()
+    fireEvent.pointerDown(map, { pointerId: 4, pointerType: 'mouse', button: 0, clientX: 300, clientY: 300 })
+    // A short drag, within what is drawn: the drawn map is moved, not drawn again
+    fireEvent.pointerMove(map, { pointerId: 4, pointerType: 'mouse', clientX: 400, clientY: 300 })
+    flush()
+    await act(() => new Promise((rest) => setTimeout(rest, 100)))
+    expect(zoomer.style.transform).toMatch(/translate\(100px, 0px\)/)
+    expect(drawn()).toBe(before)
+    // On past it: drawn anew while the drag goes on, without waiting for it to rest
+    fireEvent.pointerMove(map, { pointerId: 4, pointerType: 'mouse', clientX: 700, clientY: 300 })
+    flush()
+    await act(() => new Promise((rest) => setTimeout(rest, 100)))
+    expect(drawn()).not.toBe(before)
+    fireEvent.pointerUp(map, { pointerId: 4, pointerType: 'mouse', clientX: 700, clientY: 300 })
+    laidOut.mockRestore()
+  })
 })
 
 describe('SkyView hovered while one is chosen', () => {

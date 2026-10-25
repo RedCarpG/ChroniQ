@@ -209,9 +209,10 @@ export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: 
 
   // ---- The Milky Way: its glow, blurred at a quarter of the size ----
   // Each band (lib/sky.ts milkyWayModel's spine, drawn by SkyView as strokes as wide as the band)
-  // is blurred by a few screen pixels, more as the map is zoomed in but far less than it grows,
-  // so it stays soft without going to fog; the star clouds' own points are blurred into a mottled
-  // light over it; and the dark lanes are cut out of both
+  // is blurred: the broad haze and body as much more as the map is zoomed in, so their edges stay as
+  // soft as the band is wide (blurred less, zoomed in they showed as hard edges across the sky); the
+  // narrow core and the dark lanes a little less, so they keep some shape; the star clouds' own
+  // points are blurred into a mottled light over it; and the dark lanes are cut out of both
   const mw = s.light.milkyWay
   // A small sky (a phone's) packs the star clouds' points closer: each gives less light, so the
   // Milky Way is as bright as on a large one (the drawings were judged at a scale of about 1.7)
@@ -233,8 +234,9 @@ export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: 
   if (mw > 0) {
     const b = work.getContext('2d')
     if (g && b) {
-      // A blur of `units` map units at the full view, in pixels of the quarter-size canvases
-      const blur = (units: number) => (units * s.fit * Math.sqrt(s.zoom)) / Q
+      // A blur of `units` map units at the full view, in pixels of the quarter-size canvases, growing
+      // with the zoom as zoom ** grow (1: as the band does)
+      const blur = (units: number, grow: number) => (units * s.fit * s.zoom ** grow) / Q
       const strokes = (list: BandStroke[], colour: string) => {
         b.setTransform(1, 0, 0, 1, 0, 0)
         b.clearRect(0, 0, work.width, work.height)
@@ -249,11 +251,11 @@ export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: 
       }
       b.lineCap = 'butt'
       strokes(s.band.haze, BAND_COLOUR.haze)
-      blurInto(g, work, blur(8), BAND_COLOUR.haze)
+      blurInto(g, work, blur(8, 1), BAND_COLOUR.haze)
       strokes(s.band.body, BAND_COLOUR.body)
-      blurInto(g, work, blur(4), BAND_COLOUR.body)
+      blurInto(g, work, blur(4, 0.9), BAND_COLOUR.body)
       strokes(s.band.core, BAND_COLOUR.core)
-      blurInto(g, work, blur(1.4), BAND_COLOUR.core)
+      blurInto(g, work, blur(1.4, 0.75), BAND_COLOUR.core)
       // The star clouds as light: their points summed at a quarter of the size, softened a little.
       // Zoomed in they spread apart, and the light they give fades as their points come apart.
       const cloud = s.cloud
@@ -311,7 +313,7 @@ export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: 
       }
       b.globalAlpha = 1
       g.globalCompositeOperation = 'destination-out'
-      blurInto(g, work, blur(2.5), '#000')
+      blurInto(g, work, blur(2.5, 0.75), '#000')
       g.globalCompositeOperation = 'source-over'
     }
   }

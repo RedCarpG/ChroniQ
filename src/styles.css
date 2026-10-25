@@ -1457,17 +1457,23 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-map { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 /* The sky under the map (its colour, glows and Milky Way): an SVG on a layer of its own, so what
    changes on the map above does not repaint it */
-.sky-map-back { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; will-change: transform; }
+.sky-map-back { position: absolute; display: block; pointer-events: none; will-change: transform; }
+/* The map's layers reach --over past the screen on every side (SkyView), so what a drag or a zoom
+   out brings into view is already drawn */
+.sky-zoomer > :is(.sky-map-back, .sky-canvas, .sky-map) {
+  left: calc(-1 * var(--over, 0px)); top: calc(-1 * var(--over, 0px));
+  width: calc(100% + 2 * var(--over, 0px)); height: calc(100% + 2 * var(--over, 0px));
+}
 /* Over it, the Milky Way and the stars only looked at, drawn to a canvas (skyPaint); dimmed a little
    while a body or star is chosen */
-.sky-canvas { position: absolute; inset: 0; pointer-events: none; transition: opacity 0.3s ease; isolation: isolate; }
+.sky-canvas { position: absolute; pointer-events: none; transition: opacity 0.3s ease; isolation: isolate; }
 .sky-canvas canvas { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; }
 /* The stars' light adds to the Milky Way's under them, as light does */
 .sky-canvas canvas:not(.glow) { mix-blend-mode: plus-lighter; }
 /* The Milky Way's glow is drawn at a quarter of the size and shown four times as large (skyPaint
    sets its size), so the browser scales it up rather than the script */
 .sky-canvas.dim { opacity: 0.5; }
-.sky-zoomer > .sky-map { position: absolute; inset: 0; }
+.sky-zoomer > .sky-map { position: absolute; }
 /* Zoomed in, a drag moves the map, also on a touch screen */
 .sky-map.zoomed { touch-action: none; cursor: move; }
 .sky-backdrop.dragging .sky-map { cursor: grabbing; }

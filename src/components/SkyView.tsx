@@ -330,6 +330,25 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return { z, x: v.x * keep, y: v.y * keep }
   }
 
+  // 画质 (remembered in this browser): 清晰 draws the sky in full; 流畅 for a slower computer or
+  // phone draws less of it (the star clouds as their cells and thinned, no stars past magnitude 6,
+  // at the screen's CSS pixels; no twinkling or shooting stars), so zooming and dragging keep up
+  const [quality, setQuality] = useState<'clear' | 'smooth'>(() => {
+    try {
+      return localStorage.getItem(QUALITY_KEY) === 'smooth' ? 'smooth' : 'clear'
+    } catch {
+      return 'clear'
+    }
+  })
+  const smooth = quality === 'smooth'
+  const pickQuality = (v: 'clear' | 'smooth') => {
+    setQuality(v)
+    try {
+      localStorage.setItem(QUALITY_KEY, v)
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+  }
   // While the wheel turns, fingers pinch or the map is dragged, the view on screen runs ahead of the
   // one drawn: the drawn map (both its layers and the twinkles) is moved and scaled as a whole by one
   // transform, which the compositor does without drawing anything again. When the gesture rests,
@@ -338,25 +357,42 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   const zoomerRef = useRef<HTMLDivElement>(null)
   const live = useRef<typeof view | null>(null)
   const settle = useRef(0)
+  const early = useRef(0)
   const tween = useRef(0)
+  // The drawn layers reach this far past the screen on every side (px), so a drag or a zoom out shows
+  // sky already drawn rather than the dark behind it; less of it for 流畅, which draws less
+  const over = Math.round(Math.max(window.innerWidth, window.innerHeight) * (smooth ? 0.08 : 0.15))
+  const overRef = useRef(over)
+  overRef.current = over
   /** The view on screen: the one a gesture has reached, or the one drawn */
   const current = () => live.current ?? viewRef.current
-  /** Moves the drawn map (drawn at viewRef's view) to show another */
+  /** Moves the drawn map (drawn at viewRef's view) to show another; true if the drawn layers, past
+   *  the screen as they are, no longer cover it */
   const shift = (next: typeof view) => {
     const f = frameRef.current!
     const el = zoomerRef.current!
     const v = viewRef.current
     const g = next.z / v.z
     const [wx, wy] = [f.left + f.width / 2, f.top + f.height / 2]
-    el.style.transform = `translate(${wx + next.x - (wx + v.x) * g}px, ${wy + next.y - (wy + v.y) * g}px) scale(${g})`
+    const [tx, ty] = [wx + next.x - (wx + v.x) * g, wy + next.y - (wy + v.y) * g]
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${g})`
     if (!el.classList.contains('moving')) el.classList.add('moving')
+    const m = overRef.current
+    const [w, h] = [window.innerWidth, window.innerHeight]
+    return tx - g * m > 0 || ty - g * m > 0 || tx + g * (w + m) < w || ty + g * (h + m) < h
   }
   /** Shows a view at once by moving the drawn map; draws it properly after `rest` ms without another
    *  (long enough that the notches of a wheel spun on a slow machine still count as one gesture) */
   const preview = (next: typeof view, rest = 250) => {
     if (!frameRef.current || !zoomerRef.current) return setView(next)
     live.current = next
-    shift(next)
+    // Moved past what is drawn: drawn soon, while the gesture goes on, rather than showing the dark
+    // until it rests (not put off by the gesture's further steps, as the rest is)
+    if (shift(next) && !early.current)
+      early.current = window.setTimeout(() => {
+        early.current = 0
+        if (live.current) setView(live.current)
+      }, 60)
     if (tipRef.current?.classList.contains('on')) tipRef.current.classList.remove('on')
     clearTimeout(settle.current)
     settle.current = window.setTimeout(() => live.current && setView(live.current), rest)
@@ -366,13 +402,17 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   useLayoutEffect(() => {
     const el = zoomerRef.current
     if (!el) return
-    if (live.current && live.current !== view) return shift(live.current)
+    if (live.current && live.current !== view) {
+      shift(live.current)
+      return
+    }
     live.current = null
     el.style.transform = ''
     el.classList.remove('moving')
   }, [view])
   useEffect(() => () => {
     clearTimeout(settle.current)
+    clearTimeout(early.current)
     cancelAnimationFrame(tween.current)
   }, [])
   /** The view zoomed by a factor about a point on the screen, which stays where it is */
@@ -486,25 +526,6 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [chosen])
-  // 画质 (remembered in this browser): 清晰 draws the sky in full; 流畅 for a slower computer or
-  // phone draws less of it (the star clouds as their cells and thinned, no stars past magnitude 6,
-  // at the screen's CSS pixels; no twinkling or shooting stars), so zooming and dragging keep up
-  const [quality, setQuality] = useState<'clear' | 'smooth'>(() => {
-    try {
-      return localStorage.getItem(QUALITY_KEY) === 'smooth' ? 'smooth' : 'clear'
-    } catch {
-      return 'clear'
-    }
-  })
-  const smooth = quality === 'smooth'
-  const pickQuality = (v: 'clear' | 'smooth') => {
-    setQuality(v)
-    try {
-      localStorage.setItem(QUALITY_KEY, v)
-    } catch {
-      // storage unavailable: lasts for this visit
-    }
-  }
   // Constellation figures (remembered in this browser)
   const [figures, setFigures] = useState<FigureSet>(() => {
     try {
@@ -1131,9 +1152,10 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   }, [below, sky.light, smooth])
 
   const lightNote = sky.light === 'day' ? t('太阳在地平线上，白天肉眼看不到星星，图中淡淡示意它们的位置。') : sky.light === 'twilight' ? t('晨昏蒙影中，只有最亮的星和行星可见。') : ''
-  const mapTransform = `translate(${(centre[0] - C * scale).toFixed(2)} ${(centre[1] - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`
+  // The layers start `over` before the screen's top left corner
+  const mapTransform = `translate(${(centre[0] + over - C * scale).toFixed(2)} ${(centre[1] + over - C * scale).toFixed(2)}) scale(${scale.toFixed(5)})`
   const mapClass = `sky-${below ? 'below' : sky.light}${entering ? ' entering' : ''}`
-  const mapStyle = { '--k': k, transformOrigin: `${centre[0]}px ${centre[1]}px` } as CSSProperties
+  const mapStyle = { '--k': k, transformOrigin: `${centre[0] + over}px ${centre[1] + over}px` } as CSSProperties
   // The canvas between the sky and the map (skyPaint): the Milky Way and the stars without a name.
   // How much of them shows: the Milky Way is gone by day and faint in twilight, when only the
   // brighter stars are out; a bright Moon up washes out the faintest stars and the Milky Way a little.
@@ -1155,8 +1177,8 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     paintSky(el, glowRef.current, {
       width: el.clientWidth,
       height: el.clientHeight,
-      ox: centre[0] - C * scale,
-      oy: centre[1] - C * scale,
+      ox: centre[0] + over - C * scale,
+      oy: centre[1] + over - C * scale,
       scale,
       zoom: view.z,
       fit,
@@ -1822,7 +1844,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
 
       {createPortal(
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
-          <div className="sky-zoomer" ref={zoomerRef}>
+          <div className="sky-zoomer" ref={zoomerRef} style={{ '--over': `${over}px` } as CSSProperties}>
           {backdrop}
           <div
             className={`sky-canvas${entering ? ' entering' : ''}${spot ? ' dim' : ''}`}
