@@ -1437,6 +1437,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .app.page-sky { position: relative; z-index: 1; pointer-events: none; color: var(--text); }
 .app.page-sky > :not(main), .app.page-sky main > :not(.sky-page), .app.page-sky .sky-page > :not(.sky-stage),
 .app.page-sky .sky-stage > :not(.sky-window) { pointer-events: auto; }
+/* The bodies' column runs the height of the sky's right side and the toolbar its width: only what
+   they hold takes the pointer, so the sky under their empty room still turns, zooms and drags */
+.app.page-sky .sky-stage > :is(.sky-bodies, .sky-toolbar) { pointer-events: none; }
+.app.page-sky .sky-stage > :is(.sky-bodies, .sky-toolbar) > * { pointer-events: auto; }
 .sky-stage {
   display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 21vw, 290px);
   grid-template-rows: auto minmax(0, 1fr); gap: 10px 16px;
