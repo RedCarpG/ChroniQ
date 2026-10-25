@@ -179,9 +179,24 @@ export function App() {
       <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
         {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): the mouse at the
             very top brings it down; a small tab pulls it down, and one under it folds it up again */}
-        {tab === 'sky' && <div className="topbar-hotzone" aria-hidden="true" onPointerEnter={(e) => e.pointerType === 'mouse' && showBar()} />}
+        {tab === 'sky' && (
+          <div
+            className="topbar-hotzone"
+            aria-hidden="true"
+            // A move in it too, not only coming in: the pointer may be there already
+            onPointerEnter={(e) => e.pointerType === 'mouse' && showBar()}
+            onPointerMove={(e) => e.pointerType === 'mouse' && barFolded && showBar()}
+          />
+        )}
         {barFolded && (
-          <button type="button" className="topbar-fold down" aria-label={t('展开标题栏')} title={t('展开标题栏')} onClick={() => setBarShown(true)}>
+          <button
+            type="button"
+            className="topbar-fold down"
+            aria-label={t('展开标题栏')}
+            title={t('展开标题栏')}
+            onPointerEnter={(e) => e.pointerType === 'mouse' && showBar()}
+            onClick={() => setBarShown(true)}
+          >
             <span aria-hidden="true">⌄</span>
           </button>
         )}
