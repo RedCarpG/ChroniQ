@@ -1110,7 +1110,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         {allPaths && (
           <g className={`sky-paths${litPaths.length ? ' has-focus' : ''}`} aria-hidden="true">
             {allPaths.map((p) => (
-              <g key={p.key} className={`sky-path${litPaths.includes(p) ? ' on' : ''}`} style={{ color: BODY_COLOUR[p.key] ?? colourOf(p.key) }}>
+              <g key={p.key} className={`sky-path${litPaths.includes(p) ? ' on' : ''}${p.key === chosen && !smooth && !dragging ? ' pulsing' : ''}`} style={{ color: BODY_COLOUR[p.key] ?? colourOf(p.key) }}>
                 <path className="past" d={p.past} />
                 <path className="future" d={p.future} />
                 {p.hours.map((h, i) => {
@@ -1124,7 +1124,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
         )}
         {historyLine && (
           <>
-            <g className="sky-history" style={{ color: BODY_COLOUR[historyLine.key] }} aria-hidden="true">
+            <g className={`sky-history${!smooth && !dragging ? ' pulsing' : ''}`} style={{ color: BODY_COLOUR[historyLine.key] }} aria-hidden="true">
               <path d={historyLine.d} />
               {historyLine.ticks.map((p) => {
                 const [x, y] = at(p.az, p.alt)

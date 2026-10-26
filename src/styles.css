@@ -1758,6 +1758,12 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-path.on path { stroke-width: calc(3px * var(--k, 1)); }
 .sky-path.on .past { opacity: 0.6; }
 .sky-path.on .future { opacity: 0.95; }
+/* A selected body's trajectory breathes gently; hover stays steady. */
+.sky-path.pulsing, .sky-history.pulsing { animation: sky-path-pulse 3.2s ease-in-out infinite; }
+@keyframes sky-path-pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sky-path.pulsing, .sky-history.pulsing { animation: none; }
+}
 .sky-hour-labels text { fill: rgb(255 255 255 / 0.85); font-size: calc(11px * var(--k, 1)); paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: calc(2px * var(--k, 1)); }
 .sky-body, .sky-star, .sky-table tbody tr { cursor: pointer; }
 /* On the map, keyboard focus shows as a dashed circle rather than the browser's box */
@@ -1826,11 +1832,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-figure-mark-mansions.zone-north { border-color: rgb(var(--zone-north)); }
 .sky-figure-mark-mansions.zone-west { border-color: rgb(var(--zone-west)); }
 .sky-figure-mark-mansions.zone-south { border-color: rgb(var(--zone-south)); }
-.sky-table .sky-mansion-cell { font-weight: 600; }
-.sky-table .sky-mansion-cell.zone-east { color: rgb(var(--zone-east)); }
-.sky-table .sky-mansion-cell.zone-north { color: rgb(var(--zone-north)); }
-.sky-table .sky-mansion-cell.zone-west { color: rgb(var(--zone-west)); }
-.sky-table .sky-mansion-cell.zone-south { color: rgb(var(--zone-south)); }
+.sky-table tbody tr td.sky-mansion-cell { font-weight: 400; }
+.sky-table .sky-mansion-cell.zone-east { color: color-mix(in srgb, rgb(var(--zone-east)) 25%, var(--muted)); }
+.sky-table .sky-mansion-cell.zone-north { color: color-mix(in srgb, rgb(var(--zone-north)) 25%, var(--muted)); }
+.sky-table .sky-mansion-cell.zone-west { color: color-mix(in srgb, rgb(var(--zone-west)) 25%, var(--muted)); }
+.sky-table .sky-mansion-cell.zone-south { color: color-mix(in srgb, rgb(var(--zone-south)) 25%, var(--muted)); }
 /* One body's way among the stars over the past days */
 .sky-history path { fill: none; stroke: currentColor; stroke-width: calc(2.6px * var(--k, 1)); stroke-linejoin: round; opacity: 0.9; }
 .sky-history .tick { fill: currentColor; }
@@ -2213,6 +2219,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .brand-en { letter-spacing: 0.12em; }
 .detail-hero .big { font-size: 52px; font-weight: 600; }
+
+/* The day card uses one family throughout; supporting copy stays below
+   the date and pillars in contrast and weight, in both colour modes. */
+.calendar-layout > .detail {
+  --detail-copy: color-mix(in srgb, var(--text) 68%, var(--muted));
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 400;
+}
+.calendar-layout > .detail :is(.detail-hero .big, .lunar-line, .char) { font-family: inherit; }
+.calendar-layout > .detail :is(.kv, .tag-block) {
+  color: var(--detail-copy); font-size: 13px; line-height: 1.75;
+}
+.calendar-layout > .detail .tag-title { font-weight: 600; }
+.calendar-layout > .detail .day-pillar .char { font-weight: 600; }
 
 /* 天象: a few words on what is chosen, under its details, set apart by a fine line */
 .sky-intro {
