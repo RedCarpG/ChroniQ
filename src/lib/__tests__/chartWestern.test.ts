@@ -27,3 +27,9 @@ describe('星盘 dates', () => {
     expect(transits.length).toBeLessThan(40)
   })
 })
+
+it('dates exact crossings in the birthplace, rather than the nearest UTC noon', () => {
+  const days = westernYear(chart, 2026)
+  expect(days.get('1-22')).toContainEqual(expect.objectContaining({ kind: 'transit', planet: 'saturn', aspect: 'trine', point: 'asc' }))
+  expect(days.get('1-21') ?? []).not.toContainEqual(expect.objectContaining({ kind: 'transit', planet: 'saturn', aspect: 'trine', point: 'asc' }))
+})

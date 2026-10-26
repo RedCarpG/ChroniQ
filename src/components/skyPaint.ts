@@ -3,11 +3,10 @@
 // can be pointed at (the bodies, the named stars, the figures). Drawn in screen pixels, so however
 // far the map is zoomed the Milky Way's blur stays a few pixels and a star stays a point of light.
 
-import { CLOUD_CELL, cloudLight } from '../lib/sky'
+import { C, R } from './skyGeometry'
+export { C, R } from './skyGeometry'
 
-/** The map: the zenith at (C, C), the horizon a circle of radius R (SkyView draws in these units) */
-export const C = 200
-export const R = 170
+import { CLOUD_CELL, cloudLight } from '../lib/sky'
 
 /** The stars' colours by B−V, soft as the eye sees them: blue-white to pale orange */
 export const PALETTE = ['#bccdff', '#d6e1ff', '#f2f4ff', '#fff6e8', '#ffe9cf', '#ffd9b3', '#ffc79a']

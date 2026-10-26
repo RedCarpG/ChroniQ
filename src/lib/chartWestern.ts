@@ -1,8 +1,10 @@
+import { LruCache } from './lruCache'
 // Saved charts on the calendar, 星盘 side: the solar return (the Sun back at
 // its birth longitude) and the days a slow planet (Jupiter to Pluto) makes an
 // exact conjunction, square, trine or opposition to the natal Sun, Moon or
 // Ascendant. Uses astronomy-engine, so the calendar loads it only when asked.
 import * as A from 'astronomy-engine'
+import { toUtc } from './timeZone'
 import { bodyLon, buildStarChart } from './astrology'
 import type { ChartDay } from './chartDays'
 import { DEFAULT_PLACE } from './place'
@@ -36,13 +38,20 @@ function localDate(d: Date, timeZone: string) {
   return { year: Number(parts.year), key: `${Number(parts.month)}-${Number(parts.day)}` }
 }
 
-const cache = new Map<string, Map<string, ChartDay[]>>()
+const cache = new LruCache<string, Map<string, ChartDay[]>>(24)
 
 /** A chart's 星盘 dates in a (Gregorian) year, keyed by `${month}-${day}` */
 export function westernYear(chart: SavedChart, year: number): Map<string, ChartDay[]> {
   const key = JSON.stringify([chart.id, chart.name, chart.input, year])
   const cached = cache.get(key)
   if (cached) return cached
+  const days = computeWesternYear(chart, year)
+  cache.set(key, days)
+  return days
+}
+
+/** Uncached computation, also used by the worker; results are cached by its caller. */
+export function computeWesternYear(chart: SavedChart, year: number): Map<string, ChartDay[]> {
   const days = new Map<string, ChartDay[]>()
   const add = (k: string, day: ChartDay) => days.set(k, [...(days.get(k) ?? []), day])
   const who = { chartId: chart.id, name: chart.name }
@@ -55,19 +64,22 @@ export function westernYear(chart: SavedChart, year: number): Map<string, ChartD
     ['asc', natal.asc],
   ]
 
+  const yearStart = toUtc({ year, month: 1, day: 1, hour: 0, minute: 0 }, place.timeZone).date.getTime()
+  const yearEnd = toUtc({ year: year + 1, month: 1, day: 1, hour: 0, minute: 0 }, place.timeZone).date.getTime()
+
   // Solar return, dated in the birthplace's time zone
   if (year > chart.input.year) {
-    const found = A.SearchSunLongitude(lon('sun'), A.MakeTime(new Date(Date.UTC(year, 0, 1) - 2 * DAY)), 370)
+    const found = A.SearchSunLongitude(lon('sun'), A.MakeTime(new Date(yearStart)), (yearEnd - yearStart) / DAY)
     if (found) {
       const at = localDate(found.date, place.timeZone)
       if (at.year === year) add(at.key, { ...who, kind: 'solarReturn' })
     }
   }
 
-  // Slow-planet transits: daily positions at noon UT; an aspect is exact on the
-  // day its angle is closest when it crosses (a retrograde planet may cross more than once)
-  const start = Date.UTC(year, 0, 1, 12)
-  const count = Math.round((Date.UTC(year + 1, 0, 1, 12) - start) / DAY) + 1
+  // Daily samples bracket crossings; refine their instants before assigning
+  // a date in the birthplace. Include both edges of the local calendar year.
+  const start = yearStart - DAY
+  const count = Math.ceil((yearEnd - start) / DAY) + 2
   for (const [planet, body] of SLOW) {
     const lons = Array.from({ length: count }, (_, i) => bodyLon(body, A.MakeTime(new Date(start + i * DAY))))
     for (const [point, target] of targets) {
@@ -78,9 +90,20 @@ export function westernYear(chart: SavedChart, year: number): Map<string, ChartD
             const b = diff(lons[i + 1] - target, signed)
             if (Math.abs(a) > 5 || Math.abs(b) > 5 || (a > 0 && b > 0) || (a < 0 && b < 0)) continue
             if (a === 0 && i > 0) continue // counted as the previous day's b
-            const at = new Date(start + (Math.abs(a) <= Math.abs(b) ? i : i + 1) * DAY)
-            if (at.getUTCFullYear() === year) {
-              add(`${at.getUTCMonth() + 1}-${at.getUTCDate()}`, { ...who, kind: 'transit', planet, aspect, point })
+            let lo = start + i * DAY
+            let hi = lo + DAY
+            let left = a
+            while (hi - lo > 100) {
+              const mid = (lo + hi) / 2
+              const value = diff(bodyLon(body, A.MakeTime(new Date(mid))) - target, signed)
+              if (left * value <= 0) hi = mid
+              else { lo = mid; left = value }
+            }
+            const at = localDate(new Date((lo + hi) / 2), place.timeZone)
+            if (at.year === year) {
+              const day: ChartDay = { ...who, kind: 'transit', planet, aspect, point }
+              const existing = days.get(at.key) ?? []
+              if (!existing.some((d) => d.kind === 'transit' && d.planet === planet && d.aspect === aspect && d.point === point)) add(at.key, day)
             }
           }
         }
@@ -88,6 +111,5 @@ export function westernYear(chart: SavedChart, year: number): Map<string, ChartD
     }
   }
 
-  cache.set(key, days)
   return days
 }

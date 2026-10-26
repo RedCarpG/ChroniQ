@@ -2,6 +2,7 @@
 // (solar and lunar), the day's 干支 against the chart's day and year pillars,
 // the days a 大运 begins, and 本命年 / 冲太岁. The 星盘 dates (solar return,
 // slow-planet transits) are in chartWestern.ts, which loads separately.
+import { LruCache } from './lruCache'
 import { LunarDay, LunarMonth, SolarDay } from 'tyme4ts'
 import { buildBazi, type BaziChart } from './bazi'
 import { PUNISH, SELF_PUNISH, SIX_CLASH, SIX_COMBINE, isPair } from './relations'
@@ -25,7 +26,7 @@ export type ChartDay = { chartId: string; name: string } & (
 /** Whether a date is worth a line in the calendar grid (the rest show in the day panel) */
 export const onGrid = (d: ChartDay) => d.kind !== 'pillar' || (d.relation === '冲' && d.pillar === '日柱')
 
-const charts = new Map<string, BaziChart>()
+const charts = new LruCache<string, BaziChart>(16)
 /** The chart's 八字, cached by its input */
 export function baziOf(chart: SavedChart, schools: SchoolSettings = DEFAULT_SCHOOLS): BaziChart {
   const key = JSON.stringify([chart.input, schools])
@@ -41,7 +42,7 @@ function lunarBirth(chart: SavedChart) {
   return { year: month.getLunarYear().getYear(), month: month.getMonth(), day: lunar.getDay() }
 }
 
-const yearCache = new Map<string, Map<string, ChartDay[]>>()
+const yearCache = new LruCache<string, Map<string, ChartDay[]>>(48)
 
 /**
  * A chart's fixed dates in a (Gregorian) year, keyed by `${month}-${day}`:

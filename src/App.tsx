@@ -1,6 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { CalendarView } from './components/CalendarView'
-import { BaziView } from './components/BaziView'
 import { AboutBadges } from './components/AboutBadges'
 import { Logo } from './components/Logo'
 import { PageMenu, type Page } from './components/PageMenu'
@@ -27,6 +26,10 @@ type Tab = Page
 /** Order of the pages, which sets the way a page switch slides. */
 const TAB_ORDER: Tab[] = ['calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
 
+// Calendar is the default page; load the 八字 UI only when it is opened.
+const loadBazi = () => import('./components/BaziView')
+const BaziView = lazy(() => loadBazi().then((m) => ({ default: m.BaziView })))
+
 // 紫微斗数 pulls in iztro (~150 KB gzip); load it only when the tab is opened.
 const loadZiwei = () => import('./components/ZiweiView')
 const ZiweiView = lazy(() => loadZiwei().then((m) => ({ default: m.ZiweiView })))
@@ -43,7 +46,7 @@ const SolarSystemView = lazy(() => loadSolar().then((m) => ({ default: m.SolarSy
 // 观月, with its maps of the Moon
 const loadMoon = () => import('./components/MoonPage')
 const MoonPage = lazy(() => loadMoon().then((m) => ({ default: m.MoonPage })))
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -54,11 +57,13 @@ if (location.hash) history.replaceState(null, '', location.pathname + location.s
 
 export function App() {
   const online = useOnline()
+  const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
   // side of the new tab (styles.css: [data-vt='page']).
   const goTab = (next: Tab) => {
     if (next === tab) return
+    setLoadError(false)
     const root = document.documentElement
     root.dataset.pageDir = TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 'next' : 'back'
     // First visit to a page whose code is not loaded yet: put the loading screen
@@ -72,6 +77,7 @@ export function App() {
           loadedTabs.add(next)
           setTab(next)
         })
+        .catch(() => setLoadError(true))
         .finally(release)
       return
     }
@@ -204,6 +210,7 @@ export function App() {
 
   return (
     <SettingsContext.Provider value={settings}>
+      {loadError && <div role="alert">{t('页面加载失败，请重试或刷新页面。')} <button onClick={() => location.reload()}>{t('刷新页面')}</button></div>}
       <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
         {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): the mouse at the
             very top brings it down; a small tab pulls it down, and one under it folds it up again */}
@@ -268,13 +275,15 @@ export function App() {
               }}
             />
           ) : tab === 'bazi' ? (
-            <BaziView
-              key={loads}
-              input={baziInput}
-              onChange={setBaziInput}
-              schools={schools}
-              onSchoolsChange={changeSchools}
-            />
+            <Suspense fallback={<SplashSignal />}>
+              <BaziView
+                key={loads}
+                input={baziInput}
+                onChange={setBaziInput}
+                schools={schools}
+                onSchoolsChange={changeSchools}
+              />
+            </Suspense>
           ) : tab === 'sky' ? (
             <Suspense fallback={<SplashSignal />}>
               <SkyPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />

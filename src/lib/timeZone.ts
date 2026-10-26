@@ -1,3 +1,4 @@
+import { LruCache } from './lruCache'
 // Time zones through Intl, which carries each zone's history (daylight saving,
 // e.g. China 1986–91, and changes of standard offset). No dependencies, so
 // the app shell can use it.
@@ -10,7 +11,7 @@ export interface WallClock {
   minute: number
 }
 
-const offsetFormats = new Map<string, Intl.DateTimeFormat>()
+const offsetFormats = new LruCache<string, Intl.DateTimeFormat>(64)
 
 /** Offset of timeZone from UTC at a UTC instant, in minutes. */
 export function zoneOffset(utcMs: number, timeZone: string): number {
@@ -35,13 +36,33 @@ export function zoneOffset(utcMs: number, timeZone: string): number {
   return Math.round((asUtc - utcMs) / 60000)
 }
 
-/** Wall-clock time in a zone → UTC instant and the offset that applied. */
-export function toUtc(wall: WallClock, timeZone: string): { date: Date; offsetMinutes: number } {
+export interface ZonedTime {
+  date: Date
+  offsetMinutes: number
+  resolution: 'exact' | 'overlap' | 'gap'
+}
+
+/**
+ * Resolve offsets on both sides of a clock change. Repeated times use the
+ * earlier instant. Nonexistent times move forward by the gap (Temporal's
+ * compatible policy); forms/storage reject gaps before committing birth data.
+ */
+export function toUtc(wall: WallClock, timeZone: string): ZonedTime {
   const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute)
-  let offset = zoneOffset(asUtc, timeZone)
-  // Re-check at the corrected instant, which matters right at a DST change.
-  offset = zoneOffset(asUtc - offset * 60000, timeZone)
-  return { date: new Date(asUtc - offset * 60000), offsetMinutes: offset }
+  const offsets = new Set([-2, 0, 2].map((days) => zoneOffset(asUtc + days * 86400_000, timeZone)))
+  const candidates = [...offsets].map((offset) => {
+    const utc = asUtc - offset * 60000
+    const actualOffset = zoneOffset(utc, timeZone)
+    return { utc, offset: actualOffset, local: utc + actualOffset * 60000 }
+  })
+  const exact = candidates.filter((c) => c.local === asUtc).sort((a, b) => a.utc - b.utc)
+  const chosen = exact[0] ?? candidates.filter((c) => c.local > asUtc).sort((a, b) => a.local - b.local)[0]
+  if (!chosen) throw new RangeError('Cannot resolve local time')
+  return {
+    date: new Date(chosen.utc),
+    offsetMinutes: chosen.offset,
+    resolution: exact.length > 1 ? 'overlap' : exact.length === 1 ? 'exact' : 'gap',
+  }
 }
 
 /** Whether a zone name is one this browser knows */

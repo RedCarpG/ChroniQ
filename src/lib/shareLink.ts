@@ -46,8 +46,8 @@ export function parseShareHash(hash: string): SharedChart | null {
   const g = q.get('g')
   if (!TABS.includes(tab) || !m || (g !== 'm' && g !== 'f')) return null
   const [year, month, day, hour, minute] = m.slice(1).map(Number)
-  const input = toBaziInput({ year, month, day, hour, minute, gender: g === 'm' ? 1 : 0 })
-  if (!input) return null
+  // Validate once the link's birthplace has been read, not in the default zone.
+  const input: BaziInput = { year, month, day, hour, minute, gender: g === 'm' ? 1 : 0 }
   const place =
     q.has('lat') && q.has('lon')
       ? toPlace({
@@ -61,7 +61,8 @@ export function parseShareHash(hash: string): SharedChart | null {
   if (place) input.place = place
   else if (Math.abs(lng) <= 180) input.place = placeFromLongitude(lng)
   if (q.get('ts') === '1' || Math.abs(lng) <= 180) input.trueSolar = true
-  return { tab, input }
+  const validated = toBaziInput(input)
+  return validated ? { tab, input: validated } : null
 }
 
 /** Full share URL for the current page */

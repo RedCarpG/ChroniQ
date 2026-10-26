@@ -71,6 +71,7 @@ describe('星盘 time zones', () => {
     expect(toUtc({ year: 1990, month: 7, day: 1, hour: 12, minute: 0 }, 'Asia/Shanghai')).toEqual({
       date: new Date(Date.UTC(1990, 6, 1, 3)),
       offsetMinutes: 540,
+      resolution: 'exact',
     })
     expect(toUtc({ year: 1990, month: 12, day: 1, hour: 12, minute: 0 }, 'Asia/Shanghai').offsetMinutes).toBe(480)
     expect(toUtc({ year: 2026, month: 7, day: 1, hour: 12, minute: 0 }, 'Asia/Shanghai').offsetMinutes).toBe(480)
