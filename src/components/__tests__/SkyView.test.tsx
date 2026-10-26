@@ -374,13 +374,19 @@ describe('SkyView hovered while one is chosen', () => {
     fireEvent.click(row('土星'))
     const lit = () => map.querySelectorAll('.sky-path.on').length
     expect(lit()).toBe(1)
+    expect(map.querySelectorAll('.sky-path.pulsing')).toHaveLength(1)
     const neptune = map.querySelector('.sky-neptune')!
     fireEvent.pointerEnter(neptune, { pointerType: 'mouse' })
     expect(neptune.classList.contains('hover')).toBe(true)
     expect(map.querySelector('.sky-saturn')!.classList.contains('on')).toBe(true)
     // Saturn's path stays; Neptune's (not among the usual ones) is added and picked out too
     expect(lit()).toBe(2)
+    expect(map.querySelectorAll('.sky-path.pulsing')).toHaveLength(1)
     fireEvent.pointerLeave(neptune, { pointerType: 'mouse' })
+    expect(lit()).toBe(1)
+    const smoothButton = [...document.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === '流畅')!
+    fireEvent.click(smoothButton)
+    expect(map.querySelector('.sky-path.pulsing')).toBeNull()
     expect(lit()).toBe(1)
   })
 })
