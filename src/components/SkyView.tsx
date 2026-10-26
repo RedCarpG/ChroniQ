@@ -1,3 +1,7 @@
+import { BODY_COLOUR } from './bodyColours'
+import { project, projectSky, pathData, placeLabels } from './skyGeometry'
+import { SKYLINE, GROUND, TICKS, SKY_STOPS, HORIZON_GLOW } from './skyDecorations'
+import { useSkyBackdrop } from './useSkyBackdrop'
 import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { toUtc, type StarPlace } from '../lib/astrology'
@@ -5,15 +9,11 @@ import { WESTERN } from '../lib/constellations'
 import {
   PATH_BODIES,
   constellationsAt,
-  directionsAt,
   distanceOf,
-  fieldStars,
   formatAzimuth,
   historyTrack,
   litPart,
   mansionsAt,
-  milkyWayAt,
-  milkyWayCloud,
   moonPhaseName,
   riseSet,
   skyAt,
@@ -23,9 +23,7 @@ import {
   tracksAt,
   type SkyBody,
   type SkyStar,
-  vectorsOfStars,
 } from '../lib/sky'
-import { STAR_FIELDS } from '../lib/brightStars'
 import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
 import { FIVE_STARS } from '../lib/fiveStars'
@@ -36,154 +34,20 @@ import { TitleMark } from './Logo'
 import { DrawerPageTab } from './SavedCharts'
 import { useDismiss } from './useDismiss'
 import { play } from '../sound'
-import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour, type SkyCanvasScene } from './skyPaint'
+import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour } from './skyPaint'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
 
-// The map: the horizon is the rim (radius R), the zenith the centre (C, C), altitude falling off
-// evenly outwards. North is up and east is LEFT, as when looking up at the sky.
-const project = (az: number, alt: number): [number, number] => {
-  const r = (R * (90 - alt)) / 90
-  const a = (az * Math.PI) / 180
-  return [C - r * Math.sin(a), C - r * Math.cos(a)]
-}
-
-/** A small seeded random generator (mulberry32): the same hills and trees every time */
-function seeded(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0
-    let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-/** A ring of ground from the given inner line out far past any screen's corners (fill even-odd) */
-const groundFrom = (inner: string) => `M${C - 4 * R} ${C}a${4 * R} ${4 * R} 0 1 0 ${8 * R} 0a${4 * R} ${4 * R} 0 1 0 ${-8 * R} 0Z${inner}`
-
-/**
- * The skyline round the horizon, as an all-sky camera sees it: low rolling hills (half a degree
- * to two and a half up) with clumps of trees to six or seven degrees, then dark ground beyond.
- * In map units, made once.
- */
-const SKYLINE = (() => {
-  const rand = seeded(20261024)
-  const waves = [2, 3, 5, 9].map((f, i) => ({ f, a: [0.9, 0.6, 0.4, 0.25][i], p: rand() * Math.PI * 2 }))
-  // Stands of trees, each a row of rounded crowns of their own sizes
-  const trees: { az: number; w: number; h: number }[] = []
-  for (let stand = 0; stand < 9; stand++) {
-    let az = rand() * 360
-    const count = 3 + Math.floor(rand() * 9)
-    const tall = 2.5 + rand() * 3
-    for (let i = 0; i < count; i++) {
-      const w = 0.9 + rand() * 1.6
-      trees.push({ az, w, h: tall * (0.7 + rand() * 0.45) })
-      az += w * (0.9 + rand() * 0.6)
-    }
-  }
-  const points: string[] = []
-  for (let i = 0; i < 1440; i++) {
-    const az = i / 4
-    let h = 1.3 + waves.reduce((sum, w) => sum + w.a * Math.sin((az * w.f * Math.PI) / 180 + w.p), 0)
-    for (const tree of trees) {
-      const d = Math.abs(((az - tree.az + 540) % 360) - 180)
-      if (d < tree.w) h = Math.max(h, tree.h * Math.sqrt(1 - (d / tree.w) ** 2))
-    }
-    const [x, y] = project(az, Math.max(0.3, h))
-    points.push(`${x.toFixed(1)} ${y.toFixed(1)}`)
-  }
-  return groundFrom(`M${points.join('L')}Z`)
-})()
-/** Under one's feet there is no skyline: the ground starts at the horizon itself */
-const GROUND = groundFrom(`M${C - R} ${C}a${R} ${R} 0 1 0 ${2 * R} 0a${R} ${R} 0 1 0 ${-2 * R} 0Z`)
-/** Azimuth ticks just outside the horizon, every 5° (longer every 30°) */
-const TICKS = Array.from({ length: 72 }, (_, i) => {
-  const a = (i * 5 * Math.PI) / 180
-  const [r0, r1] = [R + 2, R + (i % 6 === 0 ? 9 : 5)]
-  return `M${(C - r0 * Math.sin(a)).toFixed(1)} ${(C - r0 * Math.cos(a)).toFixed(1)}L${(C - r1 * Math.sin(a)).toFixed(1)} ${(C - r1 * Math.cos(a)).toFixed(1)}`
-}).join('')
-/** The sky's colours from the zenith (first) out to the horizon, by how much sunlight there is */
-const SKY_STOPS: Record<string, [number, string][]> = {
-  night: [[0, '#02040d'], [0.55, '#050a1a'], [0.85, '#0a1128'], [1, '#141d3d']],
-  twilight: [[0, '#0b1433'], [0.55, '#182553'], [0.85, '#2c3a6e'], [1, '#4a5486']],
-  day: [[0, '#325a8c'], [0.7, '#4f78ab'], [1, '#8eaed0']],
-  below: [[0, '#0b0806'], [0.7, '#15100c'], [1, '#221a14']],
-}
-/** The glow low in the sky all round (airglow, a town's light): its colour and strength */
-const HORIZON_GLOW: Record<string, [string, number]> = {
-  night: ['#5a6eb0', 0.2],
-  twilight: ['#7d84c4', 0.4],
-  day: ['#e8f1ff', 0.26],
-  below: ['#6a4a30', 0.25],
-}
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** A star's size for what is placed round it (its name, the chosen ring), in map units at the full view */
 const starRadius = (mag: number) => Math.max(0.6, 3.2 - 0.55 * mag)
 
-export const BODY_COLOUR: Record<string, string> = {
-  earth: '#5b9bf0',
-  pluto: '#c8b6a6',
-  sun: '#ffcf4a',
-  moon: '#ece6d6',
-  mercury: '#c9bfb1',
-  venus: '#fff3c9',
-  mars: '#ff8a62',
-  jupiter: '#f4d7a8',
-  saturn: '#ead28f',
-  uranus: '#a8e6e8',
-  neptune: '#8ea9f3',
-}
 const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 : Math.min(5, Math.max(2.4, 3.6 - 0.35 * b.mag)))
 /** Dragging the sky across the disc turns the time by six hours (later to the right, as the stars go) */
 const DRAG_MINUTES = 360 / (2 * R)
 /** How far the map zooms: from fitting its window to eight times that */
 const Z_MIN = 1
 const Z_MAX = 8
-
-interface Label {
-  key: string
-  text: string
-  x: number
-  y: number
-  anchor: 'start' | 'middle' | 'end'
-  kind: 'body' | 'star' | 'figure'
-}
-
-/**
- * Places names beside their points without overlapping (k: map units per
- * screen pixel, as the text keeps its size on screen): each tries right,
- * left, above and below its point, and takes the first spot that is free.
- * Bodies go first (brightest first), then named stars; a star name with no
- * free spot is left off.
- */
-function placeLabels(points: { key: string; text: string; x: number; y: number; r: number; kind: Label['kind'] }[], k: number) {
-  const boxes: [number, number, number, number][] = []
-  const labels: Label[] = []
-  for (const p of points) {
-    // The font sizes in styles.css (.sky-body-name etc.), in map units
-    const size = (p.kind === 'body' ? 13 : p.kind === 'figure' ? 11.5 : 11) * k
-    // A Chinese character is about one em wide, a Latin letter about 0.6 of that
-    const w = [...p.text].reduce((sum, ch) => sum + (ch.charCodeAt(0) < 0x2e80 ? 0.62 : 1), 0) * size
-    const h = size + 2 * k
-    const gap = 4 * k
-    const spots: [number, number, Label['anchor'], number][] = [
-      [p.x + p.r + gap, p.y, 'start', p.x + p.r + gap],
-      [p.x - p.r - gap, p.y, 'end', p.x - p.r - gap - w],
-      [p.x, p.y - p.r - h / 2 - gap, 'middle', p.x - w / 2],
-      [p.x, p.y + p.r + h / 2 + gap, 'middle', p.x - w / 2],
-    ]
-    const spot = spots.find(([, y, , left]) => {
-      const box: [number, number, number, number] = [left, y - h / 2, left + w, y + h / 2]
-      return !boxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])
-    })
-    if (!spot && p.kind !== 'body') continue
-    const [x, y, anchor, left] = spot ?? spots[0]
-    boxes.push([left, y - h / 2, left + w, y + h / 2])
-    labels.push({ key: p.key, text: p.text, x, y, anchor, kind: p.kind })
-  }
-  return labels
-}
-
 
 // Paths: where each body goes from 12 hours before the moment shown to 12
 // hours after, sampled every 10 minutes, with a dot on each whole local hour.
@@ -204,10 +68,6 @@ const MANSION_TRAD = new Map(MANSION_FIGURES.map((c) => [c.name, c.trad]))
 const zoneOf = (name: string): MansionZone | undefined => MANSION_BY_NAME.get(name)?.zone
 const FIGURES_KEY = 'chroniq-sky-figures'
 const QUALITY_KEY = 'chroniq-sky-quality'
-
-/** SVG path data through the projected points */
-const pathData = (points: { az: number; alt: number }[], pt: (az: number, alt: number) => [number, number] = project) =>
-  points.map((p, i) => `${i ? 'L' : 'M'}${pt(p.az, p.alt).map((v) => v.toFixed(1)).join(' ')}`).join('')
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** A sentence with elements (links) put in its {slots}, as the text came from t() with them kept */
@@ -278,7 +138,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   // through the Earth: the nadir in the middle, and east and west swapped (looking down, east is right).
   const [below, setBelow] = useState(false)
   const shown = (alt: number) => (below ? alt < 0 : alt >= 0)
-  const at = (az: number, alt: number) => (below ? project((360 - az) % 360, -alt) : project(az, alt))
+  const at = (az: number, alt: number) => projectSky(az, alt, below)
   const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
 
   // ---- The sky as the page's backdrop ----
@@ -737,115 +597,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
     return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
   }
   const light = below ? 'below' : sky.light
-  // The Milky Way's band (lib/sky.ts milkyWayModel) for the canvas under the map (skyPaint), in
-  // map units: short strokes along its centre line, each as wide as the band is there and as bright,
-  // in three layers (haze, body, core) that the blurs run together into one continuous band; the
-  // Great Rift as dark strokes and the Coalsack as a dark patch, cut out of it
-  const galaxy = useMemo(() => milkyWayAt(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
-  const milkyWay = useMemo((): SkyCanvasScene['band'] => {
-    const seen = (alt: number) => (below ? alt < 4 : alt > -4)
-    // Sizes are in degrees: R / 90 map units to the degree
-    const deg = R / 90
-    const line = (list: typeof galaxy.rift) =>
-      list
-        .map((p, i) => {
-          const [x, y] = at(p.az, p.alt)
-          return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
-        })
-        .join('')
-    const strokes = (list: typeof galaxy.spine) => {
-      const out: { d: string; w: number; a: number }[] = []
-      for (let i = 0; i < list.length; i++) {
-        const p = list[i]
-        const q = list[(i + 1) % list.length]
-        // Leave out what is well below the horizon (and so far outside the disc)
-        if (below ? Math.min(p.alt, q.alt) > 30 : Math.max(p.alt, q.alt) < -30) continue
-        const [x1, y1] = at(p.az, p.alt)
-        const [x2, y2] = at(q.az, q.alt)
-        out.push({
-          d: `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`,
-          w: (((p.size ?? 4) + (q.size ?? 4)) / 2) * deg,
-          a: (p.weight + q.weight) / 2,
-        })
-      }
-      return out
-    }
-    // Each layer as a few paths rather than a stroke each: strokes of about the same opacity (to
-    // 0.02) and width (to half a unit) share one path, which under the blur looks the same
-    const layer = (band: { d: string; w: number; a: number }[], width: number, opacity: (a: number) => number) => {
-      const groups = new Map<string, { d: string; w: number; o: number }>()
-      for (const b of band) {
-        const o = Math.round(opacity(b.a) * 50) / 50
-        if (o <= 0) continue
-        const w = Math.round(b.w * width * 2) / 2
-        const key = `${o} ${w}`
-        const g = groups.get(key)
-        if (g) g.d += b.d
-        else groups.set(key, { d: b.d, w, o })
-      }
-      return [...groups.values()]
-    }
-    // Brightness runs about 0.2 (anticentre) to 1.6 (the centre, in Sagittarius)
-    const band = strokes(galaxy.spine)
-    return {
-      haze: layer(band, 3.4, (a) => Math.min(0.3, 0.08 + 0.13 * a)),
-      body: layer(band, 1.7, (a) => Math.min(0.5, 0.08 + 0.26 * a)),
-      core: layer(band, 0.75, (a) => (a > 0.55 ? Math.min(0.6, 0.5 * (a - 0.55)) : 0)),
-      // The rift as continuous lines (separate strokes would bead): a thin one along its whole
-      // length and a wider one where it is deepest, Aquila to Cygnus
-      rift: [
-        { d: line(galaxy.rift), w: 2.6 * deg, o: 0.55 },
-        { d: line(galaxy.rift.filter((p) => p.l >= 18 && p.l <= 72)), w: 4.5 * deg, o: 0.5 },
-      ],
-      // The rift's own patches would bead along its line: only the Coalsack stays a patch
-      dust: galaxy.dust
-        .filter((p) => p.l > 180 && seen(p.alt))
-        .map((p) => {
-          const [x, y] = at(p.az, p.alt)
-          return { x, y, r: ((p.size ?? 4) * R) / 90, a: p.weight }
-        }),
-    }
-    // at follows below
-  }, [galaxy, below])
-  // The faint stars (magnitude 5 to 6) and the Milky Way's star clouds: loaded and made once,
-  // after the first sky is up, then turned with the sky
-  const [deep, setDeep] = useState<{
-    faint: readonly number[]
-    cloud: ReturnType<typeof milkyWayCloud>
-    field: ReturnType<typeof fieldStars>
-  } | null>(null)
-  useEffect(() => {
-    let gone = false
-    let timer = 0
-    import('../lib/faintStars').then(({ FAINT_STARS }) => {
-      if (!gone) timer = window.setTimeout(() => setDeep({ faint: FAINT_STARS, cloud: milkyWayCloud(), field: fieldStars() }), 0)
-    })
-    return () => {
-      gone = true
-      clearTimeout(timer)
-    }
-  }, [])
-  // At the full view the star clouds' light is drawn by the cells they are gathered in, and only their
-  // brighter points singly; zoomed in, every point. The stars past magnitude 6 only once zoomed in
-  // (skyPaint), and not while dragged through time.
-  const allCloud = view.z >= 2 && !smooth
-  const wantField = view.z > 1.5 && !dragging && !smooth
-  const deepSky = useMemo(
-    () =>
-      deep && {
-        cloud: {
-          ...directionsAt(deep.cloud.v, utc, place.latitude, place.longitude, allCloud ? undefined : deep.cloud.bright),
-          weight: deep.cloud.weight,
-          warm: deep.cloud.warm,
-          cells: allCloud
-            ? null
-            : { ...directionsAt(deep.cloud.cells.v, utc, place.latitude, place.longitude), light: deep.cloud.cells.light, warm: deep.cloud.cells.warm },
-        },
-        faint: { ...directionsAt(vectorsOfStars(deep.faint), utc, place.latitude, place.longitude), rows: deep.faint, fields: STAR_FIELDS },
-        field: wantField ? { ...directionsAt(deep.field.v, utc, place.latitude, place.longitude), weight: deep.field.weight } : null,
-      },
-    [deep, utc, place.latitude, place.longitude, allCloud, wantField],
-  )
+  const { milkyWay, deepSky } = useSkyBackdrop(utc, place.latitude, place.longitude, below, view.z, smooth, dragging)
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
   // place in the list, which shifts as figures rise and set: a remount would draw the chosen one in again

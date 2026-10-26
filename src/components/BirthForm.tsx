@@ -1,3 +1,5 @@
+import { parseTime } from '../lib/dateInput'
+import { toUtc } from '../lib/timeZone'
 import { useState, type ReactNode } from 'react'
 import type { BaziInput } from '../lib/bazi'
 import { DEFAULT_PLACE } from '../lib/place'
@@ -111,7 +113,14 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: P
   const t = useT()
   const [showSchools, setShowSchools] = useState(false)
   const timeValue = `${pad(input.hour)}:${pad(input.minute)}`
-  const change = (patch: Partial<BaziInput>) => onChange({ ...input, ...patch })
+  const [timeError, setTimeError] = useState(false)
+  const resolution = toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).resolution
+  const change = (patch: Partial<BaziInput>) => {
+    const next = { ...input, ...patch }
+    const gap = toUtc(next, (next.place ?? DEFAULT_PLACE).timeZone).resolution === 'gap'
+    setTimeError(gap)
+    if (!gap) onChange(next)
+  }
 
   return (
     <section className="card bazi-form">
@@ -122,11 +131,13 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: P
           type="time"
           value={timeValue}
           onChange={(e) => {
-            const [h, mi] = e.target.value.split(':').map(Number)
-            if (!Number.isNaN(h)) change({ hour: h, minute: mi })
+            const time = parseTime(e.target.value)
+            if (time) change(time)
           }}
         />
       </label>
+      {timeError && <p role="alert">{t('该本地时间因夏令时跳变而不存在，请选择其他时间。')}</p>}
+      {resolution === 'overlap' && <p role="status">{t('该时间因夏令时回拨出现两次，采用较早的一次。')}</p>}
       <div className="seg" role="group" aria-label={t('性别')}>
         {(['男', '女'] as const).map((g, i) => (
           <button

@@ -8,13 +8,12 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
+      .then((cache) => cache.addAll(PRECACHE)),
   )
 })
 
-// A new version takes over at once (pages are fetched network-first, so an
-// open page is already on the new HTML), and older caches are dropped.
+// Wait for existing controlled pages to close before activation. Their lazy
+// imports still reference the previous build and need its cache until then.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -44,28 +43,27 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
 
-  // Pages: the latest from the network, else the cached app shell.
+  // Serve the HTML installed with this worker, never mix it with a newer build.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetchWithin(request, 4000)
-        .then((response) => {
-          if (response.ok) caches.open(CACHE).then((cache) => cache.put('./', response.clone()))
-          return response
-        })
-        .catch(() => caches.match('./').then((cached) => cached || Response.error())),
+      caches.open(CACHE).then(async (cache) =>
+        (await cache.match('./')) || fetchWithin(request, 4000),
+      ),
     )
     return
   }
 
   // Built files have content hashes in their names, so a cached copy is always right.
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then(
+    // These are same-origin static files. Precache requests and module/font
+    // requests can carry different Origin headers under Vary: Origin.
+    caches.match(request, { ignoreSearch: true, ignoreVary: true }).then(
       (cached) =>
         cached ||
         fetch(request).then((response) => {
           if (response.ok && response.type === 'basic') {
             const copy = response.clone()
-            caches.open(CACHE).then((cache) => cache.put(request, copy))
+            event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)))
           }
           return response
         }),

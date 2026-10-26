@@ -248,6 +248,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
 
   return (
     <div className="calendar-layout">
+      {chartDays.westernError && <div role="alert">{t('星盘日期计算失败，请重试。')} <button onClick={chartDays.retryWestern}>{t('重试')}</button></div>}
       <section className="card calendar">
         <header className="cal-head">
           <div className="cal-title">

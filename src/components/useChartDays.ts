@@ -5,7 +5,7 @@ import { loadSchools } from '../lib/schools'
 import { useT, useTerm } from '../settingsContext'
 import { useCalendarChart, useSavedCharts } from './chartStore'
 
-type Western = typeof import('../lib/chartWestern')
+type Western = typeof import('../lib/westernClient')
 
 const ITEMS_KEY = 'chroniq-calendar-chart-items'
 const BRANCHES = '子丑寅卯辰巳午未申酉戌亥'
@@ -47,28 +47,59 @@ export function useChartDays() {
   const schools = useMemo(loadSchools, [])
   const [western, setWestern] = useState<Western | null>(null)
   const wantWestern = items.includes('western') && shown.length > 0
+  const [westernError, setWesternError] = useState(false)
   useEffect(() => {
-    if (wantWestern && !western) import('../lib/chartWestern').then((m) => setWestern(() => m))
-  }, [wantWestern, western])
+    if (!wantWestern || western || westernError) return
+    let active = true
+    import('../lib/westernClient').then((m) => { if (active) setWestern(() => m) }).catch(() => { if (active) setWesternError(true) })
+    return () => { active = false }
+  }, [wantWestern, western, westernError])
 
-  // A year of 星盘 dates takes a while to work out (daily planet positions), so it is done
-  // just after the year is first shown, when the page is idle, not while the calendar moves
-  const westernDone = useRef(new Map<string, Map<string, ChartDay[]>>())
-  const westernQueued = useRef(new Set<string>())
+  const requests = useRef(new Map<string, { chart: (typeof shown)[number]; year: number }>())
+  requests.current.clear()
+  const tasks = useRef(new Map<string, AbortController>())
+  const failed = useRef(new Set<string>())
   const [westernVersion, setWesternVersion] = useState(0)
-  const westernOf = (c: (typeof shown)[number], year: number) => {
+  const [calculating, setCalculating] = useState(false)
+  const westernOf = (chart: (typeof shown)[number], year: number) => {
     if (!western) return undefined
-    const key = JSON.stringify([c.id, c.name, c.input, year])
-    const done = westernDone.current.get(key)
-    if (done || westernQueued.current.has(key)) return done
-    westernQueued.current.add(key)
-    const run = () => {
-      westernDone.current.set(key, western.westernYear(c, year))
-      setWesternVersion((v) => v + 1)
+    const result = western.peekWesternYear(chart, year)
+    if (!result) requests.current.set(JSON.stringify([chart.id, chart.name, chart.input, year]), { chart, year })
+    return result
+  }
+  // Schedule after commit, never during render. A chart/filter change or leaving
+  // the calendar cancels obsolete work, including the worker when no jobs remain.
+  useEffect(() => {
+    const running = tasks.current
+    setCalculating(false)
+    return () => {
+      for (const controller of running.values()) controller.abort()
+      running.clear()
     }
-    if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 })
-    else setTimeout(run, 50)
-    return undefined
+  }, [shown, items])
+  useEffect(() => {
+    if (!western || !wantWestern) return
+    for (const [key, { chart, year }] of requests.current) {
+      if (tasks.current.has(key) || failed.current.has(key)) continue
+      const controller = new AbortController()
+      tasks.current.set(key, controller)
+      setCalculating(true)
+      western.westernYearAsync(chart, year, controller.signal).then(() => {
+        if (!controller.signal.aborted) setWesternVersion((v) => v + 1)
+      }).catch(() => {
+        if (!controller.signal.aborted) { failed.current.add(key); setWesternError(true) }
+      }).finally(() => {
+        if (!controller.signal.aborted) {
+          tasks.current.delete(key)
+          setCalculating(tasks.current.size > 0)
+        }
+      })
+    }
+  })
+  const retryWestern = () => {
+    failed.current.clear()
+    setWesternError(false)
+    setWesternVersion((v) => v + 1)
   }
 
   // Looked up per day cell, so built once: each year's dates for all shown charts (as each
@@ -113,7 +144,7 @@ export function useChartDays() {
         })
       : []
 
-  return { charts, shown, items, toggleItem, daysOf, taiSuiOf, westernLoading: wantWestern && !western }
+  return { charts, shown, items, toggleItem, daysOf, taiSuiOf, westernError, retryWestern, westernLoading: wantWestern && (!western || calculating) }
 }
 
 /** Words a chart date in the UI language */

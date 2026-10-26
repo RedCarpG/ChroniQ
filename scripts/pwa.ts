@@ -17,22 +17,30 @@ export function serviceWorker(): Plugin {
   return {
     name: 'chroniq-service-worker',
     apply: 'build',
-    generateBundle(_, bundle) {
-      const publicDir = join(process.cwd(), 'public')
-      // Every file in public/, in its folders too (the loading screen's fonts are in public/fonts)
-      const publicFiles = (readdirSync(publicDir, { recursive: true }) as string[])
-        .map((f) => f.split('\\').join('/'))
-        .filter((f) => statSync(join(publicDir, f)).isFile())
-        .sort()
-      const built = Object.keys(bundle).filter((f) => !f.endsWith('.map')).sort()
-      const hash = createHash('sha256')
-      for (const f of built) hash.update(f)
-      for (const f of publicFiles) hash.update(f).update(readFileSync(join(publicDir, f)))
-      const precache = ['./', ...built.filter((f) => f !== 'index.html' && !ON_DEMAND.some((re) => re.test(f))), ...publicFiles]
-      const source = readFileSync(join(process.cwd(), 'scripts/sw-template.js'), 'utf8')
-        .replace('__CACHE__', `chroniq-${hash.digest('hex').slice(0, 12)}`)
-        .replace('__PRECACHE__', JSON.stringify(precache, null, 2))
-      this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+    generateBundle: {
+      order: 'post',
+      handler(_, bundle) {
+        const publicDir = join(process.cwd(), 'public')
+        // Every file in public/, in its folders too (the loading screen's fonts are in public/fonts)
+        const publicFiles = (readdirSync(publicDir, { recursive: true }) as string[])
+          .map((f) => f.split('\\').join('/'))
+          .filter((f) => statSync(join(publicDir, f)).isFile())
+          .sort()
+        const built = Object.keys(bundle).filter((f) => !f.endsWith('.map')).sort()
+        const hash = createHash('sha256')
+        for (const f of built) {
+          const item = bundle[f]
+          hash.update(f).update(item.type === 'chunk' ? item.code : item.source)
+        }
+        const template = readFileSync(join(process.cwd(), 'scripts/sw-template.js'), 'utf8')
+        hash.update(template)
+        for (const f of publicFiles) hash.update(f).update(readFileSync(join(publicDir, f)))
+        const precache = ['./', ...built.filter((f) => f !== 'index.html' && !ON_DEMAND.some((re) => re.test(f))), ...publicFiles]
+        const source = template
+          .replace('__CACHE__', `chroniq-${hash.digest('hex').slice(0, 12)}`)
+          .replace('__PRECACHE__', JSON.stringify(precache, null, 2))
+        this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+      },
     },
   }
 }

@@ -7,7 +7,7 @@ import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
-import { BODY_COLOUR } from './SkyView'
+import { BODY_COLOUR } from './bodyColours'
 
 const C = 200
 const R = 180

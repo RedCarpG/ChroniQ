@@ -1,4 +1,6 @@
 // Last bazi input and named saved charts, kept only in this browser.
+import { validDate } from './dateInput'
+import { toUtc } from './timeZone'
 import type { BaziInput } from './bazi'
 import { DEFAULT_PLACE, placeFromLongitude, samePlace, toPlace, type Place } from './place'
 import { loadLegacyStarPlace } from './starPrefs'
@@ -26,6 +28,7 @@ export function toBaziInput(v: unknown, fallback?: Place | null): BaziInput | nu
     !inRange(o.year, 1900, 2100) ||
     !inRange(o.month, 1, 12) ||
     !inRange(o.day, 1, 31) ||
+    !validDate(o.year as number, o.month as number, o.day as number) ||
     !inRange(o.hour, 0, 23) ||
     !inRange(o.minute, 0, 59) ||
     (o.gender !== 0 && o.gender !== 1)
@@ -47,6 +50,7 @@ export function toBaziInput(v: unknown, fallback?: Place | null): BaziInput | nu
     input.trueSolar = true
   }
   if (!input.place && fallback) input.place = fallback
+  if (toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).resolution === 'gap') return null
   return input
 }
 

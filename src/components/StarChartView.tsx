@@ -1,3 +1,7 @@
+import { useSavedCharts } from './chartStore'
+import { toPlace } from '../lib/place'
+import { parseTime } from '../lib/dateInput'
+import { toBaziInput } from '../lib/savedCharts'
 import { Suspense, lazy, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ASPECT_INFO, HOUSE_INFO, PLANET_INFO, SIGN_INFO } from '../lib/astroInfo'
 import {
@@ -452,20 +456,8 @@ function partnerFrom(name: string, input: BaziInput): Partner {
 function loadPartner(input: BaziInput, place: StarPlace): Partner {
   try {
     const p = JSON.parse(localStorage.getItem(PARTNER_KEY) ?? 'null') as Partner | null
-    const w = p?.wall
-    if (
-      p &&
-      typeof p.name === 'string' &&
-      w &&
-      [w.year, w.month, w.day, w.hour, w.minute].every(Number.isInteger) &&
-      w.year >= 1900 &&
-      w.year <= 2100 &&
-      p.place &&
-      Number.isFinite(p.place.latitude) &&
-      Number.isFinite(p.place.longitude) &&
-      typeof p.place.timeZone === 'string'
-    )
-      return p
+    const input = p && toBaziInput({ ...p.wall, gender: 1, place: p.place })
+    if (p && typeof p.name === 'string' && toPlace(p.place) && input) return partnerFrom(p.name, input)
   } catch {
     // fall through
   }
@@ -493,7 +485,7 @@ function PartnerPicker({
   input: BaziInput
 }) {
   const t = useT()
-  const charts = useMemo(loadCharts, [])
+  const [charts] = useSavedCharts()
   const pad = (n: number) => String(n).padStart(2, '0')
   const w = partner.wall
   const savedMatch = charts.find(
@@ -505,8 +497,14 @@ function PartnerPicker({
       c.input.hour === w.hour &&
       c.input.minute === w.minute,
   )
+  const [timeError, setTimeError] = useState(false)
+  const change = (next: Partner) => {
+    const gap = toUtc(next.wall, next.place.timeZone).resolution === 'gap'
+    setTimeError(gap)
+    if (!gap) onChange(next)
+  }
   const edit = (patch: Partial<Partner['wall']>) =>
-    onChange({ ...partner, name: savedMatch ? '对方' : partner.name, wall: { ...w, ...patch } })
+    change({ ...partner, name: savedMatch ? '对方' : partner.name, wall: { ...w, ...patch } })
   return (
     <div className="bazi-form partner-form">
       <label>
@@ -534,12 +532,14 @@ function PartnerPicker({
           type="time"
           value={`${pad(w.hour)}:${pad(w.minute)}`}
           onChange={(e) => {
-            const [h, mi] = e.target.value.split(':').map(Number)
-            if (!Number.isNaN(h)) edit({ hour: h, minute: mi })
+            const time = parseTime(e.target.value)
+            if (time) edit(time)
           }}
         />
       </label>
-      <PlacePicker label={t('对方出生地')} place={partner.place} onChange={(place) => onChange({ ...partner, place })} />
+      {timeError && <p role="alert">{t('该本地时间因夏令时跳变而不存在，请选择其他时间。')}</p>}
+      {toUtc(w, partner.place.timeZone).resolution === 'overlap' && <p role="status">{t('该时间因夏令时回拨出现两次，采用较早的一次。')}</p>}
+      <PlacePicker label={t('对方出生地')} place={partner.place} onChange={(place) => change({ ...partner, place })} />
     </div>
   )
 }

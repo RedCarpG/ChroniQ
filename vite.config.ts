@@ -6,8 +6,8 @@ import { serviceWorker } from './scripts/pwa'
 export default defineConfig({
   plugins: [react(), serviceWorker()],
   base: './',
-  // The main chunk sits just over Vite's 500 kB default (tyme4ts is large);
-  // iztro is already split into the lazily loaded 紫微 chunk.
+  // The calendar needs tyme4ts; chart-page UI and iztro load on demand.
+  // Keep the warning below the old 635 kB eager entry bundle.
   build: { chunkSizeWarningLimit: 600 },
   // The 紫微 tests cast iztro charts (0.7–1.9 s each on their own); with the whole suite running in
   // parallel on a busy machine they have gone past vitest's 5 s default. 20 s still catches a hang.

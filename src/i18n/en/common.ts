@@ -125,4 +125,10 @@ export const COMMON: Record<string, string> = {
   反馈问题: 'Report a problem',
   '制作：{author} · 历法 {tyme} · 紫微 {iztro} · 星盘 {astronomy}':
     'Made by {author} · calendar {tyme} · 紫微 {iztro} · astrology {astronomy}',
+  '该本地时间因夏令时跳变而不存在，请选择其他时间。': 'This local time does not exist due to a clock change. Please choose another time.',
+  '该时间因夏令时回拨出现两次，采用较早的一次。': 'This time occurs twice after a clock change. The earlier occurrence is used.',
+  '页面加载失败，请重试或刷新页面。': 'The page could not be loaded. Try again or reload the page.',
+  '刷新页面': 'Reload page',
+  '星盘日期计算失败，请重试。': 'Chart dates could not be calculated. Please try again.',
+  '重试': 'Try again',
 }
