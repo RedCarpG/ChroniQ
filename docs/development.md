@@ -1,6 +1,6 @@
 # 开发指南
 
-[← 返回首页](../README.md)
+[← 返回首页](../README.md) · 产品与技术 Spec：[中文](SPEC.zh-CN.md) / [English](SPEC.en.md)
 
 ## 技术栈
 
@@ -14,7 +14,7 @@
 ## 本地开发
 
 ```bash
-npm install
+npm ci
 npm run dev       # 本地开发
 npm run build     # 类型检查并构建到 dist/
 npm run preview   # 预览构建结果
@@ -44,7 +44,7 @@ src/
   i18n/                  英文界面词典
   pwa.ts                 注册 Service Worker、安装提示、离线状态
 scripts/
-  pwa.ts                 构建时生成 sw.js（预缓存全部文件）
+  pwa.ts                 构建时生成 sw.js 与预缓存清单
 docs/                    功能详解、流派说明、开发指南
 legacy/                  旧版 Express + EJS 实现（仅作参考）
 ```
