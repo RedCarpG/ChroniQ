@@ -4,6 +4,7 @@
 import { astro, util } from 'iztro'
 import { LunarDay, LunarHour, LunarMonth, LunarYear, SolarDay } from 'tyme4ts'
 import { effectiveTime, formatTime, type BaziInput, type ElementName } from './bazi'
+import { quanshuBrightness } from './ziweiBrightness'
 import { mutagenTable, type ZiweiSchoolSettings } from './ziweiSchools'
 import { STAR_ELEMENT, starLuck, type StarLuck } from './ziweiStars'
 import type { WallTime } from './solarTime'
@@ -176,6 +177,11 @@ export function buildZiwei(input: BaziInput, schools: ZiweiSchoolSettings): Ziwe
     // month index (寅 = 0) keeps 闰月 handling in line with its other 月系 stars.
     const month = BRANCH_ORDER[(2 + util.fixLunarMonthIndex(dateStr, timeIdx, true)) % 12]
     moveStar(palaces, '天马', MA[month])
+  }
+
+  // 庙旺 by the 《全书》 table where it has one, for the palace each star ends up in
+  for (const p of Object.values(palaces)) {
+    for (const s of [...p.major, ...p.minor, ...p.adjective]) s.brightness = quanshuBrightness(s.name, p.branch) ?? s.brightness
   }
 
   // 飞化 after any star moves, so they land where the board shows the star.

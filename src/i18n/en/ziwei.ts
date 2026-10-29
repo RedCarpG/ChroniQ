@@ -62,4 +62,14 @@ export const ZIWEI: Record<string, string> = {
   '五行属{element}': 'element {element}',
   '传统说法，仅供参考': 'Traditional reading, for reference only',
   '悬停或点按任一宫位，即可在盘上看到它的{sanfang}。': 'Hover or tap any palace to see its {sanfang} on the board.',
+  // 格局: the patterns a chart forms
+  吉格: 'Auspicious',
+  凶格: 'Adverse',
+  结构: 'Structure',
+  加分: 'Strengthened by',
+  破格: 'Broken by',
+  '命宫与它的三方四正、夹宫没有构成常见的格局。':
+    'The Life palace, its 三方四正 and the palaces either side of it form none of the common patterns.',
+  '按《紫微斗数全书》《骨髓赋》的通行定义，看命宫与它的三方四正、夹宫；「加分」「破格」只列盘上看得到的条件（星曜、庙旺与生年四化）。悬停或点按一个格局，盘上标出它所在的宫位。仅供参考。':
+    'By the common definitions of 《紫微斗数全书》 and 《骨髓赋》, from the Life palace, its 三方四正 and the palaces either side of it. What strengthens or breaks a pattern lists only what the board shows (the stars, their brightness and the birth-year 四化). Hover or tap a pattern to see its palaces on the board. For reference only.',
 }
