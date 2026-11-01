@@ -2554,10 +2554,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (max-width: 720px) { .tl-below { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- 白话解读: the chart in plain words ---------- */
-.bazi-reading { display: grid; gap: 10px; }
-.bazi-reading h3 { margin: 0; }
+.chart-reading { display: grid; gap: 10px; }
+.chart-reading h3 { margin: 0; }
 .reading-list { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 14px; line-height: 1.7; }
-.reading-list dt { font-family: var(--font-title); color: var(--muted); }
+.reading-list dt { white-space: nowrap; font-family: var(--font-title); color: var(--muted); }
 .reading-list dd { margin: 0; }
 .reading-list strong { font-family: var(--font-title); font-weight: 600; color: var(--accent); }
 .reading-line { display: block; }

@@ -41,6 +41,7 @@ import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
+import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
 
 // 生辰星空, shared with the 八字 page: loaded apart, as it brings the star catalogue
@@ -142,6 +143,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       <SectionNav
         items={[
           ['star-natal', t('本命')],
+          ['star-reading', t('解读')],
           ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
           ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
           ['star-houses', t('宫位')],
@@ -242,6 +244,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           active={!!focus}
         />
       )}
+
+      <StarReadingCard chart={chart} />
 
       {compositeChart && <CompositeCard chart={compositeChart} partnerName={partnerLabel(t, partner.name)} settings={settings} />}
 

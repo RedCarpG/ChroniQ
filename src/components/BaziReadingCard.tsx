@@ -17,7 +17,7 @@ export function BaziReadingCard({ chart }: { chart: BaziChart }) {
     balanced: t('比较平衡'),
   }[r.tendency]
   return (
-    <section className="card bazi-reading" id="bazi-reading">
+    <section className="card chart-reading" id="bazi-reading">
       <h3 className="section-title">
         <InfoTip label={t('白话解读')} title={t('白话解读')}>
           <span>{t('按固定规则从命盘生成，是常见的传统说法，不是预测，仅供参考。')}</span>
