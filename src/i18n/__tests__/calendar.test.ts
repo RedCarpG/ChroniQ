@@ -7,7 +7,7 @@ import { EN } from '../en'
 // Text the 日历 page and the page menu put through t() from data, not from literal t('…') calls
 describe('日历 English', () => {
   it('names the pages and their groups', () => {
-    const texts = PAGE_GROUPS.flatMap((g) => [g.title, ...g.pages.flatMap((p) => [p.name, p.desc])])
+    const texts = PAGE_GROUPS.flatMap((g) => [g.title, ...g.pages.flatMap((p) => [p.name, p.short ?? p.name, p.desc])])
     expect(texts.filter((text) => EN[text] === undefined)).toEqual([])
   })
 

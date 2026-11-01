@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useT, useTerm } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 export type Page = 'today' | 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky' | 'moon' | 'solar'
 
 /** The pages, grouped as the menu lists them (shown through t(): src/i18n/__tests__/calendar.test.ts checks the English) */
-export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; desc: string }[] }[] = [
+export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; /** In the navigation, where the full name is long */ short?: string; desc: string }[] }[] = [
   {
     title: '历法',
     pages: [
@@ -19,96 +19,69 @@ export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; de
   {
     title: '命理',
     pages: [
-      { page: 'bazi', name: '八字排盘', desc: '四柱、十神、神煞、大运流年' },
-      { page: 'ziwei', name: '紫微斗数', desc: '十二宫、四化飞星、运限' },
+      { page: 'bazi', name: '八字排盘', short: '八字', desc: '四柱、十神、神煞、大运流年' },
+      { page: 'ziwei', name: '紫微斗数', short: '紫微', desc: '十二宫、四化飞星、运限' },
       { page: 'star', name: '星盘', desc: '本命、行运推运、合盘、组合盘' },
     ],
   },
 ]
-const ALL = PAGE_GROUPS.flatMap((g) => g.pages)
-
 /**
- * Page switcher in the top bar: the current page's name opens a menu of all
- * pages, grouped, each with a line on what it holds. Arrow keys move through
- * the menu, Escape or a click outside closes it.
+ * The pages, in their groups, always in sight: the current page's group lies open and the others are
+ * one button each. Pressing one opens it instead, to look or to go there; clicking anywhere else or
+ * Escape returns to the current page's group. A new group needs only an entry in PAGE_GROUPS.
  */
-export function PageMenu({ page, onPick }: { page: Page; onPick: (page: Page) => void }) {
+export function PageNav({ page, onPick, className }: { page: Page; onPick: (page: Page) => void; className?: string }) {
   const term = useTerm()
   const t = useT()
   // Page names and notes are interface text; term() still turns the 干支 etc. in them to 繁體
   const tr = (text: string) => term(t(text))
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const button = useRef<HTMLButtonElement>(null)
-  const close = useCallback(() => setOpen(false), [])
-  useDismiss(ref, open, close)
-  const current = ALL.find((p) => p.page === page)!
-
-  // Opening puts the focus on the current page's item.
-  useEffect(() => {
-    if (open) ref.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
-  }, [open])
-  const onKey = (e: React.KeyboardEvent) => {
-    const items = [...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])]
-    const i = items.indexOf(document.activeElement as HTMLElement)
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
-    } else if (e.key === 'Escape') {
-      button.current?.focus()
-    } else if (e.key === 'Tab') {
-      close()
-    }
-  }
-
+  /** The group opened by hand, for now */
+  const [peek, setPeek] = useState<string | null>(null)
+  const ref = useRef<HTMLElement>(null)
+  const close = useCallback(() => setPeek(null), [])
+  useDismiss(ref, peek !== null, close)
+  const home = PAGE_GROUPS.find((g) => g.pages.some((p) => p.page === page))?.title
+  const open = peek ?? home
   return (
-    <div className="page-menu" ref={ref}>
-      <button
-        ref={button}
-        type="button"
-        className="page-menu-btn"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="page-menu"
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown' && !open) {
-            e.preventDefault()
-            setOpen(true)
-          }
-        }}
-      >
-        <span>{tr(current.name)}</span>
-        <span className="chev" aria-hidden="true">
-          ▾
-        </span>
-      </button>
-      {open && (
-        <div id="page-menu" className="page-menu-panel" role="menu" aria-label={t('页面')} onKeyDown={onKey} data-sounds="page">
-          {PAGE_GROUPS.map((g) => (
-            <div key={g.title} className="page-menu-group" role="group" aria-label={tr(g.title)}>
-              <div className="page-menu-title">{tr(g.title)}</div>
-              {g.pages.map((p) => (
-                <button
-                  key={p.page}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={p.page === page}
-                  className={`page-menu-item${p.page === page ? ' on' : ''}`}
-                  onClick={() => {
-                    close()
-                    button.current?.focus()
-                    onPick(p.page)
-                  }}
-                >
-                  <b>{tr(p.name)}</b>
-                  <small>{tr(p.desc)}</small>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+    <nav
+      ref={ref}
+      className={`page-nav${className ? ` ${className}` : ''}`}
+      aria-label={t('页面')}
+      data-sounds="page"
+      // Tabbing out of it counts as going elsewhere
+      onBlur={(e) => {
+        if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) close()
+      }}
+    >
+      {PAGE_GROUPS.map((g) =>
+        g.title === open ? (
+          // Keyed by what shows, so a group opening fades its pages in
+          <div key={`${g.title}-open`} className="page-nav-group open" role="group" aria-label={tr(g.title)}>
+            <span className="page-nav-title" aria-hidden="true">
+              {tr(g.title)}
+            </span>
+            {g.pages.map((p) => (
+              <button
+                key={p.page}
+                type="button"
+                className={`page-nav-item${p.page === page ? ' on' : ''}`}
+                aria-current={p.page === page ? 'page' : undefined}
+                title={tr(p.desc)}
+                onClick={() => {
+                  close()
+                  onPick(p.page)
+                }}
+              >
+                {tr(p.short ?? p.name)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button key={g.title} type="button" className="page-nav-group-btn" aria-expanded={false} title={g.pages.map((p) => tr(p.short ?? p.name)).join(' · ')} onClick={() => setPeek(g.title)}>
+            {tr(g.title)}
+          </button>
+        ),
       )}
-    </div>
+    </nav>
   )
 }
