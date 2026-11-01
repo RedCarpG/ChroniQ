@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import type { SharedChart } from '../lib/shareLink'
 import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
+
+// The poster brings the star catalogue and astronomy-engine: loaded when it is first asked for
+const BirthPoster = lazy(() => import('./BirthPoster'))
 
 /** The card each chart page saves as its image */
 const TARGET = { bazi: 'bazi-natal', ziwei: 'ziwei-board', star: 'star-natal' } as const
@@ -34,6 +37,7 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [poster, setPoster] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
@@ -117,10 +121,25 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
           <button type="button" role="menuitem" onClick={saveImage}>
             {t('保存为图片')}
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              close()
+              setPoster(true)
+            }}
+          >
+            {t('生辰星空海报')}
+          </button>
           <button type="button" role="menuitem" onClick={print}>
             {t('打印')}
           </button>
         </div>
+      )}
+      {poster && (
+        <Suspense fallback={null}>
+          <BirthPoster input={chart.input} onClose={() => setPoster(false)} />
+        </Suspense>
       )}
       {note && (
         <div className="share-note" role="status">

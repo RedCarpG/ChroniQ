@@ -2422,6 +2422,33 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-bodies .sky-switches .seg button { color: var(--text); border-radius: 6px; }
 .sky-bodies .sky-switches .seg button.on { color: var(--on-accent); background: var(--accent); }
 
+/* ---------- 生辰星空海报: the poster's preview, with what it says beside it ---------- */
+.poster-veil {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  background: rgb(0 0 0 / 0.55); animation: tip-in 0.15s ease-out;
+}
+.poster-panel {
+  display: flex; gap: 20px; max-width: 100%; max-height: min(90vh, 100%); overflow: auto; padding: 20px;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.3);
+}
+.poster-canvas { flex: none; height: min(78vh, 720px); aspect-ratio: 2 / 3; border-radius: 4px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.4); }
+.poster-options { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; width: 260px; font-size: 13px; }
+.poster-options h3 { margin: 0; padding-right: 30px; font-family: var(--font-title); font-size: 19px; font-weight: 600; }
+.poster-close { position: absolute; top: -4px; right: -4px; padding: 4px 8px; }
+.poster-options label { display: inline-flex; align-items: center; gap: 6px; }
+.poster-options .poster-title { display: grid; gap: 4px; width: 100%; }
+.poster-title input { width: 100%; height: 34px; padding: 0 10px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
+.poster-options .seg button { white-space: nowrap; }
+.poster-options small { font-size: 12px; line-height: 1.6; }
+.poster-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.poster-actions button { padding: 8px 16px; }
+@media (max-width: 720px) {
+  .poster-panel { flex-direction: column; align-items: center; }
+  .poster-canvas { height: auto; width: min(100%, 300px); }
+  .poster-options { width: 100%; }
+}
+
 /* ---------- The pages, always in sight: the current page's group open, the others one button each.
    At the top on a wide screen; on a phone, a bar at the foot of the screen. ---------- */
 .page-nav { display: flex; align-items: center; gap: 6px; min-width: 0; }
