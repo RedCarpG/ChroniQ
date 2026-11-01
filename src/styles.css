@@ -2561,4 +2561,3 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .reading-list dd { margin: 0; }
 .reading-list strong { font-family: var(--font-title); font-weight: 600; color: var(--accent); }
 .reading-line { display: block; }
-.bazi-reading small { font-size: 12px; }
