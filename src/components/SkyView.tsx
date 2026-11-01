@@ -27,6 +27,8 @@ import {
 } from '../lib/sky'
 import { eclipseShade, type SkyEvent } from '../lib/skyEvents'
 import { useSkyEventText } from './SkyForecast'
+import { canPoint, useDevicePointing } from './useDevicePointing'
+import { mapTurn } from '../lib/devicePointing'
 import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
 import { FIVE_STARS } from '../lib/fiveStars'
@@ -59,6 +61,8 @@ const RADIANT_TRAILS = [
   [320, 4.2, 26],
 ] as const
 
+/** How close 对准天空 shows the sky */
+const POINT_ZOOM = 2.4
 const Z_MIN = 1
 const Z_MAX = 8
 
@@ -171,7 +175,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // holds still (sticky, as the calendar does) and the footer slides up over it when scrolled to;
   // on a phone the page scrolls up over the sky, which stays where the window was at the top.
   const windowRef = useRef<HTMLDivElement>(null)
-  const [frame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+  // 对准天空: the phone shows the part of the sky it points at, over the whole screen
+  const [pointingOn, setPointingOn] = useState(false)
+  const [measuredFrame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+  const frame = pointingOn ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight } : measuredFrame
   const frameRef = useRef(frame)
   frameRef.current = frame
   useLayoutEffect(() => {
@@ -259,7 +266,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const tween = useRef(0)
   // The drawn layers reach this far past the screen on every side (px), so a drag or a zoom out shows
   // sky already drawn rather than the dark behind it; less of it for 流畅, which draws less
-  const over = Math.round(Math.max(window.innerWidth, window.innerHeight) * (smooth ? 0.08 : 0.15))
+  // Turned for 对准天空, the corners of the screen reach further: what is drawn covers a circle round it
+  const over = pointingOn
+    ? Math.ceil((Math.hypot(window.innerWidth, window.innerHeight) - Math.min(window.innerWidth, window.innerHeight)) / 2)
+    : Math.round(Math.max(window.innerWidth, window.innerHeight) * (smooth ? 0.08 : 0.15))
   const overRef = useRef(over)
   overRef.current = over
   /** The view on screen: the one a gesture has reached, or the one drawn */
@@ -624,6 +634,36 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return o && shown(o.alt) ? at(o.az, o.alt) : null
   }
   const up = sky.bodies.filter((b) => shown(b.alt))
+  // 对准天空: each reading turns the map at once and moves it without drawing it again (preview),
+  // keeping the zenith up from what the phone looks at
+  const turnerRef = useRef<HTMLDivElement>(null)
+  const pointing = useDevicePointing((az, alt) => {
+    turnerRef.current?.style.setProperty('--turn', `${mapTurn(az).toFixed(1)}deg`)
+    const f = frameRef.current
+    if (!f) return
+    const s = (Math.min(f.width, f.height) / (2 * C)) * POINT_ZOOM
+    const [x, y] = projectSky(az, Math.max(0, alt), false)
+    preview({ z: POINT_ZOOM, x: (C - x) * s, y: (C - y) * s }, 200)
+  })
+  const startPointing = () => {
+    setBelow(false)
+    setPointingOn(true)
+    void pointing.start()
+  }
+  const stopPointing = () => {
+    pointing.stop()
+    setPointingOn(false)
+    live.current = null
+    clearTimeout(settle.current)
+    setView({ z: 1, x: 0, y: 0 })
+  }
+  useEffect(() => {
+    if (pointing.state === 'denied' || pointing.state === 'nocompass') setPointingOn(false)
+  }, [pointing.state])
+  useEffect(() => {
+    document.documentElement.classList.toggle('sky-pointing', pointingOn)
+    return () => document.documentElement.classList.remove('sky-pointing')
+  }, [pointingOn])
   // The event opened from 天象预告, for as long as the sky stays within a day of it
   const [eventClosed, setEventClosed] = useState(false)
   const event = moment?.event && !eventClosed && Math.abs(utc.getTime() - moment.time) < 12 * 3600_000 ? moment.event : null
@@ -792,6 +832,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: [(a.x + b.x) / 2, (a.y + b.y) / 2] as [number, number] }
   }
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // Pointing the phone is what moves the map then; a tap still picks
+    if (pointingOn) return
     // The middle button turns the time at any zoom (and is kept from starting the browser's autoscroll)
     const middle = e.pointerType === 'mouse' && e.button === 1
     if (middle) e.preventDefault()
@@ -1424,6 +1466,13 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           <TitleMark />
           {t('此刻天空')}
         </h3>
+        {canPoint() && (
+          <button type="button" className="ghost sky-point-btn" onClick={startPointing}>
+            {t('对准天空')}
+          </button>
+        )}
+        {pointing.state === 'denied' && <small className="muted">{t('没有得到使用方向传感器的许可。')}</small>}
+        {pointing.state === 'nocompass' && <small className="muted">{t('这台设备没有提供指南针数据。')}</small>}
         <div className="overlay-bar sky-controls sky-timebar">
         <DateParts
           label={t('日期')}
@@ -1708,6 +1757,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
       {createPortal(
         <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
+          <div className="sky-turner" ref={turnerRef}>
           <div className="sky-zoomer" ref={zoomerRef} style={{ '--over': `${over}px` } as CSSProperties}>
           {backdrop}
           <div
@@ -1737,6 +1787,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             ))}
           </div>
           </div>
+          </div>
+          {pointingOn && (
+            <div className="sky-point-bar">
+              <small>{t('举起手机对准天空。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。')}</small>
+              <button type="button" className="ghost" onClick={stopPointing}>
+                {t('退出')}
+              </button>
+            </div>
+          )}
           <div className="sky-meteor" ref={meteorRef} aria-hidden="true" />
           <div className="sky-tip" ref={tipRef} aria-hidden="true" />
           {/* What sits on the sky's window and does not zoom: the readout or hint, and the zoom buttons */}
