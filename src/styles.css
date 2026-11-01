@@ -273,30 +273,6 @@ main { view-transition-name: page; }
 .topbar h1 .logo { flex: none; }
 .brand-en { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; color: var(--muted); }
 /* 页面菜单: the current page, opening a grouped menu of all pages */
-.page-menu { position: relative; }
-.page-menu-btn {
-  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 16px; border-radius: 999px;
-  border: 1px solid var(--border); background: var(--surface); font-weight: 600; white-space: nowrap;
-}
-.page-menu-btn:hover, .page-menu-btn[aria-expanded='true'] { background: var(--surface-2); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-.page-menu-btn .chev { width: auto; font-size: 11px; transition: transform 0.25s; }
-.page-menu-btn[aria-expanded='true'] .chev { transform: rotate(180deg); }
-.page-menu-panel {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 260px; padding: 6px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.16); animation: tip-in 0.15s ease-out;
-}
-.page-menu-group + .page-menu-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); }
-.page-menu-title { padding: 6px 10px 2px; font-size: 12px; color: var(--muted); }
-.page-menu-item {
-  display: grid; gap: 1px; width: 100%; text-align: left; padding: 7px 10px; border: 0; border-radius: 8px; background: none;
-  outline: none;
-}
-.page-menu-item b { font-weight: 600; }
-.page-menu-item small { font-size: 12px; color: var(--muted); }
-.page-menu-item:hover, .page-menu-item:focus-visible { background: var(--surface-2); }
-.page-menu-item.on { background: var(--accent-soft); }
-.page-menu-item.on b { color: var(--accent); }
 
 /* The footer, on every page, under the bottom edge until called up (App): by the mouse at the bottom
    of the screen or the small tab there; it lies over the page, its contents in the middle */
@@ -803,8 +779,6 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .topbar { gap: 8px; }
   .topbar .brand-en { display: none; }
   .topbar-right { gap: 6px; }
-  .page-menu-btn { padding: 0 10px 0 12px; }
-  .page-menu-panel { width: min(260px, calc(100vw - 32px)); }
 }
 
 /* ---------- 已保存的命盘：左侧抽屉 ---------- */
@@ -2010,7 +1984,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .orrery-table .sign-full { display: none; }
   .orrery-table .sign-short { display: inline; }
 }
-@media (prefers-reduced-motion: reduce) { .orrery-orbit, .orrery-planet, .page-menu-btn .chev { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .orrery-orbit, .orrery-planet { transition: none; } }
 
 /* ---------- 安装与离线 ---------- */
 .about-install { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0; font-size: 13px; }
@@ -2032,7 +2006,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   }
   body { background: #fff; }
   .app { max-width: none; padding: 0; }
-  .topbar-right, .drawer, .splash, footer, .bazi-form, .side-handle, .fortune-side, .zw-toolbar, .overlay-bar,
+  .topbar-right, .page-nav, .drawer, .splash, footer, .bazi-form, .side-handle, .fortune-side, .zw-toolbar, .overlay-bar,
   .sky-controls, .fortunes-head .ghost, .fortunes-head .seg { display: none !important; }
   .card { box-shadow: none; break-inside: avoid; }
   .fortune-combo { display: block; }
@@ -2104,11 +2078,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   --quiet-wash: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent) 25%, color-mix(in srgb, var(--accent) 16%, transparent) 75%, transparent);
 }
 /* The line under a word: drawn in on hover, kept while chosen */
-:is(.ghost, .seg button, .page-menu-btn, .cal-nav button)::after {
+:is(.ghost, .seg button, .page-nav-item, .cal-nav button)::after {
   content: ''; position: absolute; left: 14%; right: 14%; bottom: 4px; height: 1px; pointer-events: none;
   background: var(--quiet-line); transform: scaleX(0); transition: transform 0.3s ease;
 }
-:is(.ghost, .seg button, .page-menu-btn, .cal-nav button):is(:hover, :focus-visible, [aria-expanded='true'], .on)::after { transform: none; }
+:is(.ghost, .seg button, .page-nav-item, .cal-nav button):is(:hover, :focus-visible, [aria-expanded='true'], .on)::after { transform: none; }
 
 /* Buttons: words */
 .ghost {
@@ -2143,8 +2117,6 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .primary:hover { filter: none; color: color-mix(in srgb, var(--accent) 75%, var(--text)); }
 
 /* The top bar: the page's name and the icons, without their pills and circles */
-.page-menu-btn { position: relative; border: 0; border-radius: 0; background: none; letter-spacing: 0.1em; }
-.page-menu-btn:hover, .page-menu-btn[aria-expanded='true'] { border: 0; background: none; color: var(--accent); }
 .icon-btn { border: 0; border-radius: 0; background: none; color: var(--muted); transition: color 0.2s; }
 .icon-btn:hover, .icon-btn[aria-expanded='true'] { background: none; color: var(--accent); }
 
@@ -2244,10 +2216,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
    思源宋体 (Noto Serif SC) for the Chinese, both from the site itself (fontsource, imported in main.tsx;
    the Chinese in slices, each fetched only when a character in it is shown). The body stays sans. */
 :root { --font-title: 'Cormorant Garamond', 'Noto Serif SC', 'Songti SC', 'STSong', serif; }
-.topbar h1, .brand-en, .section-title, .fortunes-head h3, .drawer-head h3, .page-menu-btn, .page-menu-title,
+.topbar h1, .brand-en, .section-title, .fortunes-head h3, .drawer-head h3, .page-nav-group-btn,
 .cal-pickers select, .detail-hero .big, .lunar-line, .moon-name strong, .about-title, .sky-chosen-info strong, .char,
-/* and the labels that find the way: the page menu's names, the left drawer's tabs (命盘, 显示), the section links */
-.page-menu-item b, .drawer-handle-text, .section-nav-text {
+/* and the labels that find the way: the page navigation's names, the left drawer's tabs (命盘, 显示), the section links */
+.page-nav-item, .drawer-handle-text, .section-nav-text {
   /* Figures as tall as the characters beside them (Cormorant's own are old-style) */
   font-family: var(--font-title); font-variant-numeric: lining-nums;
 }
@@ -2449,3 +2421,47 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .sky-bodies .sky-switches .seg button { color: var(--text); border-radius: 6px; }
 .sky-bodies .sky-switches .seg button.on { color: var(--on-accent); background: var(--accent); }
+
+/* ---------- The pages, always in sight: the current page's group open, the others one button each.
+   At the top on a wide screen; on a phone, a bar at the foot of the screen. ---------- */
+.page-nav { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.page-nav-group { display: flex; align-items: center; }
+/* The group's name, larger than its pages and gold when open, with a line down to them */
+.page-nav-group-btn {
+  position: relative; height: 36px; padding: 0 10px; font-size: 17px; font-weight: 600; letter-spacing: 0.1em; white-space: nowrap;
+  color: var(--text); background: none; border: 0; border-radius: 0; transition: color 0.25s;
+}
+.page-nav-group-btn:hover { color: var(--accent); }
+.page-nav-group.open > .page-nav-group-btn { color: var(--accent); }
+.page-nav-group-btn::after {
+  content: ''; position: absolute; left: 10px; right: 10px; bottom: 3px; height: 1px; background: var(--accent);
+  transform: scaleX(0); transition: transform 0.28s ease;
+}
+.page-nav-group.open > .page-nav-group-btn::after { transform: scaleX(1); }
+/* The pages slide out of the name: a column going from no width to its own, the words fading in */
+.page-nav-pages { display: grid; grid-template-columns: 0fr; opacity: 0; transition: grid-template-columns 0.28s ease, opacity 0.2s ease; }
+.page-nav-pages > div { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.page-nav-group.open > .page-nav-pages { grid-template-columns: 1fr; opacity: 1; }
+.page-nav-item {
+  flex: none; height: 34px; padding: 0 8px; font-size: 13px; white-space: nowrap; color: var(--muted);
+  background: none; border: 0; border-radius: 0; letter-spacing: 0.04em; transition: color 0.2s;
+}
+.page-nav-item:hover { color: var(--text); }
+.page-nav-item.on { color: var(--accent); font-weight: 600; }
+.page-nav.at-foot { display: none; }
+@media (max-width: 860px) {
+  .app { --foot-nav-h: calc(46px + env(safe-area-inset-bottom)); padding-bottom: calc(16px + var(--foot-nav-h)); }
+  .page-nav.in-topbar { display: none; }
+  .page-nav.at-foot {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; justify-content: center; gap: 0 4px;
+    height: var(--foot-nav-h); padding: 0 6px env(safe-area-inset-bottom); overflow-x: auto; scrollbar-width: none;
+    background: linear-gradient(90deg, transparent, var(--edge) 30%, var(--edge) 70%, transparent) top / 100% 1px no-repeat, color-mix(in srgb, var(--bg) 94%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .page-nav.at-foot .page-nav-group-btn { height: 40px; padding: 0 6px; font-size: 15px; letter-spacing: 0.04em; }
+  .page-nav.at-foot .page-nav-group-btn::after { left: 6px; right: 6px; }
+  .page-nav.at-foot .page-nav-item { height: 40px; padding: 0 5px; font-size: 12px; letter-spacing: 0; }
+  footer { bottom: var(--foot-nav-h); }
+  .footer-tab { bottom: var(--foot-nav-h); }
+}
+@media (prefers-reduced-motion: reduce) { .page-nav-pages, .page-nav-group-btn::after { transition: none; } }
