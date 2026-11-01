@@ -29,6 +29,7 @@ import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
+import { ZiweiReadingCard } from './ChartReadingCards'
 import { SanFangTip, StarTip } from './ZiweiTips'
 
 /** A palace's part in the selected palace's 三方四正 */
@@ -423,6 +424,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       <SectionNav
         items={[
           ['ziwei-board', t('盘面')],
+          ['ziwei-reading', t('解读')],
           ['ziwei-patterns', term('格局')],
           ['ziwei-fortune', term('运限')],
         ]}
@@ -560,6 +562,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           )}
         </p>
       </section>
+
+      <ZiweiReadingCard chart={chart} />
 
       <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />
 
