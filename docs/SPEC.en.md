@@ -28,7 +28,7 @@ ChroniQ is a static web app for mobile and desktop browsers, combining calendar 
 | F-07 | Bazi | Four pillars, ten gods, symbolic stars, five elements, fortune onset and nested fortune periods; configurable apparent solar time, late-Zi-hour handling and other school rules |
 | F-08 | Ziwei Doushu | Twelve palaces, stars, four transformations, palace-stem transformations, multiple fortune layers and school settings |
 | F-09 | Western astrology | Natal charts, transits, progressions, synastry and composite charts; selectable house systems, nodes and related progression methods |
-| F-10 | Chart management | Local save, load and delete; saving under an existing name updates that chart; birth-data share links, PNG export and printing |
+| F-10 | Chart management | Local save, load and delete; saving under an existing name updates that chart; birth-data share links, PNG export and printing; a birth sky poster (made on the device; the time and place of birth can be hidden) |
 | F-11 | Interface | Chinese/English text, traditional/simplified Chinese terminology, light/dark themes, interface scale, sound and responsive layouts |
 
 ## 3. Input and time contracts
