@@ -1482,7 +1482,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         <input type="time" aria-label={t('时间')} value={wall.time} onChange={(e) => e.target.value && setPicked({ ...wall, time: e.target.value })} />
         <button
           type="button"
-          className={`ghost toggle${picked ? '' : ' on'}`}
+          className={`ghost toggle${picked ? ' sky-now-hint' : ' on'}`}
+          title={picked ? t('回到现在') : undefined}
           aria-pressed={!picked}
           // Already following the clock: pressing again only refreshes it
           data-sound={picked ? 'on' : 'tap'}
