@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useT, useTerm } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
-export type Page = 'today' | 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky' | 'moon' | 'solar'
+export type Page = 'today' | 'calendar' | 'bazi' | 'ziwei' | 'star' | 'sky' | 'moon' | 'solar' | 'timeline'
 
 /** The pages, grouped as the menu lists them (shown through t(): src/i18n/__tests__/calendar.test.ts checks the English) */
 export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; /** In the navigation, where the full name is long */ short?: string; desc: string }[] }[] = [
@@ -22,6 +22,7 @@ export const PAGE_GROUPS: { title: string; pages: { page: Page; name: string; /*
       { page: 'bazi', name: '八字排盘', short: '八字', desc: '四柱、十神、神煞、大运流年' },
       { page: 'ziwei', name: '紫微斗数', short: '紫微', desc: '十二宫、四化飞星、运限' },
       { page: 'star', name: '星盘', desc: '本命、行运推运、合盘、组合盘' },
+      { page: 'timeline', name: '人生时间轴', short: '时间轴', desc: '大运、大限与行星回归，放在同一条线上' },
     ],
   },
 ]
