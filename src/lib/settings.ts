@@ -13,6 +13,8 @@ export interface Settings {
   moonPhase: 'show' | 'hide'
   /** 日历标题旁显示斗柄指月 */
   dipper: 'show' | 'hide'
+  /** 日历上显示天象预告 */
+  skyEvents: 'show' | 'hide'
   /** 八字 and 星盘 pages' backdrop: the sky at the moment of birth (BirthSky), or the plain starfield */
   birthSky: 'show' | 'hide'
   /** 紫微星曜配色 */
@@ -23,7 +25,7 @@ export interface Settings {
   sound: 'on' | 'off'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -71,6 +73,13 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
   },
   dipper: {
     title: '日历显示斗柄指月',
+    options: [
+      { value: 'show', label: '显示' },
+      { value: 'hide', label: '隐藏' },
+    ],
+  },
+  skyEvents: {
+    title: '日历显示天象预告',
     options: [
       { value: 'show', label: '显示' },
       { value: 'hide', label: '隐藏' },

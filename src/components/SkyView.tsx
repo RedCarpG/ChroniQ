@@ -78,6 +78,12 @@ const ymd = (date: string) => {
   return { year, month, day }
 }
 
+/** A moment to open the sky at, with a body picked out (its key) */
+export interface SkyMoment {
+  time: number
+  body?: string
+}
+
 const wallFormats = new Map<string, Intl.DateTimeFormat>()
 /** Wall-clock date and time of an instant in a time zone, as the inputs want them */
 function wallTime(d: Date, timeZone: string) {
@@ -107,14 +113,14 @@ function wallTime(d: Date, timeZone: string) {
  * stars to magnitude 5 that are above the horizon. It follows the present
  * moment until a date or time is picked (read in the place's time zone).
  */
-export function SkyView({ place, placeControls }: { place: StarPlace; placeControls?: ReactNode }) {
+export function SkyView({ place, placeControls, moment }: { place: StarPlace; placeControls?: ReactNode; moment?: SkyMoment | null }) {
   const t = useT()
   const term = useTerm()
   const { language, script } = useSettings()
   const en = language === 'en'
   const azimuth = (az: number) => formatAzimuth(az, language)
   const [now, setNow] = useState(() => new Date())
-  const [picked, setPicked] = useState<{ date: string; time: string } | null>(null)
+  const [picked, setPicked] = useState<{ date: string; time: string } | null>(() => (moment ? wallTime(new Date(moment.time), place.timeZone) : null))
   useEffect(() => {
     if (picked) return
     // Not while the tab is hidden (each tick redraws the whole sky); catch up when it is shown again
@@ -352,7 +358,7 @@ export function SkyView({ place, placeControls }: { place: StarPlace; placeContr
   })
   // The body or named star picked out (click it, its name or a body's row; the key is its label's):
   // it pops up a size inside a ring and the rest dims. Click it again, the empty sky or press Esc to let go.
-  const [chosen, setChosen] = useState<string | null>(null)
+  const [chosen, setChosen] = useState<string | null>(moment?.body ?? null)
   const choose = (key: string) => setChosen((c) => (c === key ? null : key))
   const chooseKeys = (key: string) => (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' && e.key !== ' ') return

@@ -19,6 +19,7 @@ ChroniQ is a static web app for mobile and desktop browsers, combining calendar 
 | --- | --- | --- |
 | F-01 | Calendar | Month, week and year views; Gregorian/lunar dates, solar terms, moon phases, stems and branches, almanac details; Chinese/French holiday selection; configurable week start and display options |
 | F-02 | Chart dates | Select one saved chart to show birthdays, pillar relationships, fortune transitions and annual Tai Sui information; optional solar returns and exact aspects of slow planets to the natal Sun, Moon and Ascendant |
+| F-12 | Sky forecast | Eclipses, planetary oppositions and elongations, planetary conjunctions, major meteor showers and supermoons, filtered to what is visible from the observing place, with the best moment, direction and altitude; shown on the calendar and able to open the sky page at that moment; a coming-year `.ics` export (sky events, solar terms, the chosen chart's dates) |
 | F-03 | Sky | Bodies at a chosen time and coordinates; azimuth, altitude, magnitude and rise/set times; Western constellations, Chinese asterisms and 28 mansions; overhead/below-ground views, zoom, pan, time dragging and selection |
 | F-04 | Tracks | Daily tracks span 12 hours before and after the displayed instant, with dashed past segments, solid future segments and local whole-hour marks; historical tracks cover approximately 1, 3 or 12 months |
 | F-05 | Moon | Lunar globe, phase, libration and moonrise/moonset for the selected location |
@@ -94,6 +95,7 @@ The runtime stack is React 19, TypeScript and Vite. Calendar/Bazi calculations u
 ## 7. Performance and offline constraints
 
 - Calendar is the default entry page; other interfaces, including Bazi, load on demand. The Solar System page must not load the whole Sky interface merely to reuse a color table.
+- Yearly sky forecasts run in a Worker and are cached by year and place (12 entries). When turned off, astronomy-engine is not loaded for them; failures offer retry.
 - Yearly transit calculations run in a Worker. Leaving the calendar or changing relevant conditions cancels obsolete tasks. Failures offer retry, and cancellation is not reported as a calculation failure.
 - Caches have limits: 24 yearly transit results in the client, 48 calendar-year results and 16 Bazi charts. These capacities are not page-wide performance deadlines.
 - Faint stars, star clouds and the deep stellar field cache their coordinates independently. Changing one layer's detail condition should not rotate unaffected layers again.
