@@ -5,7 +5,7 @@ import { Logo } from './components/Logo'
 import { PageNav, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
-import { useOnline } from './pwa'
+import { applyUpdate, useOnline, useUpdateReady } from './pwa'
 import { ExportButton } from './components/ExportButton'
 import { ShareButton } from './components/ShareButton'
 import { smoothUpdate } from './components/smoothUpdate'
@@ -64,6 +64,7 @@ if (location.hash) history.replaceState(null, '', location.pathname + location.s
 
 export function App() {
   const online = useOnline()
+  const updateReady = useUpdateReady()
   const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
@@ -220,6 +221,14 @@ export function App() {
 
   return (
     <SettingsContext.Provider value={settings}>
+      {updateReady && (
+        <div className="update-bar" role="status">
+          {t('有新版本')}
+          <button type="button" onClick={applyUpdate}>
+            {t('更新')}
+          </button>
+        </div>
+      )}
       {loadError && <div role="alert">{t('页面加载失败，请重试或刷新页面。')} <button onClick={() => location.reload()}>{t('刷新页面')}</button></div>}
       <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
         {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): the mouse at the
