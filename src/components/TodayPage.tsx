@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HeavenStem, SolarDay } from 'tyme4ts'
 import { buildDayDetail, enDate, todaySolar } from '../lib/calendar'
+import { TEN_STAR_NOTE } from '../lib/baziReading'
 import { baziOf, taiSui } from '../lib/chartDays'
 import { moonOf } from '../lib/moon'
 import { loadSchools } from '../lib/schools'
@@ -16,20 +17,6 @@ import { useChartDayText, useChartDays } from './useChartDays'
 import { useLocate } from './useLocate'
 
 const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' }
-
-/** What a day's 十神 is about, in a few plain words (the traditional reading, for reference) */
-const TEN_STAR_NOTE: Record<string, string> = {
-  比肩: '同辈与自主：适合独立做事、与朋友同行',
-  劫财: '竞争与花费：留意开销，合作先说清楚',
-  食神: '表达与享受：适合创作、聚餐、放松',
-  伤官: '才华与锋芒：灵感多，说话留些余地',
-  偏财: '机会与人脉：适合社交、捕捉意外之喜',
-  正财: '踏实与收入：适合理财、处理实务',
-  七杀: '压力与挑战：适合攻坚，也要照顾好自己',
-  正官: '规则与责任：适合正式事务、面对上级',
-  偏印: '思考与独处：适合钻研，不必急着决定',
-  正印: '学习与支持：适合读书、向长辈请教',
-}
 
 /**
  * 今日: one screen for the day. The almanac and the Moon, what can be seen tonight from the 天象 page's
