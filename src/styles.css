@@ -182,6 +182,9 @@ body {
 }
 
 button, input, select { font: inherit; color: inherit; }
+/* A select's list takes its colours from the option: with the select see-through, the browser leaves the
+   list white under the select's light text */
+option, optgroup { color: var(--text); background-color: var(--surface); }
 button { cursor: pointer; }
 a { color: var(--accent); }
 .muted { color: var(--muted); }
