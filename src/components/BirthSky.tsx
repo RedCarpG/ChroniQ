@@ -236,6 +236,8 @@ export function BirthSky({
   // Two small canvases for the Milky Way's blur, kept from one drawing to the next
   const scratch = useRef<[HTMLCanvasElement, HTMLCanvasElement] | null>(null)
   useLayoutEffect(() => {
+    // No room yet (a pane or tab not laid out): nothing to draw, and a canvas of no size cannot be copied
+    if (w < 4 || h < 4) return
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
