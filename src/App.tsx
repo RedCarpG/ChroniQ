@@ -25,7 +25,7 @@ import { play, setSoundEnabled, startClickSounds } from './sound'
 type Tab = Page
 type SkyMoment = import('./components/SkyView').SkyMoment
 /** Order of the pages, which sets the way a page switch slides. */
-const TAB_ORDER: Tab[] = ['calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
+const TAB_ORDER: Tab[] = ['today', 'calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
 
 // Calendar is the default page; load the 八字 UI only when it is opened.
 const loadBazi = () => import('./components/BaziView')
@@ -44,10 +44,13 @@ const SkyPage = lazy(() => loadSky().then((m) => ({ default: m.SkyPage })))
 // 太阳系, its own page since the sky became the 天象 page's backdrop
 const loadSolar = () => import('./components/SolarSystemView')
 const SolarSystemView = lazy(() => loadSolar().then((m) => ({ default: m.SolarSystemView })))
+// 今日, with tonight's sky (astronomy-engine)
+const loadToday = () => import('./components/TodayPage')
+const TodayPage = lazy(() => loadToday().then((m) => ({ default: m.TodayPage })))
 // 观月, with its maps of the Moon
 const loadMoon = () => import('./components/MoonPage')
 const MoonPage = lazy(() => loadMoon().then((m) => ({ default: m.MoonPage })))
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { today: loadToday, bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -254,7 +257,7 @@ export function App() {
           </h1>
           <div className="topbar-right">
             <PageMenu page={tab} onPick={goTab} />
-            {tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
+            {tab !== 'today' && tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
               <>
                 <ExportButton chart={{ tab, input: baziInput }} />
                 <ShareButton chart={{ tab, input: baziInput }} />
@@ -283,6 +286,16 @@ export function App() {
                 goTab('bazi')
               }}
             />
+          ) : tab === 'today' ? (
+            <Suspense fallback={<SplashSignal />}>
+              <TodayPage
+                fallbackPlace={baziInput.place ?? DEFAULT_PLACE}
+                onViewSky={(moment) => {
+                  setSkyMoment(moment)
+                  goTab('sky')
+                }}
+              />
+            </Suspense>
           ) : tab === 'bazi' ? (
             <Suspense fallback={<SplashSignal />}>
               <BaziView
@@ -365,7 +378,7 @@ export function App() {
       {/* Outside .app: the drawer is fixed to the screen edge and takes the zoom itself */}
       {/* On the 天象 page the drawer holds only the page's own 显示 */}
       {tab !== 'moon' && tab !== 'solar' && (
-        <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar'} charts={tab !== 'sky'} />
+        <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar' || tab === 'today'} charts={tab !== 'sky'} />
       )}
       <SplashOverlay />
     </SettingsContext.Provider>
