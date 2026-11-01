@@ -91,9 +91,9 @@ const ymd = (date: string) => {
   return { year, month, day }
 }
 
-/** A sky event to open the sky at: when, what to pick out (and which figures that is among), and how close */
+/** A moment to open the sky at, perhaps for an event: when, what to pick out (and which figures that is among), and how close */
 export interface SkyMoment {
-  event: SkyEvent
+  event?: SkyEvent
   time: number
   chosen?: string
   /** A second body in it, picked out too */
@@ -221,7 +221,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // Opened at an event that wants a close look: zoomed in on it, once the window is measured
   const zoomedIn = useRef(false)
   useEffect(() => {
-    if (!frame || !moment?.zoom || zoomedIn.current) return
+    if (!frame || !moment?.zoom || !moment.event || zoomedIn.current) return
     zoomedIn.current = true
     const [x, y] = at(moment.event.azimuth, moment.event.altitude)
     const s = fit * moment.zoom
@@ -626,7 +626,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const up = sky.bodies.filter((b) => shown(b.alt))
   // The event opened from 天象预告, for as long as the sky stays within a day of it
   const [eventClosed, setEventClosed] = useState(false)
-  const event = moment && !eventClosed && Math.abs(utc.getTime() - moment.time) < 12 * 3600_000 ? moment.event : null
+  const event = moment?.event && !eventClosed && Math.abs(utc.getTime() - moment.time) < 12 * 3600_000 ? moment.event : null
   const eventText = useSkyEventText(place)
   const shade = event && eclipseShade(event, utc.getTime())
   const radiant = event?.kind === 'meteors' && !below ? horizonOf(utc, place.latitude, place.longitude)(event.ra, event.dec) : null

@@ -17,6 +17,7 @@ ChroniQ is a static web app for mobile and desktop browsers, combining calendar 
 
 | ID | Module | Current scope |
 | --- | --- | --- |
+| F-13 | Today | The day's almanac and Moon; tonight's sunset and sunrise, Moon and visible planets from the observing place, with upcoming sky events; the chosen chart's day 十神, current 大运, and today's and coming dates; links into the sky page |
 | F-01 | Calendar | Month, week and year views; Gregorian/lunar dates, solar terms, moon phases, stems and branches, almanac details; Chinese/French holiday selection; configurable week start and display options |
 | F-02 | Chart dates | Select one saved chart to show birthdays, pillar relationships, fortune transitions and annual Tai Sui information; optional solar returns and exact aspects of slow planets to the natal Sun, Moon and Ascendant |
 | F-12 | Sky forecast | Eclipses, planetary oppositions and elongations, planetary conjunctions, major meteor showers and supermoons, filtered to what is visible from the observing place, with the best moment, direction and altitude; shown on the calendar and able to open the sky page at that moment; a coming-year `.ics` export (sky events, solar terms, the chosen chart's dates) |

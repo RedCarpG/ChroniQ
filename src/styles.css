@@ -2415,3 +2415,27 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 @media (prefers-reduced-motion: reduce) {
   .sky-radiant line { animation: none; opacity: 0.5; }
 }
+
+/* ---------- 今日: the day, tonight's sky and the chart, side by side ---------- */
+.today-page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.today-page .card { display: grid; gap: 10px; min-width: 0; }
+.today-page .section-title { margin: 0; }
+.today-sub { margin-top: 6px; font-size: 14px; }
+.today-note { margin: 0; font-size: 12px; }
+.today-bodies { list-style: none; margin: 0; padding: 0; display: grid; }
+.today-bodies > li { border-top: 1px solid var(--border); }
+.today-bodies > li.muted { padding: 8px 0; font-size: 13px; }
+.today-bodies button {
+  display: grid; gap: 2px; width: 100%; padding: 8px 2px; font-size: 12px; line-height: 1.5; text-align: left;
+  color: inherit; background: none; border: 0; border-radius: 0; cursor: pointer;
+}
+.today-bodies strong { font-family: var(--font-title); font-size: 15px; font-weight: 600; }
+.today-bodies button:hover strong { color: var(--accent); }
+.today-chart-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.today-chart-name strong { font-family: var(--font-title); font-size: 16px; font-weight: 600; }
+.today-chart-name .muted { font-size: 12px; }
+.today-star-note { display: block; margin-top: 2px; font-size: 12px; line-height: 1.5; }
+.today-chart strong { font-weight: 600; }
+.today-chart small { font-size: 11px; }
+@media (max-width: 1100px) { .today-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr; } .today-chart { align-self: start; } .today-sky { grid-row: span 2; grid-column: 2; } }
+@media (max-width: 720px) { .today-page { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; } .today-sky { grid-row: auto; grid-column: auto; } }

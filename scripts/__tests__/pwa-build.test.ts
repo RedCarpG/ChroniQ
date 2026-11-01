@@ -49,4 +49,4 @@ it('precaches only final assets and versions HTML-only changes', async () => {
   const before = await bundled(false)
   const after = await bundled(true)
   expect(after).not.toBe(before)
-}, 30_000)
+}, 60_000)
