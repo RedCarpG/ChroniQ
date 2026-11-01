@@ -53,35 +53,43 @@ export function PageNav({ page, onPick, className }: { page: Page; onPick: (page
         if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) close()
       }}
     >
-      {PAGE_GROUPS.map((g) =>
-        g.title === open ? (
-          // Keyed by what shows, so a group opening fades its pages in
-          <div key={`${g.title}-open`} className="page-nav-group open" role="group" aria-label={tr(g.title)}>
-            <span className="page-nav-title" aria-hidden="true">
+      {PAGE_GROUPS.map((g) => {
+        const isOpen = g.title === open
+        return (
+          <div key={g.title} className={`page-nav-group${isOpen ? ' open' : ''}${g.title === home ? ' home' : ''}`} role="group" aria-label={tr(g.title)}>
+            <button
+              type="button"
+              className="page-nav-group-btn"
+              aria-expanded={isOpen}
+              title={g.pages.map((p) => tr(p.short ?? p.name)).join(' · ')}
+              // Pressed again, or the current page's own: back to the current page's group
+              onClick={() => setPeek(g.title === home || g.title === peek ? null : g.title)}
+            >
               {tr(g.title)}
-            </span>
-            {g.pages.map((p) => (
-              <button
-                key={p.page}
-                type="button"
-                className={`page-nav-item${p.page === page ? ' on' : ''}`}
-                aria-current={p.page === page ? 'page' : undefined}
-                title={tr(p.desc)}
-                onClick={() => {
-                  close()
-                  onPick(p.page)
-                }}
-              >
-                {tr(p.short ?? p.name)}
-              </button>
-            ))}
+            </button>
+            {/* Always there, so opening and folding can slide (styles.css .page-nav-pages) */}
+            <div className="page-nav-pages" inert={!isOpen}>
+              <div>
+                {g.pages.map((p) => (
+                  <button
+                    key={p.page}
+                    type="button"
+                    className={`page-nav-item${p.page === page ? ' on' : ''}`}
+                    aria-current={p.page === page ? 'page' : undefined}
+                    title={tr(p.desc)}
+                    onClick={() => {
+                      close()
+                      onPick(p.page)
+                    }}
+                  >
+                    {tr(p.short ?? p.name)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        ) : (
-          <button key={g.title} type="button" className="page-nav-group-btn" aria-expanded={false} title={g.pages.map((p) => tr(p.short ?? p.name)).join(' · ')} onClick={() => setPeek(g.title)}>
-            {tr(g.title)}
-          </button>
-        ),
-      )}
+        )
+      })}
     </nav>
   )
 }
