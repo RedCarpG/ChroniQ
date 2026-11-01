@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
+import { BaziReadingCard } from './BaziReadingCard'
 import { SectionNav } from './SectionNav'
 import { useScrollHints } from './useScrollHints'
 import {
@@ -198,6 +199,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       <SectionNav
         items={[
           ['bazi-natal', term('原局')],
+          ['bazi-reading', t('解读')],
           ['bazi-fortune', term('岁运')],
         ]}
       />
@@ -270,6 +272,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           <dd>{chart.bodySign}</dd>
         </dl>
       </section>
+
+      <BaziReadingCard chart={chart} />
 
       <section className={`card fortunes fortune-combo${sideOpen ? ' side-open' : ''}`} id="bazi-fortune">
         <button
