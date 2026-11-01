@@ -6,6 +6,8 @@ type Permissioned = typeof DeviceOrientationEvent & { requestPermission?: () => 
 
 /** How long to wait for a compass reading before saying there is none */
 const NO_COMPASS_MS = 3000
+/** The least turn worth showing, in degrees */
+const MIN_MOVE = 0.3
 
 export const canPoint = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches
 
@@ -34,6 +36,7 @@ export function useDevicePointing(onPoint: (az: number, alt: number) => void) {
   useEffect(() => {
     if (state !== 'on') return
     let last: { az: number; alt: number } | null = null
+    let shown: { az: number; alt: number } | null = null
     const onReading = (event: Event) => {
       const e = event as Reading
       const alpha = compassAlpha(e)
@@ -41,6 +44,10 @@ export function useDevicePointing(onPoint: (az: number, alt: number) => void) {
       clearTimeout(timer)
       const next = pointingFrom(alpha, e.beta, e.gamma)
       last = last ? { az: smoothAngle(last.az, next.az, 0.25), alt: last.alt + (next.alt - last.alt) * 0.25 } : next
+      // A hand is never still: moves too small to see cost a phone its time for nothing
+      const gap = shown && Math.max(Math.abs(((last.az - shown.az + 540) % 360) - 180), Math.abs(last.alt - shown.alt))
+      if (shown && gap !== null && gap < MIN_MOVE) return
+      shown = last
       callback.current(last.az, last.alt)
     }
     const timer = setTimeout(() => setState('nocompass'), NO_COMPASS_MS)

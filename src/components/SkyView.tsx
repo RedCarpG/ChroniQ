@@ -245,7 +245,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       return 'clear'
     }
   })
-  const smooth = quality === 'smooth'
+  // 对准天空 draws a far larger canvas again and again, on a phone: always the lighter sky
+  const smooth = quality === 'smooth' || pointingOn
   const pickQuality = (v: 'clear' | 'smooth') => {
     setQuality(v)
     try {
