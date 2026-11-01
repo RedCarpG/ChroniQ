@@ -52,6 +52,8 @@ export const COMMON: Record<string, string> = {
   日历: 'Calendar',
   天象: 'Sky',
   八字排盘: '八字',
+  八字: '八字',
+  紫微: '紫微',
   紫微斗数: '紫微斗数',
   星盘: 'Astrology',
   '公历、农历、节气、干支': 'Gregorian and lunar dates, 节气, 干支',

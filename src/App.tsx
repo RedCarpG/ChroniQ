@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { CalendarView } from './components/CalendarView'
 import { AboutBadges } from './components/AboutBadges'
 import { Logo } from './components/Logo'
-import { PageMenu, type Page } from './components/PageMenu'
+import { PageNav, type Page } from './components/PageMenu'
 import { SavedChartsDrawer } from './components/SavedCharts'
 import { SettingsMenu } from './components/SettingsMenu'
 import { useOnline } from './pwa'
@@ -255,8 +255,9 @@ export function App() {
             星曆
             <span className="brand-en">ChroniQ</span>
           </h1>
+          {/* On a phone it is the bar at the foot of the screen instead */}
+          <PageNav page={tab} onPick={goTab} className="in-topbar" />
           <div className="topbar-right">
-            <PageMenu page={tab} onPick={goTab} />
             {tab !== 'today' && tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
               <>
                 <ExportButton chart={{ tab, input: baziInput }} />
@@ -340,6 +341,7 @@ export function App() {
             </Suspense>
           )}
         </main>
+        <PageNav page={tab} onPick={goTab} className="at-foot" />
         {!footShown && (
           <button
             type="button"
