@@ -23,6 +23,7 @@ import { translate, type Vars } from './i18n'
 import { play, setSoundEnabled, startClickSounds } from './sound'
 
 type Tab = Page
+type SkyMoment = import('./components/SkyView').SkyMoment
 /** Order of the pages, which sets the way a page switch slides. */
 const TAB_ORDER: Tab[] = ['calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
 
@@ -61,8 +62,11 @@ export function App() {
   const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
   // side of the new tab (styles.css: [data-vt='page']).
+  // Opened from 天象预告: the moment the sky page starts at, for that visit
+  const [skyMoment, setSkyMoment] = useState<SkyMoment | null>(null)
   const goTab = (next: Tab) => {
     if (next === tab) return
+    if (next !== 'sky') setSkyMoment(null)
     setLoadError(false)
     const root = document.documentElement
     root.dataset.pageDir = TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 'next' : 'back'
@@ -269,6 +273,11 @@ export function App() {
             <CalendarView
               onShow={(key, show) => changeSettings({ ...settings, [key]: show ? 'show' : 'hide' })}
               onWeekStart={(weekStart) => changeSettings({ ...settings, weekStart })}
+              skyPlace={baziInput.place ?? DEFAULT_PLACE}
+              onViewSky={(moment) => {
+                setSkyMoment(moment)
+                goTab('sky')
+              }}
               onPickBazi={(day) => {
                 setBaziInput((prev) => ({ ...prev, year: day.getYear(), month: day.getMonth(), day: day.getDay() }))
                 goTab('bazi')
@@ -286,7 +295,7 @@ export function App() {
             </Suspense>
           ) : tab === 'sky' ? (
             <Suspense fallback={<SplashSignal />}>
-              <SkyPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />
+              <SkyPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} moment={skyMoment} />
             </Suspense>
           ) : tab === 'moon' ? (
             <Suspense fallback={<SplashSignal />}>

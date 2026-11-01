@@ -2,43 +2,28 @@ import { useState } from 'react'
 import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useT } from '../settingsContext'
 import { PlacePicker } from './PlacePicker'
-import { SkyView } from './SkyView'
+import { SkyView, type SkyMoment } from './SkyView'
+import { useLocate } from './useLocate'
 
 /**
  * 天象 page: the sky over a place right now (此刻天空), drawn as the page's
  * backdrop. (The planets on their orbits, 太阳系, have a page of their own.) The place is the page's own, starting from the 星盘
  * birthplace; 定位 asks the browser where the viewer is.
  */
-export function SkyPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
+export function SkyPage({ fallbackPlace, moment }: { fallbackPlace: StarPlace; /** Opened from 天象预告: the moment to show */ moment?: SkyMoment | null }) {
   const t = useT()
   const [place, setPlaceState] = useState<StarPlace>(() => loadSkyPlace(fallbackPlace))
   const setPlace = (next: StarPlace) => {
     setPlaceState(next)
     saveSkyPlace(next)
   }
-  const [locating, setLocating] = useState<'idle' | 'busy' | 'failed'>('idle')
-  const locate = () => {
-    if (!navigator.geolocation) return setLocating('failed')
-    setLocating('busy')
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setLocating('idle')
-        setPlace({
-          name: '我的位置',
-          latitude: Math.round(coords.latitude * 100) / 100,
-          longitude: Math.round(coords.longitude * 100) / 100,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
-      },
-      () => setLocating('failed'),
-      { maximumAge: 600_000, timeout: 15_000 },
-    )
-  }
+  const { locating, locate } = useLocate(setPlace)
 
   return (
     <div className="bazi-layout sky-page">
       <SkyView
         place={place}
+        moment={moment}
         placeControls={
           <>
             <PlacePicker label={t('观测地')} place={place} onChange={setPlace} />

@@ -4,7 +4,7 @@ import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 /** Chosen on the calendar itself (its 显示 tab), not here */
-const CALENDAR_ONLY: (keyof Settings)[] = ['dayGanzhi', 'moonPhase', 'dipper', 'weekStart']
+const CALENDAR_ONLY: (keyof Settings)[] = ['dayGanzhi', 'moonPhase', 'dipper', 'skyEvents', 'weekStart']
 
 /** Gear button in the top bar opening display settings. */
 export function SettingsMenu({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {

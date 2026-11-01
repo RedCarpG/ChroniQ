@@ -1,6 +1,7 @@
 import type { SolarDay } from 'tyme4ts'
 import { WEEKDAYS_EN, enMonth, sameDay, weekTitles, type DayCell, type MiniMonth, type WeekDay, type WeekStart } from '../lib/calendar'
 import type { ChartDay } from '../lib/chartDays'
+import type { SkyEvent } from '../lib/skyEvents'
 import { moonOf, type MoonDay } from '../lib/moon'
 import { MoonGlyph } from './MoonGlyph'
 import { offTags, type RegionDay, type TaggedRegionDay } from '../lib/regionHolidays'
@@ -33,6 +34,8 @@ export function WeekView({
   regionOf,
   chartDaysOf,
   chartText,
+  skyOf,
+  skyName,
 }: {
   days: WeekDay[]
   selected: SolarDay
@@ -45,6 +48,9 @@ export function WeekView({
   /** The saved charts' dates on a day, and their wording */
   chartDaysOf: (day: SolarDay, ganzhi: string) => ChartDay[]
   chartText: (d: ChartDay) => string
+  /** 天象预告: the events on a day, and their names */
+  skyOf: (day: SolarDay) => SkyEvent[]
+  skyName: (e: SkyEvent) => string
 }) {
   const term = useTerm()
   const t = useT()
@@ -85,6 +91,11 @@ export function WeekView({
           <span className="num">{d.day}</span>
           <span className={`sub ${d.subKind}`}>{term(d.sub)}</span>
           {rd.length > 0 && <span className="sub region">{rd.map((x) => (en ? x.en : x.name)).join(' · ')}</span>}
+          {skyOf(d.solar).map((e) => (
+            <span key={e.id} className="sky-line">
+              ✦ {skyName(e)}
+            </span>
+          ))}
           {mine.map((x, i) => (
             <span key={i} className="mine-line">
               {chartText(x)}
@@ -116,6 +127,8 @@ export function YearView({
   regionOf,
   chartDaysOf,
   chartText,
+  skyOf,
+  skyName,
   onOpenMonth,
 }: {
   months: MiniMonth[]
@@ -125,6 +138,8 @@ export function YearView({
   regionOf: (day: SolarDay) => TaggedRegionDay[]
   chartDaysOf: (day: SolarDay, ganzhi: string) => ChartDay[]
   chartText: (d: ChartDay) => string
+  skyOf: (day: SolarDay) => SkyEvent[]
+  skyName: (e: SkyEvent) => string
   onOpenMonth: (month: number) => void
 }) {
   const term = useTerm()
@@ -137,7 +152,7 @@ export function YearView({
       {months.map((m) => {
         // 冲 days come every twelve days per chart: outlined in the grid, but left out of the list
         const listed = (d: (typeof m.days)[number]) => chartDaysOf(d.solar, d.ganzhi).filter((x) => x.kind !== 'pillar')
-        const marks = m.days.filter((d) => d.termName || d.festival || regionOf(d.solar).length > 0 || listed(d).length > 0)
+        const marks = m.days.filter((d) => d.termName || d.festival || regionOf(d.solar).length > 0 || listed(d).length > 0 || skyOf(d.solar).length > 0)
         return (
           <section key={m.month} className="mini-month">
             <button type="button" className="mini-title" onClick={() => onOpenMonth(m.month)}>
@@ -168,6 +183,7 @@ export function YearView({
                     d.festival && 'festival',
                     regionOf(d.solar).some((x) => x.kind === 'public') && 'region-off',
                     chartDaysOf(d.solar, d.ganzhi).length > 0 && 'mine',
+                    skyOf(d.solar).length > 0 && 'sky',
                     d.isToday && 'today',
                     sameDay(d.solar, selected) && 'selected',
                   ]
@@ -187,6 +203,7 @@ export function YearView({
                   const showTerm = d.termName && !d.festival?.startsWith(d.termName)
                   const rd = regionOf(d.solar)
                   const mine = listed(d)
+                  const stars = skyOf(d.solar)
                   return (
                     <li key={d.key}>
                       <span className="muted">{t('{day}日', { day: d.day })}</span>{' '}
@@ -197,6 +214,8 @@ export function YearView({
                       {rd.length > 0 && <span className="region">{rd.map(regionName).join(' · ')}</span>}
                       {(showTerm || d.festival || rd.length > 0) && mine.length > 0 && ' · '}
                       {mine.length > 0 && <span className="mine">{mine.map(chartText).join(' · ')}</span>}
+                      {(showTerm || d.festival || rd.length > 0 || mine.length > 0) && stars.length > 0 && ' · '}
+                      {stars.length > 0 && <span className="sky">{stars.map(skyName).join(' · ')}</span>}
                     </li>
                   )
                 })}

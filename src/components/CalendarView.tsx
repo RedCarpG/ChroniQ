@@ -39,6 +39,9 @@ import type { Settings } from '../lib/settings'
 import { play } from '../sound'
 import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
+import { SkyDayEvents, SkyForecast, useSkyEventText, useSkyEvents } from './SkyForecast'
+import type { SkyMoment } from './SkyView'
+import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useSettings, useT, useTerm } from '../settingsContext'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
@@ -55,17 +58,21 @@ interface Props {
   /** What the grid shows (日干支, 月相, 斗柄指月) and 每周起始, chosen in the calendar's own 显示 tab rather than the settings */
   onShow: (key: CalendarShow, show: boolean) => void
   onWeekStart: (start: WeekStart) => void
+  /** Where 天象预告 is reckoned for if 天象 has no place of its own yet */
+  skyPlace: StarPlace
+  /** Opens the sky at a moment */
+  onViewSky: (moment: SkyMoment) => void
 }
-type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper'>
+type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper' | 'skyEvents'>
 
 /** 北京时间, as the 朔望弦 are given, is not the time here (taken from now's offset) */
 const notBeijing = new Date().getTimezoneOffset() !== -480
 
-export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
+export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
-  const { weekStart, dayGanzhi, moonPhase, dipper, language } = useSettings()
+  const { weekStart, dayGanzhi, moonPhase, dipper, skyEvents: skyEventsShown, language } = useSettings()
   const term = useTerm()
   const t = useT()
   const en = language === 'en'
@@ -93,6 +100,21 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
   /** A chart's dates worth a line in the grid, on a day */
   const gridDays = (solar: SolarDay, ganzhi: string) => chartDays.daysOf(solar, ganzhi).filter(onGrid)
   const chartLine = (days: ChartDay[]) => (days.length > 1 ? `${chartText(days[0])} +${days.length - 1}` : chartText(days[0]))
+  // 天象预告: the place is the 天象 page's own, and the years those on screen and the coming twelve months
+  const [place, setPlaceState] = useState<StarPlace>(() => loadSkyPlace(skyPlace))
+  const setPlace = (next: StarPlace) => {
+    setPlaceState(next)
+    saveSkyPlace(next)
+  }
+  const thisYear = new Date().getFullYear()
+  const sky = useSkyEvents(place, skyEventsShown === 'show', [
+    thisYear,
+    thisYear + 1,
+    view.year,
+    selected.getYear(),
+    ...(view.month === 1 ? [view.year - 1] : view.month === 12 ? [view.year + 1] : []),
+  ])
+  const skyText = useSkyEventText(place)
   const modeLabel: Record<ViewMode, string> = { month: t('月'), week: t('周'), year: t('年') }
   // aria-labels for « ‹ › » in each mode
   const navLabels: Record<ViewMode, [string, string, string, string]> = {
@@ -319,7 +341,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
               label={t('显示')}
               title={t('日历上显示')}
               count={
-                [dayGanzhi, moonPhase, dipper].filter((v) => v === 'show').length +
+                [dayGanzhi, moonPhase, dipper, skyEventsShown].filter((v) => v === 'show').length +
                 (holidays.china ? 1 : 0) +
                 holidays.regions.length +
                 chartDays.items.length
@@ -332,6 +354,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                     ['dayGanzhi', dayGanzhi, term('日干支')],
                     ['moonPhase', moonPhase, t('月相')],
                     ['dipper', dipper, t('斗柄指月')],
+                    ['skyEvents', skyEventsShown, t('天象预告')],
                   ] as const
                 ).map(([key, value, label]) => (
                   <label key={key}>
@@ -472,6 +495,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                   // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
                   const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
                   const mine = gridDays(c.solar, c.ganzhi)
+                  const stars = sky.of(c.solar)
                   return (
                   <button
                     key={c.key}
@@ -486,7 +510,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                     ]
                       .filter(Boolean)
                       .join(' ')}
-                    title={mine.map(chartText).join('\n') || undefined}
+                    title={[...stars.map(skyText.title), ...mine.map(chartText)].join('\n') || undefined}
                     data-sound="shang"
                     onClick={() => select(c.solar)}
                   >
@@ -509,6 +533,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
                       <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
                     )}
                     {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
+                    {stars.length > 0 && <span className="sky-line">✦ {skyText.title(stars[0])}{stars.length > 1 && ` +${stars.length - 1}`}</span>}
                     {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
                   </button>
                   )
@@ -530,6 +555,8 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
               regionOf={regionOf}
               chartDaysOf={gridDays}
               chartText={chartText}
+              skyOf={sky.of}
+              skyName={skyText.title}
             />
           </div>
         )}
@@ -593,12 +620,29 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
               regionOf={regionOf}
               chartDaysOf={gridDays}
               chartText={chartText}
+              skyOf={sky.of}
+              skyName={skyText.title}
               onOpenMonth={(month) => {
                 setView((v) => ({ ...v, month }))
                 setMode('month')
               }}
             />
           </div>
+        )}
+        {skyEventsShown === 'show' && (
+          <SkyForecast
+            place={place}
+            onPlace={setPlace}
+            events={sky.all}
+            loading={sky.loading}
+            failed={sky.failed}
+            onRetry={sky.retry}
+            onPickDay={select}
+            onViewSky={onViewSky}
+            chart={chartDays.shown[0]}
+            chartItems={chartDays.items}
+            chartText={chartText}
+          />
         )}
       </section>
 
@@ -678,6 +722,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart }: Props) {
               </ul>
             </div>
           )}
+          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
           <dl className="kv">
             <dt>{term('节气')}</dt>
             <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
