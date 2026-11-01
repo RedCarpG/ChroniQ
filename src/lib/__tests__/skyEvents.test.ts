@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeSkyEvents, localDate, type SkyEvent } from '../skyEvents'
+import { computeSkyEvents, eclipseShade, localDate, type SkyEvent } from '../skyEvents'
 
 const BEIJING = { latitude: 39.9, longitude: 116.4, timeZone: 'Asia/Shanghai' }
 const NASHVILLE = { latitude: 36.16, longitude: -86.78, timeZone: 'America/Chicago' }
@@ -75,5 +75,28 @@ describe('localDate', () => {
     const ms = Date.UTC(2024, 11, 31, 20)
     expect(localDate(ms, 'Asia/Shanghai')).toBe('2025-01-01')
     expect(localDate(ms, 'America/New_York')).toBe('2024-12-31')
+  })
+})
+
+describe('eclipseShade', () => {
+  const total = ofKind(computeSkyEvents(2022, BEIJING), 'lunarEclipse').find((e) => e.date === '2022-11-08')!
+
+  it('is nothing outside the eclipse', () => {
+    expect(eclipseShade(total, total.start - 1)).toBeNull()
+    expect(eclipseShade(total, total.end + 1)).toBeNull()
+  })
+
+  it('moves from touching to covering the body by the peak', () => {
+    const start = eclipseShade(total, total.start)!
+    const peak = eclipseShade(total, total.peak)!
+    expect(peak.body).toBe('moon')
+    expect(start.offset).toBeCloseTo(start.radius + 1)
+    expect(peak.offset).toBe(0)
+  })
+
+  it('leaves a partial eclipse of the Sun part uncovered at its peak', () => {
+    const shade = eclipseShade({ kind: 'solarEclipse', type: 'partial', obscuration: 0.5, peak: 10, start: 0, end: 20, id: '', date: '', time: 10, minutes: 20, altitude: 30, azimuth: 0 }, 10)!
+    expect(shade.body).toBe('sun')
+    expect(shade.offset).toBeCloseTo(1)
   })
 })

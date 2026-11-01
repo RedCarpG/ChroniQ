@@ -171,6 +171,8 @@ export function paintSky(canvas: HTMLCanvasElement, glow: HTMLCanvasElement, s: 
   if (!ctx) return
   const dpr = s.lowRes ? 1 : Math.min(DPR_MAX, window.devicePixelRatio || 1)
   const [w, h] = [s.width, s.height]
+  // No room yet (a pane or tab not laid out): nothing to draw, and a canvas of no size cannot be copied
+  if (w < 4 || h < 4) return
   // A new size makes a new bitmap: only when the size changes, else the old one is cleared
   const [cw, ch] = [Math.round(w * dpr), Math.round(h * dpr)]
   if (canvas.width !== cw || canvas.height !== ch) {

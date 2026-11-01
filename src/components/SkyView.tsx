@@ -11,6 +11,7 @@ import {
   constellationsAt,
   distanceOf,
   formatAzimuth,
+  horizonOf,
   historyTrack,
   litPart,
   mansionsAt,
@@ -24,6 +25,8 @@ import {
   type SkyBody,
   type SkyStar,
 } from '../lib/sky'
+import { eclipseShade, type SkyEvent } from '../lib/skyEvents'
+import { useSkyEventText } from './SkyForecast'
 import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
 import { FIVE_STARS } from '../lib/fiveStars'
@@ -46,6 +49,16 @@ const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 :
 /** Dragging the sky across the disc turns the time by six hours (later to the right, as the stars go) */
 const DRAG_MINUTES = 360 / (2 * R)
 /** How far the map zooms: from fitting its window to eight times that */
+/** The meteors round a radiant: their direction, when they start and how far out */
+const RADIANT_TRAILS = [
+  [20, 0, 6],
+  [85, 2.3, 30],
+  [140, 0.9, 12],
+  [205, 3.4, 22],
+  [265, 1.6, 4],
+  [320, 4.2, 26],
+] as const
+
 const Z_MIN = 1
 const Z_MAX = 8
 
@@ -78,10 +91,15 @@ const ymd = (date: string) => {
   return { year, month, day }
 }
 
-/** A moment to open the sky at, with a body picked out (its key) */
+/** A sky event to open the sky at: when, what to pick out (and which figures that is among), and how close */
 export interface SkyMoment {
+  event: SkyEvent
   time: number
-  body?: string
+  chosen?: string
+  /** A second body in it, picked out too */
+  also?: string
+  figures?: FigureSet
+  zoom?: number
 }
 
 const wallFormats = new Map<string, Intl.DateTimeFormat>()
@@ -200,6 +218,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const keep = off > room ? room / off : 1
     return { z, x: v.x * keep, y: v.y * keep }
   }
+  // Opened at an event that wants a close look: zoomed in on it, once the window is measured
+  const zoomedIn = useRef(false)
+  useEffect(() => {
+    if (!frame || !moment?.zoom || zoomedIn.current) return
+    zoomedIn.current = true
+    const [x, y] = at(moment.event.azimuth, moment.event.altitude)
+    const s = fit * moment.zoom
+    setView(clampView({ z: moment.zoom, x: (C - x) * s, y: (C - y) * s }))
+  }, [frame])
 
   // 画质 (remembered in this browser): 清晰 draws the sky in full; 流畅 for a slower computer or
   // phone draws less of it (the star clouds as their cells and thinned, no stars past magnitude 6,
@@ -358,7 +385,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   })
   // The body or named star picked out (click it, its name or a body's row; the key is its label's):
   // it pops up a size inside a ring and the rest dims. Click it again, the empty sky or press Esc to let go.
-  const [chosen, setChosen] = useState<string | null>(moment?.body ?? null)
+  const [chosen, setChosen] = useState<string | null>(moment?.chosen ?? null)
   const choose = (key: string) => setChosen((c) => (c === key ? null : key))
   const chooseKeys = (key: string) => (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' && e.key !== ' ') return
@@ -384,6 +411,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   }, [chosen])
   // Constellation figures (remembered in this browser)
   const [figures, setFigures] = useState<FigureSet>(() => {
+    // For this visit only: a shower's constellation is among the western ones
+    if (moment?.figures) return moment.figures
     try {
       const v = localStorage.getItem(FIGURES_KEY)
       return v === 'china' || v === 'none' || v === 'mansions' ? v : 'west'
@@ -595,6 +624,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return o && shown(o.alt) ? at(o.az, o.alt) : null
   }
   const up = sky.bodies.filter((b) => shown(b.alt))
+  // The event opened from 天象预告, for as long as the sky stays within a day of it
+  const [eventClosed, setEventClosed] = useState(false)
+  const event = moment && !eventClosed && Math.abs(utc.getTime() - moment.time) < 12 * 3600_000 ? moment.event : null
+  const eventText = useSkyEventText(place)
+  const shade = event && eclipseShade(event, utc.getTime())
+  const radiant = event?.kind === 'meteors' && !below ? horizonOf(utc, place.latitude, place.longitude)(event.ra, event.dec) : null
   /** Which way (degrees, on the map) the Sun lies from the Moon: its lit side faces that way */
   const moonTurn = (moon: SkyBody) => {
     const [x0, y0] = at(moon.az, moon.alt)
@@ -1159,7 +1194,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             return (
               <g
                 key={b.key}
-                className={`sky-body sky-${b.key}${chosen === b.key ? ' on' : ''}${focus === b.key ? ' hover' : ''}`}
+                className={`sky-body sky-${b.key}${chosen === b.key || (event && moment?.also === b.key) ? ' on' : ''}${focus === b.key ? ' hover' : ''}`}
                 aria-label={tip}
                 data-tip={tip}
                 {...chooseProps(b.key)}
@@ -1179,10 +1214,43 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 ) : (
                   <circle className="disc" cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} />
                 )}
+                {shade?.body === b.key && (
+                  // The eclipse, over the body: the Earth's shadow on the Moon, the Moon on the Sun
+                  <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`} className={`sky-eclipse sky-eclipse-${b.key}${shade.dim ? ' dim' : ''}`}>
+                    <clipPath id={`${clipId}-eclipse`}>
+                      <circle r={bodyRadius(b) * dot} />
+                    </clipPath>
+                    {/* A disc too, to grow with the body when it is chosen */}
+                    <g className="disc">
+                      <circle
+                        clipPath={`url(#${clipId}-eclipse)`}
+                        cx={0.8 * shade.offset * bodyRadius(b) * dot}
+                        cy={-0.6 * shade.offset * bodyRadius(b) * dot}
+                        r={shade.radius * bodyRadius(b) * dot}
+                      />
+                    </g>
+                  </g>
+                )}
               </g>
             )
           })}
         </g>
+        {radiant && radiant.alt > 0 && (
+          // A shower's radiant, and meteors running out from it
+          <g className="sky-radiant" transform={`translate(${at(radiant.az, radiant.alt).map((n) => n.toFixed(2)).join(' ')})`} aria-hidden="true">
+            <circle r={5 * k} />
+            {RADIANT_TRAILS.map(([turn, delay, far]) => (
+              <g key={turn} transform={`rotate(${turn})`}>
+                <line
+                  x1={(10 + far) * k}
+                  x2={(10 + far + 34) * k}
+                  style={{ animationDelay: `${delay}s`, '--run': `${70 * k}px` } as CSSProperties}
+                />
+              </g>
+            ))}
+            <text y={-9 * k}>{t('辐射点')}</text>
+          </g>
+        )}
         {litPaths.length > 0 && (
           <g className="sky-hour-labels" aria-hidden="true">
             {litPaths.map((path) => {
@@ -1407,6 +1475,18 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
       {/* On the right, always there: the bodies, or what is chosen, in detail */}
       <aside className="sky-bodies" aria-label={t('天体')}>
+        {event && (
+          <div className="sky-event">
+            <span className="sky-event-kind">{t('天象预告')}</span>
+            <strong>{eventText.title(event)}</strong>
+            <span className="sky-when">{eventText.when(event)}</span>
+            <span className="muted">{eventText.note(event)}</span>
+            {shade && <span className="muted">{t('日月的大小是示意的；拖动时间可看食的过程。')}</span>}
+            <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('关闭')} title={t('关闭')} onClick={() => setEventClosed(true)}>
+              ✕
+            </button>
+          </div>
+        )}
         {pickFigure ? (
           <div className="sky-detail">
             <button type="button" className="ghost sky-back" data-sound="unpick" onClick={() => setChosen(null)}>

@@ -43,12 +43,12 @@ interface SkyEventBase {
 }
 export type SkyEvent = SkyEventBase &
   (
-    | { kind: 'solarEclipse'; type: 'partial' | 'annular' | 'total'; obscuration: number; start: number; end: number }
-    | { kind: 'lunarEclipse'; type: 'penumbral' | 'partial' | 'total'; start: number; end: number; whole: boolean }
+    | { kind: 'solarEclipse'; type: 'partial' | 'annular' | 'total'; obscuration: number; peak: number; start: number; end: number }
+    | { kind: 'lunarEclipse'; type: 'penumbral' | 'partial' | 'total'; obscuration: number; peak: number; start: number; end: number; whole: boolean }
     | { kind: 'opposition'; body: PlanetName }
     | { kind: 'elongation'; body: PlanetName; side: 'morning' | 'evening'; degrees: number }
     | { kind: 'conjunction'; body: PlanetName; other: PlanetName; degrees: number }
-    | { kind: 'meteors'; shower: ShowerCode; zhr: number; moonLit: number }
+    | { kind: 'meteors'; shower: ShowerCode; zhr: number; moonLit: number; ra: number; dec: number }
     | { kind: 'supermoon'; km: number }
   )
 
@@ -144,6 +144,8 @@ function lunarEclipses(from: number, to: number, observer: Observer) {
     out.push({
       kind: 'lunarEclipse',
       type: e.kind as 'penumbral' | 'partial' | 'total',
+      obscuration: e.obscuration,
+      peak,
       time: up.time,
       altitude: up.altitude,
       azimuth: up.azimuth,
@@ -169,6 +171,7 @@ function solarEclipses(from: number, to: number, observer: Observer) {
       kind: 'solarEclipse',
       type: e.kind as 'partial' | 'annular' | 'total',
       obscuration: e.obscuration,
+      peak,
       time: up.time,
       altitude: up.altitude,
       azimuth: up.azimuth,
@@ -254,7 +257,7 @@ function meteors(from: number, to: number, observer: Observer) {
     // Moonlight counts only with the Moon up
     const date = new Date(best.time)
     const moonUp = horizontal(Body.Moon, best.time, observer).altitude > 0
-    out.push({ kind: 'meteors', shower: s.code, zhr: s.zhr, moonLit: moonUp ? Illumination(Body.Moon, date).phase_fraction : 0, minutes: 180, ...best })
+    out.push({ kind: 'meteors', shower: s.code, zhr: s.zhr, ra: s.ra, dec: s.dec, moonLit: moonUp ? Illumination(Body.Moon, date).phase_fraction : 0, minutes: 180, ...best })
   }
   return out
 }
@@ -270,6 +273,25 @@ function supermoons(from: number, to: number, observer: Observer) {
     if (best) out.push({ kind: 'supermoon', km: Math.round(km), minutes: 120, ...best })
   }
   return out
+}
+
+/**
+ * How an eclipse looks at a moment, to draw over the body (its size being a drawing's, not the sky's):
+ * the covering disc's radius and how far its centre is from the body's, both in the body's radii.
+ * Null outside the eclipse; a penumbral eclipse has no edge, so it only dims.
+ */
+export function eclipseShade(e: SkyEvent, ms: number) {
+  if (e.kind !== 'solarEclipse' && e.kind !== 'lunarEclipse') return null
+  if (ms < e.start || ms > e.end) return null
+  const before = ms < e.peak ? (e.peak - ms) / (e.peak - e.start) : (ms - e.peak) / (e.end - e.peak)
+  const shade = (radius: number, closest: number) => {
+    const touching = radius + 1
+    return { body: e.kind === 'solarEclipse' ? ('sun' as const) : ('moon' as const), radius, offset: closest + before * (touching - closest), dim: false }
+  }
+  if (e.kind === 'solarEclipse') return e.type === 'partial' ? shade(1, 2 * (1 - e.obscuration)) : shade(e.type === 'total' ? 1.03 : 0.9, 0)
+  if (e.type === 'penumbral') return { ...shade(1, 0), offset: 0, dim: true }
+  // The Earth's shadow is some 2.7 Moons across
+  return e.type === 'total' ? shade(2.7, 0) : shade(2.7, 3.7 - 2 * e.obscuration)
 }
 
 /** What makes an event's id: its kind and what it is of */

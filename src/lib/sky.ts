@@ -213,7 +213,7 @@ export interface ConstellationView {
 }
 
 /** J2000 RA / Dec (degrees) → azimuth / altitude at a moment and place, refraction included */
-function horizonOf(utc: Date, latitude: number, longitude: number) {
+export function horizonOf(utc: Date, latitude: number, longitude: number) {
   const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
   const v = new Float64Array(3)
   return (ra: number, dec: number) => {

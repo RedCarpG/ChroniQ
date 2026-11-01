@@ -79,12 +79,18 @@ const SHOWER: Record<string, string> = {
 const SOLAR: Record<string, string> = { partial: '日偏食', annular: '日环食', total: '日全食' }
 const LUNAR: Record<string, string> = { penumbral: '半影月食', partial: '月偏食', total: '月全食' }
 
-/** Opening the sky at an event: when to look, with the body picked out if it is one */
-export function skyMomentOf(e: SkyEvent): SkyMoment {
-  if (e.kind === 'solarEclipse') return { time: e.time, body: 'sun' }
-  if (e.kind === 'lunarEclipse' || e.kind === 'supermoon') return { time: e.time, body: 'moon' }
-  if (e.kind === 'meteors') return { time: e.time }
-  return { time: e.time, body: e.body.toLowerCase() }
+/** The constellation each shower seems to come from (the Quadrantids' own is no longer one: it lies in Boötes) */
+const SHOWER_FIGURE: Record<string, string> = { QUA: 'Boo', LYR: 'Lyr', ETA: 'Aqr', PER: 'Per', ORI: 'Ori', LEO: 'Leo', GEM: 'Gem' }
+
+/** Opening the sky at an event: when to look, with what it is about picked out */
+export function skyMomentOf(event: SkyEvent): SkyMoment {
+  const moment = { event, time: event.time }
+  if (event.kind === 'solarEclipse') return { ...moment, chosen: 'sun', zoom: 6 }
+  if (event.kind === 'lunarEclipse') return { ...moment, chosen: 'moon', zoom: 6 }
+  if (event.kind === 'supermoon') return { ...moment, chosen: 'moon' }
+  if (event.kind === 'meteors') return { ...moment, chosen: `fig${SHOWER_FIGURE[event.shower]}`, figures: 'west' }
+  if (event.kind === 'conjunction') return { ...moment, chosen: event.body.toLowerCase(), also: event.other.toLowerCase(), zoom: 8 }
+  return { ...moment, chosen: event.body.toLowerCase() }
 }
 
 /** Words an event in the UI language, its times in the place's zone */
@@ -366,6 +372,7 @@ export function SkyForecast({
                 ))}
                 {!loading && !failed && coming.length === 0 && <li className="muted">{t('未来一年此地没有可见的天象')}</li>}
               </ul>
+              {/* Under the list, not at its end, so it is seen without scrolling */}
               <section className="sky-forecast-file">
                 <h4>{t('加入手机日历')}</h4>
                 <div className="sky-forecast-choices">
@@ -391,9 +398,10 @@ export function SkyForecast({
                   {saving === 'busy' ? t('生成中…') : t('下载日历文件（.ics）')}
                 </button>
                 {saving === 'failed' && <small role="alert">{t('生成失败，请重试。')}</small>}
-                <small className="muted">
-                  {t('用手机或电脑的日历打开文件即可导入。文件含未来一年，不会自动更新，隔段时间重新导入即可；内容只在本机生成。部分日历（如 Google 日历）导入时可能忽略提醒。')}
-                </small>
+                <details className="muted">
+                  <summary>{t('如何导入')}</summary>
+                  <small>{t('用手机或电脑的日历打开文件即可导入。文件含未来一年，不会自动更新，隔段时间重新导入即可；内容只在本机生成。部分日历（如 Google 日历）导入时可能忽略提醒。')}</small>
+                </details>
               </section>
             </div>
           </div>,
