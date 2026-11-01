@@ -2470,7 +2470,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .page-nav-pages > div { display: flex; align-items: center; min-width: 0; overflow: hidden; }
 .page-nav-group.open > .page-nav-pages { grid-template-columns: 1fr; opacity: 1; }
 .page-nav-item {
-  flex: none; height: 34px; padding: 0 8px; font-size: 13px; white-space: nowrap; color: var(--muted);
+  position: relative; flex: none; height: 34px; padding: 0 8px; font-size: 13px; white-space: nowrap; color: var(--muted);
   background: none; border: 0; border-radius: 0; letter-spacing: 0.04em; transition: color 0.2s;
 }
 .page-nav-item:hover { color: var(--text); }
