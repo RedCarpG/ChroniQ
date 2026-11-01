@@ -19,9 +19,31 @@ describe('baziReading', () => {
     for (const e of reading.missing) expect(chart.elementCount[e]).toBe(0)
   })
 
-  it('weighs seven characters with the month three times over', () => {
-    expect(reading.support + reading.drain).toBe(9)
+  it('weighs seven characters with the month three times over, and adds the lesser roots', () => {
+    const extra = reading.roots.reduce((n, r) => n + (r.qi === '中气' ? 1 : r.qi === '余气' ? 0.5 : 0), 0)
+    expect(reading.support + reading.drain).toBe(9 + extra)
     expect(reading.tendency).toBe(reading.support - reading.drain >= 2 ? 'strong' : reading.support - reading.drain <= -2 ? 'weak' : 'balanced')
+  })
+
+  it('finds the 日主’s roots in the 藏干, by how deep', () => {
+    const glyph = (char: string, element: '金' | '木') => ({ char, element })
+    const withHidden = {
+      ...chart,
+      dayMaster: { ...chart.dayMaster, element: '金' as const },
+      pillars: chart.pillars.map((p, i) => ({
+        ...p,
+        hidden: i === 0 ? [glyph('甲', '木'), glyph('辛', '金')] : i === 1 ? [glyph('庚', '金')] : i === 2 ? [glyph('甲', '木'), glyph('乙', '木'), glyph('辛', '金')] : [glyph('甲', '木')],
+      })),
+    }
+    const r = baziReading(withHidden, 2026)
+    expect(r.roots.map((x) => [x.pillar, x.stem, x.qi])).toEqual([
+      [chart.pillars[0].label, '辛', '中气'],
+      [chart.pillars[1].label, '庚', '本气'],
+      [chart.pillars[2].label, '辛', '余气'],
+    ])
+    const none = baziReading({ ...withHidden, pillars: withHidden.pillars.map((p) => ({ ...p, hidden: [glyph('甲', '木')] })) }, 2026)
+    expect(none.roots).toEqual([])
+    expect(r.support - none.support).toBe(1.5)
   })
 
   it('tells whether the season helps: the same element or the one that generates it', () => {

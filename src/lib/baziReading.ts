@@ -57,6 +57,16 @@ const GENERATES: Record<ElementName, ElementName> = { 木: '火', 火: '土', �
 
 export type Tendency = 'strong' | 'weak' | 'balanced'
 
+/** Where the 日主 has a root: a 藏干 of its own element in a 地支 */
+export interface BaziRoot {
+  pillar: string
+  stem: string
+  qi: '本气' | '中气' | '余气'
+}
+const QI: BaziRoot['qi'][] = ['本气', '中气', '余气']
+/** What a root adds to the count. A 本气 root is already there, as its 地支 counts by its 本气 */
+const ROOT_WEIGHT: Record<BaziRoot['qi'], number> = { 本气: 0, 中气: 1, 余气: 0.5 }
+
 export interface BaziReading {
   dayMaster: Glyph
   /** Elements by count, most first, and those with none among the eight characters */
@@ -65,6 +75,7 @@ export interface BaziReading {
   /** Whether the month, the season of birth, helps the 日主 */
   inSeason: boolean
   monthElement: ElementName
+  roots: BaziRoot[]
   /** Helping and draining weights, and which way they lean */
   support: number
   drain: number
@@ -85,7 +96,8 @@ export function baziReading(chart: BaziChart, year: number): BaziReading {
   const monthElement = chart.pillars[1].branch.element
 
   // A rough count of the usual kind: the other seven characters, with the month's 地支 counting
-  // three times over as the season. 地支 by their 本气 (the first 藏干), for its 十神.
+  // three times over as the season, and the 日主's roots in the 中气 and 余气 added. 地支 by their
+  // 本气 (the first 藏干), for its 十神.
   let support = 0
   let drain = 0
   const count = (element: ElementName, weight: number) => {
@@ -106,6 +118,11 @@ export function baziReading(chart: BaziChart, year: number): BaziReading {
     addStar(p.hidden[0]?.tenStar)
   })
 
+  const roots: BaziRoot[] = chart.pillars.flatMap((p) =>
+    p.hidden.flatMap((h, i) => (h.element === me ? [{ pillar: p.label, stem: h.char, qi: QI[i] ?? '余气' }] : [])),
+  )
+  for (const root of roots) support += ROOT_WEIGHT[root.qi]
+
   const decade = chart.decades.find((d) => d.startYear <= year && year <= d.endYear)
   const lead = support - drain
   return {
@@ -114,6 +131,7 @@ export function baziReading(chart: BaziChart, year: number): BaziReading {
     missing: counts.filter(([, n]) => n === 0).map(([element]) => element),
     inSeason: helps(me, monthElement),
     monthElement,
+    roots,
     support,
     drain,
     tendency: lead >= 2 ? 'strong' : lead <= -2 ? 'weak' : 'balanced',
