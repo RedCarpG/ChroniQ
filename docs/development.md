@@ -7,6 +7,7 @@
 - [Vite](https://vite.dev) + [React 19](https://react.dev) + TypeScript
 - 历法和命理计算：[tyme4ts](https://github.com/6tail/tyme4ts)（MIT）
 - 紫微斗数排盘：[iztro](https://github.com/SylarLong/iztro)（MIT）
+- 紫微星曜亮度表（《全书》口径）与格局条目参考：[Renhuai123/ziwei-doushu](https://github.com/Renhuai123/ziwei-doushu)（MIT）
 - 星盘星体位置：[astronomy-engine](https://github.com/cosinekitty/astronomy)（MIT）
 
 所有计算都在浏览器里完成，没有后端；`dist/` 是纯静态文件。
@@ -35,6 +36,8 @@ src/
   lib/shensha.ts         神煞规则表
   lib/relations.ts       刑冲合会
   lib/ziwei.ts           紫微斗数（基于 iztro）
+  lib/ziweiBrightness.ts 紫微星曜庙旺表（《全书》口径）
+  lib/ziweiPatterns.ts   紫微格局
   lib/astrology.ts       星盘计算（基于 astronomy-engine）
   lib/sky.ts             此刻天空
   lib/regionHolidays.ts  其他国家的节假日规则表

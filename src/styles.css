@@ -1179,6 +1179,36 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sf-active .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.4; }
 .palace.sf-self { box-shadow: inset 0 0 0 2px var(--accent); }
 .palace.sf-opposite, .palace.sf-trine { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+/* 格局 picked out: its palaces stay lit, framed in the colour of its kind */
+.ziwei-board { --pt: var(--accent); }
+.ziwei-board.pt-bad { --pt: var(--bad); }
+.ziwei-board.pt-neutral { --pt: color-mix(in srgb, var(--text) 55%, transparent); }
+.pt-active .palace:not(.pt-on) { opacity: 0.4; }
+.palace.pt-on { box-shadow: inset 0 0 0 2px var(--pt); }
+
+/* 格局: a card each, its kind's colour on the edge */
+.zw-patterns { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+.zw-pattern {
+  --pt: var(--accent);
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; padding: 10px 12px 11px;
+  border: 1px solid var(--border); border-left: 3px solid var(--pt); border-radius: 10px; background: var(--surface);
+  color: var(--text); font: inherit; font-size: 13px; line-height: 1.65; text-align: left; cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.zw-pattern.pt-bad { --pt: var(--bad); }
+.zw-pattern.pt-neutral { --pt: color-mix(in srgb, var(--text) 45%, transparent); }
+.zw-pattern:hover, .zw-pattern:focus-visible, .zw-pattern.on {
+  border-color: var(--pt); background: color-mix(in srgb, var(--pt) 7%, var(--surface)); outline: none;
+}
+.zw-pattern.on { box-shadow: 0 0 0 1px var(--pt) inset; }
+.pt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pt-head strong { font-family: var(--font-title); font-size: 16px; letter-spacing: 0.04em; }
+.pt-kind { flex: none; padding: 0 7px; border-radius: 999px; font-size: 11px; background: color-mix(in srgb, var(--pt) 16%, transparent); color: var(--pt); }
+.pt-verse { color: var(--accent); font-family: var(--font-title); letter-spacing: 0.06em; }
+.pt-meaning { color: var(--muted); }
+.pt-plus b, .pt-minus b { margin-right: 6px; font-weight: 600; }
+.pt-plus b { color: var(--good); }
+.pt-minus b { color: var(--bad); }
 .sf-tag {
   position: absolute; right: 8px; bottom: 28px; font-size: 10px; line-height: 1; padding: 2px 5px; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent); animation: tip-in 0.2s ease-out;

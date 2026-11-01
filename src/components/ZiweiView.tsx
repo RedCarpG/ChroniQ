@@ -19,6 +19,7 @@ import {
   type ZiweiPalace,
   type ZiweiStar,
 } from '../lib/ziwei'
+import { findPatterns, type ZiweiPattern } from '../lib/ziweiPatterns'
 import { ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../lib/ziweiSchools'
 import { usePick } from './usePick'
 import { useSettings, useT, useTerm } from '../settingsContext'
@@ -226,8 +227,13 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
     onChange(next)
   }
   const shows = (kind: LayerKind) => layers.some((l) => l.kind === kind)
+  // 格局: the patterns the chart forms; hovering or picking one lights up its palaces on the board
+  // (in place of a palace's 三方四正)
+  const patterns = useMemo(() => findPatterns(chart), [chart])
+  const patternPick = usePick<string>()
+  const litPattern = patterns.find((pt) => pt.name === patternPick.active)
   const roles = useMemo(() => {
-    if (!active || mode !== 'sanfang') return null
+    if (!active || mode !== 'sanfang' || litPattern) return null
     const { opposite, trines } = sanFangSiZheng(active)
     return new Map<string, Role>([
       [active, 'self'],
@@ -235,7 +241,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       [trines[0], 'trine'],
       [trines[1], 'trine'],
     ])
-  }, [active, mode])
+  }, [active, mode, litPattern])
   // 四化飞星: the hovered palace's four 飞化, and the 禄权科忌 each palace receives from it
   const flies = mode === 'feihua' && active ? chart.palaces[active].flies : null
   const boardRef = useRef<HTMLDivElement>(null)
@@ -417,6 +423,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       <SectionNav
         items={[
           ['ziwei-board', t('盘面')],
+          ['ziwei-patterns', term('格局')],
           ['ziwei-fortune', term('运限')],
         ]}
       />
@@ -438,7 +445,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         <div className="ziwei-scroll">
           <div
             ref={boardRef}
-            className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}${flies ? ' fx-active' : ''}`}
+            className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}${flies ? ' fx-active' : ''}${litPattern ? ` pt-active pt-${litPattern.kind}` : ''}`}
           >
             {Object.values(chart.palaces).map((p) => (
               <Palace
@@ -449,9 +456,10 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 showSelf={mode === 'feihua'}
                 layers={layers}
                 pick={palacePick.props}
+                lit={!!litPattern?.palaces.includes(p.branch)}
               />
             ))}
-            {active && mode === 'sanfang' && <SanFangLines branch={active} />}
+            {active && mode === 'sanfang' && !litPattern && <SanFangLines branch={active} />}
             {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
             <div className="ziwei-center">
               <div className="zc-title">
@@ -553,8 +561,58 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
         </p>
       </section>
 
+      <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />
+
       {fortunes}
     </div>
+  )
+}
+
+const KIND_LABEL: Record<ZiweiPattern['kind'], string> = { good: '吉格', bad: '凶格', neutral: '结构' }
+
+/** 格局: each pattern the chart forms, what makes it here, and what strengthens or breaks it */
+function Patterns({ patterns, pick, lit }: { patterns: ZiweiPattern[]; pick: (name: string) => Record<string, unknown>; lit?: string }) {
+  const term = useTerm()
+  const t = useT()
+  return (
+    <section className="card zw-patterns-card" id="ziwei-patterns">
+      <h3>
+        <TitleMark />
+        {term('格局')}
+      </h3>
+      {patterns.length ? (
+        <div className="zw-patterns" data-sounds="shang">
+          {patterns.map((pt) => (
+            <button key={pt.name} type="button" className={`zw-pattern pt-${pt.kind}${lit === pt.name ? ' on' : ''}`} aria-pressed={lit === pt.name} {...pick(pt.name)}>
+              <span className="pt-head">
+                <strong>{term(pt.name)}</strong>
+                <span className="pt-kind">{t(KIND_LABEL[pt.kind])}</span>
+              </span>
+              <span className="pt-rule">{term(pt.rule)}</span>
+              {pt.verse && <span className="pt-verse">「{term(pt.verse)}」</span>}
+              <span className="pt-meaning">{term(pt.meaning)}</span>
+              {pt.plus.length > 0 && (
+                <span className="pt-plus">
+                  <b>{t('加分')}</b>
+                  {term(pt.plus.join('；'))}
+                </span>
+              )}
+              {pt.minus.length > 0 && (
+                <span className="pt-minus">
+                  <b>{t('破格')}</b>
+                  {term(pt.minus.join('；'))}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">{t('命宫与它的三方四正、夹宫没有构成常见的格局。')}</p>
+      )}
+      <p className="muted row-note">
+        {t('按《紫微斗数全书》《骨髓赋》的通行定义，看命宫与它的三方四正、夹宫；「加分」「破格」只列盘上看得到的条件（星曜、庙旺与生年四化）。悬停或点按一个格局，盘上标出它所在的宫位。仅供参考。')}
+      </p>
+    </section>
   )
 }
 
@@ -621,9 +679,12 @@ function PalaceView({
   showSelf,
   layers,
   pick,
+  lit,
 }: {
   palace: ZiweiPalace
   role?: Role
+  /** One of the palaces of the 格局 picked out */
+  lit?: boolean
   /** 四化飞星: 'src' for the hovered palace, else the 飞化 landing here */
   fly?: 'src' | ZiweiFly[] | null
   /** Mark the 自化 of this palace's own 天干 */
@@ -645,7 +706,7 @@ function PalaceView({
   const [row, col] = BOARD[p.branch]
   return (
     <div
-      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}`}
+      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}${lit ? ' pt-on' : ''}`}
       style={{ gridRow: row, gridColumn: col }}
       tabIndex={0}
       data-sound="yu"
