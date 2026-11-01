@@ -101,6 +101,7 @@ The runtime stack is React 19, TypeScript and Vite. Calendar/Bazi calculations u
 - Yearly transit calculations run in a Worker. Leaving the calendar or changing relevant conditions cancels obsolete tasks. Failures offer retry, and cancellation is not reported as a calculation failure.
 - Caches have limits: 24 yearly transit results in the client, 48 calendar-year results and 16 Bazi charts. These capacities are not page-wide performance deadlines.
 - Faint stars, star clouds and the deep stellar field cache their coordinates independently. Changing one layer's detail condition should not rotate unaffected layers again.
+- A new Service Worker takes over once old pages close, or at once when the viewer presses Update on the new-version note, which reloads every open page.
 - The production Service Worker precaches final build files. HTML and script content changes affect the version; intermediate files removed by Vite must not appear in the manifest.
 - A new worker waits for old controlled pages to close before activating. Pages use HTML paired with the active worker, preventing mixed-version module loading.
 - Font subsets and resources such as the high-resolution lunar texture are cached on demand and may degrade gracefully offline. A first visit without prior caching is not guaranteed to work offline.

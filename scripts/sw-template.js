@@ -14,6 +14,11 @@ self.addEventListener('install', (event) => {
 
 // Wait for existing controlled pages to close before activation. Their lazy
 // imports still reference the previous build and need its cache until then.
+// Or for the viewer to say so (the 有新版本 bar), whereupon every open page reloads.
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') self.skipWaiting()
+})
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
