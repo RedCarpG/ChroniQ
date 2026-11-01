@@ -25,7 +25,7 @@ import { play, setSoundEnabled, startClickSounds } from './sound'
 type Tab = Page
 type SkyMoment = import('./components/SkyView').SkyMoment
 /** Order of the pages, which sets the way a page switch slides. */
-const TAB_ORDER: Tab[] = ['today', 'calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star']
+const TAB_ORDER: Tab[] = ['today', 'calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star', 'timeline']
 
 // Calendar is the default page; load the 八字 UI only when it is opened.
 const loadBazi = () => import('./components/BaziView')
@@ -47,10 +47,13 @@ const SolarSystemView = lazy(() => loadSolar().then((m) => ({ default: m.SolarSy
 // 今日, with tonight's sky (astronomy-engine)
 const loadToday = () => import('./components/TodayPage')
 const TodayPage = lazy(() => loadToday().then((m) => ({ default: m.TodayPage })))
+// 人生时间轴 brings iztro and astronomy-engine too
+const loadTimeline = () => import('./components/TimelinePage')
+const TimelinePage = lazy(() => loadTimeline().then((m) => ({ default: m.TimelinePage })))
 // 观月, with its maps of the Moon
 const loadMoon = () => import('./components/MoonPage')
 const MoonPage = lazy(() => loadMoon().then((m) => ({ default: m.MoonPage })))
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { today: loadToday, bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { today: loadToday, timeline: loadTimeline, bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -258,7 +261,7 @@ export function App() {
           {/* On a phone it is the bar at the foot of the screen instead */}
           <PageNav page={tab} onPick={goTab} className="in-topbar" />
           <div className="topbar-right">
-            {tab !== 'today' && tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
+            {tab !== 'today' && tab !== 'timeline' && tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
               <>
                 <ExportButton chart={{ tab, input: baziInput }} />
                 <ShareButton chart={{ tab, input: baziInput }} />
@@ -296,6 +299,10 @@ export function App() {
                   goTab('sky')
                 }}
               />
+            </Suspense>
+          ) : tab === 'timeline' ? (
+            <Suspense fallback={<SplashSignal />}>
+              <TimelinePage key={loads} input={baziInput} schools={schools} ziweiSchools={ziweiSchools} onOpen={goTab} />
             </Suspense>
           ) : tab === 'bazi' ? (
             <Suspense fallback={<SplashSignal />}>
