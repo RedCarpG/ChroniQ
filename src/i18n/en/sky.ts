@@ -198,6 +198,7 @@ export const SKY: Record<string, string> = {
   从地球看太阳所在的星座: 'The sign the Sun is in, seen from Earth',
   '从地球看它所在的星座，与星盘相同': 'The sign it is in, seen from Earth, as in the birth chart',
   // 对准天空: the phone pointed at the sky
+  回到现在: 'Back to now',
   对准天空: 'Point at the sky',
   '没有得到使用方向传感器的许可。': 'Permission to use the motion sensors was not given.',
   '这台设备没有提供指南针数据。': 'This device gives no compass readings.',
