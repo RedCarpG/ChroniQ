@@ -1762,6 +1762,13 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .saturn-rings .ring-b { stroke: #e9dab4; }
 .saturn-rings .ring-c { stroke: #a99a7c; opacity: 0.45; }
 .jupiter-moon { fill: #f4efe4; }
+/* A body drawn as a globe (SkyGlobe): the canvas fills its box on the map; the body's hit circle
+   below takes the pointer */
+.sky-globes { position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s ease; }
+.sky-globes.entering { opacity: 0; }
+.sky-globe-box { position: absolute; pointer-events: none; transition: opacity 0.3s ease; }
+.sky-globe-box.dim { opacity: 0.45; }
+.sky-globe { display: block; width: 100%; height: 100%; pointer-events: none; }
 .sky-day .planet-point { opacity: 0.6; }
 .sky-table td:first-child { display: flex; align-items: center; gap: 6px; }
 .sky-table tr.below td { color: var(--muted); opacity: 0.7; }

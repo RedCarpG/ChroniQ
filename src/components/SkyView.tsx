@@ -41,6 +41,7 @@ import { useDismiss } from './useDismiss'
 import { play } from '../sound'
 import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour } from './skyPaint'
 import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
+import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -226,9 +227,18 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
    *  larger than Jupiter, as they are */
   const discOf = (b: SkyBody) =>
     b.key === 'sun' || b.key === 'moon' ? Math.max(bodyRadius(b) * dot, 1.9 * faceSize('jupiter') * k) : faceSize(b.key) * k
+  /** The globe's half-width (map units) where a body is drawn as a globe: the Moon always, a planet
+   *  once its face is a few pixels across; none where the browser cannot draw them */
+  const globeOf = (b: SkyBody) =>
+    b.key !== 'sun' && faces[b.key] && canDrawGlobes() && (b.key === 'moon' || faceSize(b.key) >= 6)
+      ? discOf(b) * globeExtent(b.key)
+      : null
+  /** Turn (degrees) that sets a globe's zenith-up picture upright at a point on the map */
+  const upTurn = (x: number, y: number) =>
+    Math.hypot(x - C, y - C) < 0.01 ? 0 : (Math.atan2(below ? y - C : C - y, below ? x - C : C - x) * 180) / Math.PI + 90
   /** A body's size for what goes round it (its name, the ring, where it can be clicked), map units */
   const bodySize = (b: SkyBody) =>
-    b.key === 'sun' || b.key === 'moon' ? discOf(b) : Math.max(glowRadius(b.mag) * dot * 0.32, discOf(b))
+    b.key === 'sun' || b.key === 'moon' ? discOf(b) : Math.max(glowRadius(b.mag) * dot * 0.32, discOf(b) * (b.key === 'saturn' ? 2.2 : 1))
   const centre = frame ? [frame.left + frame.width / 2 + view.x, frame.top + frame.height / 2 + view.y] : [C, C]
   /** Keeps the zoom in range, and the window's centre on the sky */
   const clampView = (v: { z: number; x: number; y: number }) => {
@@ -1278,6 +1288,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 <circle className="hit" cx={x} cy={y} r={Math.max(bodySize(b) + 4 * k, 12 * k)} />
                 {/* As it looks: the Moon's face lit towards the Sun, a planet's point of light or, zoomed in,
                     its face, each turned upright to its own north as it stands in the sky here */}
+                {globeOf(b) ? null : (
                 <BodyFaceView
                   kind={b.key}
                   x={x}
@@ -1293,6 +1304,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                   moonTurns={faces[b.key]?.moons?.map((m) => turnTo(b, m.toward))}
                   id={clipId}
                 />
+                )}
                 {shade?.body === b.key && (
                   // The eclipse, over the body: the Earth's shadow on the Moon, the Moon on the Sun
                   <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`} className={`sky-eclipse sky-eclipse-${b.key}${shade.dim ? ' dim' : ''}`}>
@@ -1807,6 +1819,32 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             <canvas ref={canvasRef} />
           </div>
           {map}
+          {/* The Moon and, zoomed in, the planets as globes (SkyGlobe), over the map where each is, set
+              upright with the zenith towards the map's centre; the map's hit circles below take the pointer */}
+          <div className={`sky-globes${entering ? ' entering' : ''}`} aria-hidden="true">
+            {frame &&
+              [...up.filter((b) => b.key !== 'moon'), ...up.filter((b) => b.key === 'moon')].map((b) => {
+                const half = globeOf(b)
+                if (!half) return null
+                const [x, y] = at(b.az, b.alt)
+                const px = half * scale
+                return (
+                  <div
+                    key={b.key}
+                    className={`sky-globe-box sky-globe-${b.key}${spot && chosen !== b.key ? ' dim' : ''}`}
+                    style={{
+                      left: centre[0] + (x - C) * scale - px,
+                      top: centre[1] + (y - C) * scale - px,
+                      width: 2 * px,
+                      height: 2 * px,
+                      transform: `rotate(${upTurn(x, y).toFixed(1)}deg)${below ? ' scaleX(-1)' : ''}`,
+                    }}
+                  >
+                    <SkyGlobe kind={b.key} face={faces[b.key]!} pixels={2 * px * Math.min(2, window.devicePixelRatio || 1)} />
+                  </div>
+                )
+              })}
+          </div>
           <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
             {twinkles.map((tw) => (
               <i

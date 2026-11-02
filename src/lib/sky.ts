@@ -776,6 +776,17 @@ export interface BodyFace {
   /** Jupiter's four great moons: a point a little way from Jupiter in the direction of each, how far
    *  it is across the sky in Jupiter radii, and whether it is in front of the planet */
   moons?: { name: string; toward: { az: number; alt: number }; rj: number; front: boolean }[]
+  /** For drawing it as a globe: its own axes (x to its prime meridian, z its north pole) and the
+   *  direction of the Sun from it, in the viewer's frame (x right, y towards the zenith, z towards
+   *  the viewer); the rows of `body` are its axes */
+  frame: { body: [V3, V3, V3]; sun: V3 }
+}
+type V3 = [number, number, number]
+const dot3 = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+const cross3 = (a: number[], b: number[]): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+const unit3 = (a: number[]): V3 => {
+  const n = Math.hypot(a[0], a[1], a[2]) || 1
+  return [a[0] / n, a[1] / n, a[2] / n]
 }
 
 /** For each body: its phase, which way its north lies on the sky, and Saturn's rings and Jupiter's moons */
@@ -791,6 +802,10 @@ export function bodyFaces(utc: Date, latitude: number, longitude: number): Parti
     return toHorizon(u[0] + (0.01 * p[0]) / n, u[1] + (0.01 * p[1]) / n, u[2] + (0.01 * p[2]) / n)
   }
   const out: Partial<Record<BodyKey, BodyFace>> = {}
+  // The zenith, in J2000 (the third column of the rotation to the horizon)
+  const r = rotation.rot
+  const zenith = [r[0][2], r[1][2], r[2][2]]
+  const sunAt = A.GeoVector(A.Body.Sun, time, true)
   for (const [key, body] of SKY_BODIES) {
     const g = A.GeoVector(body, time, true)
     const dist = Math.hypot(g.x, g.y, g.z)
@@ -798,7 +813,24 @@ export function bodyFaces(utc: Date, latitude: number, longitude: number): Parti
     const [ra, dec] = POLES[key] ?? [0, 90]
     const pole = [Math.cos(dec * RAD) * Math.cos(ra * RAD), Math.cos(dec * RAD) * Math.sin(ra * RAD), Math.sin(dec * RAD)]
     const info = key === 'sun' ? null : A.Illumination(body, time)
-    const face: BodyFace = { lit: info ? info.phase_fraction : 1, north: stepToward(u, pole) }
+    // The viewer's frame at the body: z back towards the viewer, y up towards the zenith
+    const zs: V3 = [-u[0], -u[1], -u[2]]
+    const ys = unit3(zenith.map((v, i) => v - dot3(zenith, u) * u[i]))
+    const xs = cross3(ys, zs)
+    const inView = (a: number[]): V3 => [dot3(a, xs), dot3(a, ys), dot3(a, zs)]
+    // The body's own axes: its pole, and its prime meridian turned by its spin from the node of its equator
+    const axis = A.RotationAxis(body, time)
+    const zb = unit3([axis.north.x, axis.north.y, axis.north.z])
+    const node = unit3(cross3([0, 0, 1], zb))
+    const w = axis.spin * RAD
+    const xb = unit3(node.map((v, i) => Math.cos(w) * v + Math.sin(w) * cross3(zb, node)[i]))
+    const yb = cross3(zb, xb)
+    const sun = unit3([sunAt.x - g.x, sunAt.y - g.y, sunAt.z - g.z])
+    const face: BodyFace = {
+      lit: info ? info.phase_fraction : 1,
+      north: stepToward(u, pole),
+      frame: { body: [inView(xb), inView(yb), inView(zb)], sun: key === 'sun' ? [0, 0, 1] : inView(sun) },
+    }
     if (key === 'saturn' && info?.ring_tilt !== undefined) face.ringTilt = info.ring_tilt
     if (key === 'jupiter') {
       const m = A.JupiterMoons(time)
