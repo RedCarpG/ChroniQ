@@ -13,13 +13,13 @@ import {
   formatAzimuth,
   horizonOf,
   historyTrack,
-  litPart,
   mansionsAt,
   moonPhaseName,
   riseSet,
   skyAt,
   starPlace,
   towards,
+  bodyFaces,
   trackOf,
   tracksAt,
   type SkyBody,
@@ -40,6 +40,7 @@ import { DrawerPageTab } from './SavedCharts'
 import { useDismiss } from './useDismiss'
 import { play } from '../sound'
 import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour } from './skyPaint'
+import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -47,6 +48,9 @@ const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.
 /** A star's size for what is placed round it (its name, the chosen ring), in map units at the full view */
 const starRadius = (mag: number) => Math.max(0.6, 3.2 - 0.55 * mag)
 
+/** How large each planet's face is, against Jupiter's, once zoomed in to show it */
+const PLANET_SIZE: Partial<Record<string, number>> = { jupiter: 1, saturn: 0.84, venus: 0.62, mars: 0.42, mercury: 0.3, uranus: 0.36, neptune: 0.34 }
+/** The Sun's and Moon's discs (map units at the full view); a planet's own size is worked out with the zoom */
 const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 : Math.min(5, Math.max(2.4, 3.6 - 0.35 * b.mag)))
 /** Dragging the sky across the disc turns the time by six hours (later to the right, as the stars go) */
 const DRAG_MINUTES = 360 / (2 * R)
@@ -215,6 +219,16 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const scale = fit * view.z
   const k = Math.round((1 / scale) * 1000) / 1000
   const dot = Math.round((1 / Math.sqrt(view.z)) * 100) / 100
+  // A planet is a point of light far out (glowing as bright as it is), and opens into its face once
+  // zoomed in: the face's radius in screen pixels, 0 until then
+  const faceSize = (key: string) => (PLANET_SIZE[key] ?? 0) * fit * 4.2 * Math.max(0, view.z - 1.4)
+  /** The Sun's or Moon's disc, or a planet's face (map units): zoomed in, the Sun and Moon stay well
+   *  larger than Jupiter, as they are */
+  const discOf = (b: SkyBody) =>
+    b.key === 'sun' || b.key === 'moon' ? Math.max(bodyRadius(b) * dot, 1.9 * faceSize('jupiter') * k) : faceSize(b.key) * k
+  /** A body's size for what goes round it (its name, the ring, where it can be clicked), map units */
+  const bodySize = (b: SkyBody) =>
+    b.key === 'sun' || b.key === 'moon' ? discOf(b) : Math.max(glowRadius(b.mag) * dot * 0.32, discOf(b))
   const centre = frame ? [frame.left + frame.width / 2 + view.x, frame.top + frame.height / 2 + view.y] : [C, C]
   /** Keeps the zoom in range, and the window's centre on the sky */
   const clampView = (v: { z: number; x: number; y: number }) => {
@@ -553,7 +567,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   }, [chosen, pick, pickFigure])
   const pickName = pick && ('key' in pick ? t(pick.name) : t(pick.name!))
   const pickColour = pick && ('key' in pick ? BODY_COLOUR[pick.key] : starColour(pick.bv))
-  const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
+  const pickRadius = pick && ('key' in pick ? bodySize(pick) : starRadius(pick.mag) * dot)
   // Where the chosen one is on the map, if it is on this half of the sky
   const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
   // What the panel tells of the chosen body or star: what it is, when it rises and sets, which 宿 it
@@ -671,7 +685,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const eventText = useSkyEventText(place)
   const shade = event && eclipseShade(event, utc.getTime())
   const radiant = event?.kind === 'meteors' && !below ? horizonOf(utc, place.latitude, place.longitude)(event.ra, event.dec) : null
-  /** Which way (degrees, on the map) the Sun lies from the Moon: its lit side faces that way */
+  // Each body's face: phase, which way its north is, Saturn's rings, Jupiter's moons (lib/sky.ts)
+  const faces = useMemo(() => bodyFaces(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+  /** Which way (degrees, on the map) a point lies from a body */
+  const turnTo = (b: SkyBody, p: { az: number; alt: number }) => {
+    const [x0, y0] = at(b.az, b.alt)
+    const [x1, y1] = at(p.az, p.alt)
+    return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
+  }
+  /** Which way (degrees, on the map) the Sun lies from the Moon (or a planet): its lit side faces that way */
   const moonTurn = (moon: SkyBody) => {
     const [x0, y0] = at(moon.az, moon.alt)
     const step = towards(moon, sky.bodies[0], 0.5)
@@ -749,7 +771,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           .sort((a, b) => a.mag - b.mag)
           .map((b) => {
             const [x, y] = at(b.az, b.alt)
-            return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b) * dot, kind: 'body' as const }
+            return { key: b.key, text: t(b.name), x, y, r: bodySize(b), kind: 'body' as const }
           }),
         ...sky.stars
           .filter((st) => st.name)
@@ -1088,6 +1110,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             ))}
           </radialGradient>
         ))}
+        {/* A planet's point of light, in its colour */}
+        {Object.entries(BODY_COLOUR).map(([key, hex]) => (
+          <radialGradient key={key} id={`${clipId}-pglow-${key}`}>
+            {PSF.map(([offset, white, alpha]) => (
+              <stop key={offset} offset={offset} stopColor={white ? mixWhite(hex, white) : hex} stopOpacity={alpha} />
+            ))}
+          </radialGradient>
+        ))}
+        <SkyFaceDefs id={clipId} />
         <radialGradient id={`${clipId}-halo`}>
           <stop offset={0} stopColor="#ffffff" stopOpacity={0.55} />
           <stop offset={0.35} stopColor="#ffffff" stopOpacity={0.12} />
@@ -1168,10 +1199,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         {figuresLayer}
         <g className="sky-halos" aria-hidden="true">
           {up
-            .filter((b) => b.key !== 'sun')
+            .filter((b) => b.key === 'moon')
             .map((b) => {
               const [x, y] = at(b.az, b.alt)
-              const r = bodyRadius(b) * dot * (b.key === 'moon' ? 4.5 : 3.6)
+              const r = discOf(b) * 4.5
               return <circle key={b.key} cx={x} cy={y} r={r} fill={`url(#${clipId}-halo)`} opacity={b.key === 'moon' ? 0.4 + 0.5 * b.lit : 0.55} />
             })}
         </g>
@@ -1231,7 +1262,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           </>
         )}
         <g className="sky-bodies">
-          {up.map((b) => {
+          {/* The Moon last: nearer than any planet, it passes in front of them */}
+          {[...up.filter((b) => b.key !== 'moon'), ...up.filter((b) => b.key === 'moon')].map((b) => {
             const [x, y] = at(b.az, b.alt)
             const tip = t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })
             return (
@@ -1243,33 +1275,37 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 {...chooseProps(b.key)}
                 {...focusProps(b.key)}
               >
-                <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) * dot + 4 * k, 12 * k)} />
-                {b.key === 'moon' ? (
-                  // The Moon as it looks: its lit part (litPart) turned towards the Sun, the rest faintly
-                  // there by earthshine. The turn is worked out on the map: a step from the Moon towards
-                  // the Sun along the sky, projected, gives the way the Sun lies from it here.
-                  <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${moonTurn(b).toFixed(1)})`}>
-                    <g className="disc">
-                      <circle className="moon-dark" r={bodyRadius(b) * dot} />
-                      <path d={litPart(b.lit, bodyRadius(b) * dot)} fill={BODY_COLOUR.moon} />
-                    </g>
-                  </g>
-                ) : (
-                  <circle className="disc" cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} />
-                )}
+                <circle className="hit" cx={x} cy={y} r={Math.max(bodySize(b) + 4 * k, 12 * k)} />
+                {/* As it looks: the Moon's face lit towards the Sun, a planet's point of light or, zoomed in,
+                    its face, each turned upright to its own north as it stands in the sky here */}
+                <BodyFaceView
+                  kind={b.key}
+                  x={x}
+                  y={y}
+                  r={discOf(b)}
+                  close={faceSize(b.key) >= 4}
+                  glow={Math.max(glowRadius(b.mag), 2.6) * dot}
+                  glowFill={`url(#${clipId}-pglow-${b.key})`}
+                  colour={BODY_COLOUR[b.key]}
+                  face={faces[b.key]}
+                  north={faces[b.key] ? turnTo(b, faces[b.key]!.north) : -90}
+                  sun={moonTurn(b)}
+                  moonTurns={faces[b.key]?.moons?.map((m) => turnTo(b, m.toward))}
+                  id={clipId}
+                />
                 {shade?.body === b.key && (
                   // The eclipse, over the body: the Earth's shadow on the Moon, the Moon on the Sun
                   <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`} className={`sky-eclipse sky-eclipse-${b.key}${shade.dim ? ' dim' : ''}`}>
                     <clipPath id={`${clipId}-eclipse`}>
-                      <circle r={bodyRadius(b) * dot} />
+                      <circle r={discOf(b)} />
                     </clipPath>
                     {/* A disc too, to grow with the body when it is chosen */}
                     <g className="disc">
                       <circle
                         clipPath={`url(#${clipId}-eclipse)`}
-                        cx={0.8 * shade.offset * bodyRadius(b) * dot}
-                        cy={-0.6 * shade.offset * bodyRadius(b) * dot}
-                        r={shade.radius * bodyRadius(b) * dot}
+                        cx={0.8 * shade.offset * discOf(b)}
+                        cy={-0.6 * shade.offset * discOf(b)}
+                        r={shade.radius * discOf(b)}
                       />
                     </g>
                   </g>
@@ -1334,7 +1370,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         <g className="sky-labels" aria-hidden="true">
           {labels.map((l) => {
             // The chosen one's name moves out past its ring
-            const push = l.key === chosen && spot ? pickRadius! * dot * 0.4 + 6 * k : 0
+            const push = l.key === chosen && spot ? pickRadius! * 0.4 + 6 * k : 0
             return (
               <text
                 key={l.key}
@@ -1389,8 +1425,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       {/* The ring round the chosen one: it closes in on it (keyed, so it does again for the next) and pulses */}
       {spot && (
         <g key={chosen} className="sky-chosen" style={{ color: pickColour }} aria-hidden="true">
-          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
-          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
+          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 6 * k} />
+          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 6 * k} />
         </g>
       )}
       </g>

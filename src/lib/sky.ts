@@ -748,3 +748,75 @@ const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 export function formatAzimuth(az: number, lang: 'zh' | 'en' = 'zh'): string {
   return `${(lang === 'en' ? COMPASS_EN : COMPASS)[Math.round(az / 45) % 8]} ${Math.round(az)}°`
 }
+
+/* ---------- How the bodies look: their faces, for drawing them close up ---------- */
+
+/** North poles (J2000 RA, Dec, degrees; IAU), to set each face upright as it stands in the sky */
+const POLES: Partial<Record<BodyKey, [number, number]>> = {
+  sun: [286.13, 63.87],
+  moon: [269.99, 66.54],
+  mercury: [281.01, 61.41],
+  venus: [272.76, 67.16],
+  mars: [317.68, 52.89],
+  jupiter: [268.06, 64.5],
+  saturn: [40.59, 83.54],
+  uranus: [257.31, -15.18],
+  neptune: [299.36, 43.46],
+}
+/** Jupiter's equatorial radius, in AU */
+const JUPITER_RADIUS_AU = 71492 / 149_597_870.7
+
+export interface BodyFace {
+  /** Lit fraction of the disc, 0–1, as seen from here */
+  lit: number
+  /** A point a little way from the body towards its north pole: where its north is on the map */
+  north: { az: number; alt: number }
+  /** Saturn's rings: their tilt towards us, degrees (positive: their north face) */
+  ringTilt?: number
+  /** Jupiter's four great moons: a point a little way from Jupiter in the direction of each, how far
+   *  it is across the sky in Jupiter radii, and whether it is in front of the planet */
+  moons?: { name: string; toward: { az: number; alt: number }; rj: number; front: boolean }[]
+}
+
+/** For each body: its phase, which way its north lies on the sky, and Saturn's rings and Jupiter's moons */
+export function bodyFaces(utc: Date, latitude: number, longitude: number): Partial<Record<BodyKey, BodyFace>> {
+  const rotation = rotationFor(utc, latitude, longitude)
+  const toHorizon = toHorizonOf(rotation)
+  const time = rotation.time
+  /** A point a small step (about 0.6°) from the direction u towards the direction d, on the sky */
+  const stepToward = (u: number[], d: number[]) => {
+    const along = d[0] * u[0] + d[1] * u[1] + d[2] * u[2]
+    const p = [d[0] - along * u[0], d[1] - along * u[1], d[2] - along * u[2]]
+    const n = Math.hypot(p[0], p[1], p[2]) || 1
+    return toHorizon(u[0] + (0.01 * p[0]) / n, u[1] + (0.01 * p[1]) / n, u[2] + (0.01 * p[2]) / n)
+  }
+  const out: Partial<Record<BodyKey, BodyFace>> = {}
+  for (const [key, body] of SKY_BODIES) {
+    const g = A.GeoVector(body, time, true)
+    const dist = Math.hypot(g.x, g.y, g.z)
+    const u = [g.x / dist, g.y / dist, g.z / dist]
+    const [ra, dec] = POLES[key] ?? [0, 90]
+    const pole = [Math.cos(dec * RAD) * Math.cos(ra * RAD), Math.cos(dec * RAD) * Math.sin(ra * RAD), Math.sin(dec * RAD)]
+    const info = key === 'sun' ? null : A.Illumination(body, time)
+    const face: BodyFace = { lit: info ? info.phase_fraction : 1, north: stepToward(u, pole) }
+    if (key === 'saturn' && info?.ring_tilt !== undefined) face.ringTilt = info.ring_tilt
+    if (key === 'jupiter') {
+      const m = A.JupiterMoons(time)
+      face.moons = (
+        [
+          ['木卫一', m.io],
+          ['木卫二', m.europa],
+          ['木卫三', m.ganymede],
+          ['木卫四', m.callisto],
+        ] as const
+      ).map(([name, s]) => {
+        const o = [s.x, s.y, s.z]
+        const along = o[0] * u[0] + o[1] * u[1] + o[2] * u[2]
+        const across = Math.hypot(o[0] - along * u[0], o[1] - along * u[1], o[2] - along * u[2])
+        return { name, toward: stepToward(u, o.map((v, i) => u[i] + v)), rj: across / JUPITER_RADIUS_AU, front: along < 0 }
+      })
+    }
+    out[key] = face
+  }
+  return out
+}
