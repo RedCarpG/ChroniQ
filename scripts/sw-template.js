@@ -8,7 +8,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE)),
+      // Past the browser's own cache: GitHub Pages lets it keep files ten minutes, and a worker
+      // filled from it could hold the last build's page, so updating would show the old one again
+      .then((cache) => cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' })))),
   )
 })
 

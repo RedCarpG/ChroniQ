@@ -9,6 +9,7 @@ import { AiError, streamAnswer, type AiTurn } from '../lib/ai/stream'
 import { useSettings, useT } from '../settingsContext'
 import { AiText } from './AiText'
 import { TitleMark } from './Logo'
+import { isStaleBuild } from '../pwa'
 
 interface Props {
   /** The section's id (for the page's jump links) */
@@ -54,6 +55,8 @@ export function AiAnalysis({ id, prompt }: Props) {
       }[err.kind]
       return err.message ? `${why} ${err.message}` : why
     }
+    // The page outlived its build: the AI library's file has been replaced on the server
+    if (isStaleBuild(err)) return t('网站已经更新，这个页面还是旧版本。请刷新页面后再试。')
     return err instanceof Error ? err.message : String(err)
   }
 
