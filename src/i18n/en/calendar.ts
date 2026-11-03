@@ -192,4 +192,8 @@ export const CALENDAR: Record<string, string> = {
   '这次解读根据「{name}」的命盘和今天的黄历。想换一张，在左侧「命盘」里选。': 'This reading goes by the chart “{name}” and today’s almanac. To use another, choose it in Charts on the left.',
   '还没有命盘：现在的解读只看今天的黄历。先在左侧「命盘」里保存一张命盘，解读会结合它。': 'No chart yet: the reading goes by today’s almanac alone. Save a chart in Charts on the left and it will take it in.',
   '还没选命盘：现在的解读只看今天的黄历。在左侧「命盘」里选一张命盘，解读会结合它。': 'No chart chosen: the reading goes by today’s almanac alone. Choose a chart in Charts on the left and it will take it in.',
+  今日星象: 'The day in the stars',
+  '{time} 进入{sign}': 'Enters {sign} at {time}',
+  今天没有行星逆行: 'No planet is retrograde today',
+  星盘行运: 'Transits',
 }

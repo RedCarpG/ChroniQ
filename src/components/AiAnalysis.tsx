@@ -11,6 +11,9 @@ import { AiText } from './AiText'
 import { TitleMark } from './Logo'
 import { isStaleBuild } from '../pwa'
 
+/** How a question asked with the first message is put to the AI (in Chinese, as the rest of the prompt) */
+const QUESTION_LEAD = '请结合上面的内容，重点回答这个问题，不必面面俱到：'
+
 interface Props {
   /** The section's id (for the page's jump links) */
   id: string
@@ -29,6 +32,11 @@ export function AiAnalysis({ id, prompt }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [cut, setCut] = useState(false)
   const [question, setQuestion] = useState('')
+  // A question asked with the first message, instead of the whole reading; left empty, the whole reading
+  const [firstQuestion, setFirstQuestion] = useState('')
+  const [askedFirst, setAskedFirst] = useState('')
+  /** The first message: the chart, and the question if one is asked */
+  const firstMessage = (q: string) => (prompt && q.trim() ? `${prompt}\n\n${QUESTION_LEAD}${q.trim()}` : prompt)
   const [copied, setCopied] = useState(false)
   const abort = useRef<AbortController | null>(null)
   const system = systemPrompt(lang)
@@ -94,7 +102,11 @@ export function AiAnalysis({ id, prompt }: Props) {
     }
   }
 
-  const start = () => prompt && void ask([{ role: 'user', content: prompt }])
+  const start = () => {
+    if (!prompt) return
+    setAskedFirst(firstQuestion.trim())
+    void ask([{ role: 'user', content: firstMessage(firstQuestion)! }])
+  }
   const follow = () => {
     const q = question.trim()
     if (!q || live !== null) return
@@ -104,7 +116,7 @@ export function AiAnalysis({ id, prompt }: Props) {
   const copy = async () => {
     if (!prompt) return
     try {
-      await navigator.clipboard.writeText(promptForPasting(system, prompt))
+      await navigator.clipboard.writeText(promptForPasting(system, firstMessage(firstQuestion)!))
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
@@ -151,6 +163,8 @@ export function AiAnalysis({ id, prompt }: Props) {
         </p>
       )}
 
+      {/* The question asked with the chart, shown as the others are */}
+      {askedFirst && (shown.length > 0 || busy) && <p className="ai-question">{askedFirst}</p>}
       {shown.map((turn, i) =>
         turn.role === 'assistant' ? (
           <AiText key={i} text={turn.content} />
@@ -168,6 +182,23 @@ export function AiAnalysis({ id, prompt }: Props) {
         </p>
       )}
 
+      {/* Before the first answer: a question of one's own, or nothing for the whole reading */}
+      {shown.length === 0 && !busy && prompt && (
+        <textarea
+          className="ai-first-question"
+          rows={2}
+          value={firstQuestion}
+          placeholder={t('想问什么？比如「今天适合谈合作吗？」留空就生成完整解读')}
+          aria-label={t('想问的问题')}
+          onChange={(e) => setFirstQuestion(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && ready) {
+              e.preventDefault()
+              start()
+            }
+          }}
+        />
+      )}
       <div className="ai-actions">
         {busy ? (
           <button type="button" className="ghost" onClick={() => abort.current?.abort()}>
@@ -177,7 +208,7 @@ export function AiAnalysis({ id, prompt }: Props) {
           ready &&
           prompt && (
             <button type="button" className="primary" data-sound="gong" onClick={start}>
-              {shown.length ? t('重新解读') : t('生成解读')}
+              {shown.length ? t('重新解读') : firstQuestion.trim() ? t('提问') : t('生成解读')}
             </button>
           )
         )}

@@ -55,8 +55,11 @@ export function dayPrompt(
   month: number,
   day: number,
   chart?: { name: string; bazi: BaziChart; notes: string[] },
+  /** The day by the Western reckoning (程序算的): signs, retrogrades, aspects */
+  western: string[] = [],
 ): string {
   const lines = [`这是 ${year}年${month}月${day}日 的黄历：`, '', almanacText(year, month, day)]
+  if (western.length) lines.push('', '这一天的西方星象（程序算的）：', ...western.map((w) => `- ${w}`))
   if (chart) {
     lines.push('', `这是「${chart.name}」的八字：`, '', baziText(chart.bazi))
     if (chart.notes.length) lines.push('', '这一天和这张盘的关系（程序算的）：', ...chart.notes.map((n) => `- ${n}`))

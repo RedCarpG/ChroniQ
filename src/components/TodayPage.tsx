@@ -21,6 +21,11 @@ import { useLocate } from './useLocate'
 import { AiAnalysis } from './AiAnalysis'
 import { RightDrawer } from './RightDrawer'
 import { dayPrompt } from '../lib/ai/prompts'
+import { ASPECT_INFO, SIGN_INFO } from '../lib/astroInfo'
+import { SIGNS, SIGN_GLYPHS, type Aspect } from '../lib/astrology'
+import { loadStarSettings } from '../lib/starPrefs'
+import { transitsToday, westernToday } from '../lib/westernToday'
+import { InfoTip } from './InfoTip'
 
 /** Each kind of event's mark and colour, so the list can be told apart at a glance */
 const EVENT_LOOK: Record<SkyEvent['kind'], { glyph: string; colour: (e: SkyEvent) => string }> = {
@@ -106,14 +111,41 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
     }
   }
 
+  // 今日星象: the day by the Western reckoning, and the transits to the chart if one is chosen
+  const starSettings = useMemo(loadStarSettings, [])
+  const western = useMemo(() => westernToday(now, starSettings), [Math.floor(now.getTime() / 600_000), starSettings])
+  const chartTransits = useMemo(() => (chart ? transitsToday(chart.input, now, starSettings).aspects : []), [chart, Math.floor(now.getTime() / 600_000), starSettings])
+  const moonClock = (ms: number) => new Date(ms).toLocaleString(en ? 'en-GB' : 'zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+  const signName = (sign: number) => t('{sign}座', { sign: t(SIGNS[sign]) })
+  const degrees = (lon: number) => `${Math.floor(lon % 30)}°`
+  const aspectLine = (a: Aspect, transit: boolean) => (
+    <>
+      {transit ? t('行运{name}', { name: t(a.a.name) }) : t(a.a.name)} <span className="today-aspect-glyph">{a.type.glyph}</span>{' '}
+      {transit ? t('本命{name}', { name: t(a.b.name) }) : t(a.b.name)}{' '}
+      <InfoTip label={t(a.type.name)} title={t(a.type.name)}>
+        <span>{ASPECT_INFO[a.type.key]}</span>
+      </InfoTip>
+      <span className="muted"> {t('差 {orb}°', { orb: a.orb.toFixed(1) })}</span>
+    </>
+  )
+  const plainAspect = (a: Aspect, transit: boolean) =>
+    `${transit ? `行运${a.a.name}` : a.a.name}${a.type.name}${transit ? `本命${a.b.name}` : a.b.name}（差 ${a.orb.toFixed(1)}°）`
+
   // AI 解读 of the day: its 黄历, and the chosen chart with what ChroniQ works out between them
   const aiNotes = [
     ...(bazi && dayStar ? [`今天的日干${detail.pillars[2].stem.char}对日主${bazi.dayMaster.char}是${dayStar}`] : []),
     ...(yearSign ? [`今年是这张盘的${yearSign}`] : []),
     ...(decade ? [`现在走${decade.ganzhi}大运（${decade.startYear}–${decade.endYear}）`] : []),
     ...todayDays.map((d) => chartText(d)),
+    ...chartTransits.map((a) => `星盘行运：${plainAspect(a, true)}`),
   ]
-  const aiPrompt = dayPrompt(today.getYear(), today.getMonth(), today.getDay(), chart && bazi ? { name: chart.name, bazi, notes: aiNotes } : undefined)
+  // The Western day for the reading too, chart or not
+  const aiWestern = [
+    `太阳在${SIGNS[western.sun.sign]}座，月亮在${SIGNS[western.moon.sign]}座`,
+    western.retrograde.length > 0 ? `逆行中：${western.retrograde.map((p) => p.name).join('、')}` : '没有行星逆行',
+    ...western.aspects.map((a) => `天上的相位：${plainAspect(a, false)}`),
+  ]
+  const aiPrompt = dayPrompt(today.getYear(), today.getMonth(), today.getDay(), chart && bazi ? { name: chart.name, bazi, notes: aiNotes } : undefined, aiWestern)
 
   return (
     <div className="today-page">
@@ -161,6 +193,43 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
         </div>
       </section>
 
+      <section className="card today-western">
+        <h3 className="section-title">{t('今日星象')}</h3>
+        <dl className="kv">
+          <dt>{t('太阳')}</dt>
+          <dd>
+            <InfoTip label={`${SIGN_GLYPHS[western.sun.sign]} ${signName(western.sun.sign)} ${degrees(western.sun.lon)}`} title={signName(western.sun.sign)}>
+              <span>{SIGN_INFO[western.sun.sign]}</span>
+            </InfoTip>
+          </dd>
+          <dt>{t('月亮')}</dt>
+          <dd>
+            <InfoTip label={`${SIGN_GLYPHS[western.moon.sign]} ${signName(western.moon.sign)} ${degrees(western.moon.lon)}`} title={signName(western.moon.sign)}>
+              <span>{SIGN_INFO[western.moon.sign]}</span>
+            </InfoTip>
+            {western.moonNext && (
+              <span className="muted today-star-note">
+                {t('{time} 进入{sign}', { time: moonClock(western.moonNext.at), sign: signName(western.moonNext.sign) })}
+              </span>
+            )}
+          </dd>
+          <dt>{t('逆行')}</dt>
+          <dd>{western.retrograde.length > 0 ? western.retrograde.map((p) => `${t(p.name)} ℞`).join(t('、')) : <span className="muted">{t('今天没有行星逆行')}</span>}</dd>
+          {western.aspects.length > 0 && (
+            <>
+              <dt>{t('相位')}</dt>
+              <dd>
+                {western.aspects.map((a) => (
+                  <span key={`${a.a.key}-${a.b.key}`} className="today-star-note today-aspect">
+                    {aspectLine(a, false)}
+                  </span>
+                ))}
+              </dd>
+            </>
+          )}
+        </dl>
+      </section>
+
       <section className="card today-chart">
         <h3 className="section-title">{t('今日与命盘')}</h3>
         {chart && bazi && dayStar ? (
@@ -189,6 +258,18 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
                 {yearSign && ` · ${term(yearSign)}`}
               </dd>
             </dl>
+            {chartTransits.length > 0 && (
+              <div className="mine-days">
+                <span className="tag-title neutral">{t('星盘行运')}</span>
+                <ul>
+                  {chartTransits.map((a) => (
+                    <li key={`${a.a.key}-${a.b.key}-${a.type.key}`} className="today-aspect">
+                      {aspectLine(a, true)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {todayDays.length > 0 && (
               <div className="mine-days">
                 <span className="tag-title neutral">{t('今天')}</span>

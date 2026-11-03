@@ -2791,3 +2791,15 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   margin-left: auto; padding: 1px 7px; font-family: var(--font-ui, inherit); font-size: 11px; font-weight: 500; color: var(--muted);
   border: 1px solid var(--border); border-radius: 999px;
 }
+
+/* 今日星象: the day by the Western reckoning */
+.today-western .kv dd { line-height: 1.6; }
+.today-aspect { display: block; }
+.today-aspect-glyph { color: var(--accent); }
+
+/* AI 解读: a question of one's own before the first answer */
+.ai-first-question {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit; font-size: 13.5px; line-height: 1.6; resize: vertical;
+  color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+}
+.ai-first-question:focus { outline: none; border-color: var(--accent); }
