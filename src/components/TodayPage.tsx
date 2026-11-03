@@ -323,6 +323,14 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
 
       {/* At the right edge, opened over the page when wanted */}
       <RightDrawer label={t('AI 解读')}>
+        {/* What the reading goes by: the chart chosen in the drawer, or the day alone */}
+        <p className={`ai-basis${chart ? '' : ' none'}`}>
+          {chart
+            ? t('这次解读根据「{name}」的命盘和今天的黄历。想换一张，在左侧「命盘」里选。', { name: chart.name })
+            : chartDays.charts.length === 0
+              ? t('还没有命盘：现在的解读只看今天的黄历。先在左侧「命盘」里保存一张命盘，解读会结合它。')
+              : t('还没选命盘：现在的解读只看今天的黄历。在左侧「命盘」里选一张命盘，解读会结合它。')}
+        </p>
         <AiAnalysis id="today-ai" prompt={aiPrompt} />
       </RightDrawer>
     </div>
