@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { promptForPasting, systemPrompt } from '../lib/ai/prompts'
 import { aiLabel, aiReady, CLAUDE_MODELS, loadAi, saveAi, type AiSettings } from '../lib/ai/settings'
 import { AiError, streamAnswer, type AiTurn } from '../lib/ai/stream'
+import { forgetChat, loadChat, saveChat } from '../lib/ai/history'
 import { useSettings, useT } from '../settingsContext'
 import { AiText } from './AiText'
 import { TitleMark } from './Logo'
@@ -41,14 +42,18 @@ export function AiAnalysis({ id, prompt }: Props) {
   const abort = useRef<AbortController | null>(null)
   const system = systemPrompt(lang)
 
-  // Another chart, day or language: a new conversation
+  // Another chart, day or language: its own conversation, as it was left if it was had before
   useEffect(() => {
     abort.current?.abort()
-    setTurns([])
+    const kept = prompt ? loadChat(lang, prompt) : null
+    setTurns(kept?.turns ?? [])
+    setAskedFirst(kept?.asked ?? '')
     setLive(null)
     setError(null)
     setCut(false)
   }, [prompt, lang])
+  /** Keeps the conversation in this browser, under the chart or day it is about */
+  const keep = (next: AiTurn[], asked: string) => prompt && saveChat(lang, prompt, { turns: next, asked })
   useEffect(() => () => abort.current?.abort(), [])
 
   const errorText = (err: unknown) => {
@@ -68,7 +73,7 @@ export function AiAnalysis({ id, prompt }: Props) {
     return err instanceof Error ? err.message : String(err)
   }
 
-  const ask = async (next: AiTurn[]) => {
+  const ask = async (next: AiTurn[], asked = askedFirst) => {
     abort.current?.abort()
     const controller = new AbortController()
     abort.current = controller
@@ -80,12 +85,18 @@ export function AiAnalysis({ id, prompt }: Props) {
     try {
       const result = await streamAnswer(settings, system, next, (d) => setLive((text += d)), controller.signal)
       if (controller.signal.aborted) return
-      setTurns([...next, { role: 'assistant', content: result.text || text }])
+      const answered: AiTurn[] = [...next, { role: 'assistant', content: result.text || text }]
+      setTurns(answered)
       setCut(result.cut)
+      keep(answered, asked)
     } catch (err) {
       if (controller.signal.aborted) {
         // Stopped: keep what was written so far
-        if (text) setTurns([...next, { role: 'assistant', content: text }])
+        if (text) {
+          const stopped: AiTurn[] = [...next, { role: 'assistant', content: text }]
+          setTurns(stopped)
+          keep(stopped, asked)
+        }
         return
       }
       setError(errorText(err))
@@ -104,8 +115,9 @@ export function AiAnalysis({ id, prompt }: Props) {
 
   const start = () => {
     if (!prompt) return
-    setAskedFirst(firstQuestion.trim())
-    void ask([{ role: 'user', content: firstMessage(firstQuestion)! }])
+    const asked = firstQuestion.trim()
+    setAskedFirst(asked)
+    void ask([{ role: 'user', content: firstMessage(firstQuestion)! }], asked)
   }
   const follow = () => {
     const q = question.trim()
@@ -211,6 +223,21 @@ export function AiAnalysis({ id, prompt }: Props) {
               {shown.length ? t('重新解读') : firstQuestion.trim() ? t('提问') : t('生成解读')}
             </button>
           )
+        )}
+        {shown.length > 0 && !busy && (
+          <button
+            type="button"
+            className="ghost"
+            title={t('这段对话存在这个浏览器里，换页面回来还在；清除后就没有了')}
+            onClick={() => {
+              if (prompt) forgetChat(lang, prompt)
+              setTurns([])
+              setAskedFirst('')
+              setCut(false)
+            }}
+          >
+            {t('清除对话')}
+          </button>
         )}
         <button
           type="button"
