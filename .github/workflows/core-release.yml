@@ -1,0 +1,31 @@
+name: Release chroniq-core
+
+# Pushing a tag core-v<version> (matching core/package.json) builds the package and puts the
+# tarball on a GitHub Release, where other projects install it from.
+on:
+  push:
+    tags: ['core-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the tag matches the package's version
+        run: |
+          version=$(node -p "require('./core/package.json').version")
+          test "core-v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME, package $version"; exit 1; }
+      - run: npx vitest run core
+      - run: npm run pack:core
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" core/chroniq-core-*.tgz --title "chroniq-core ${GITHUB_REF_NAME#core-v}" --notes "Install: npm install https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/$(basename core/chroniq-core-*.tgz)"

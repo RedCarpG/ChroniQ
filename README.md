@@ -106,6 +106,7 @@ npm test           # Vitest 测试
 npm run typecheck  # TypeScript 检查
 npm run build      # 类型检查并生成 dist/
 npm run preview    # 预览生产构建，检查 PWA 与离线能力
+npm run build:core # 打包 chroniq-core（给别的程序用的计算部分）
 ```
 
 技术栈：**React 19 + TypeScript + Vite**。`src/components/` 放页面与交互，`src/lib/` 放计算和数据逻辑，`src/i18n/` 放界面翻译；`legacy/` 是旧版参考实现。
@@ -129,6 +130,7 @@ npm run preview    # 预览生产构建，检查 PWA 与离线能力
 | 每个页面怎么玩 | [功能详解](docs/features.md) |
 | 为什么流派算出来不一样 | [流派说明与出处](docs/schools.md) |
 | 开发、翻译和生成脚本 | [开发指南](docs/development.md) |
+| 在别的程序里用黄历、排盘、天象（如接 AI） | [chroniq-core](core/README.md) |
 | 产品范围、技术契约与验收标准 | **[中文 Spec](docs/SPEC.zh-CN.md) · [English Spec](docs/SPEC.en.md)** |
 
 ## 💫 感谢这些「幕后星星」
