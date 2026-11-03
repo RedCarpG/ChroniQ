@@ -1559,7 +1559,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-canvas { position: absolute; pointer-events: none; transition: opacity 0.3s ease; isolation: isolate; }
 .sky-canvas canvas { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; }
 /* The stars' light adds to the Milky Way's under them, as light does */
-.sky-canvas canvas:not(.glow) { mix-blend-mode: plus-lighter; }
+.sky-canvas canvas.stars { mix-blend-mode: plus-lighter; }
+/* Clouds over all of it, and over the map's stars and bodies too, which they dim (--clear) */
+.sky-canvas canvas.clouds { width: auto; height: auto; }
+.sky-map .sky-stars, .sky-map .sky-bodies, .sky-globes, .sky-twinkles { opacity: var(--clear, 1); transition: opacity 0.6s ease; }
 /* The Milky Way's glow is drawn at a quarter of the size and shown four times as large (skyPaint
    sets its size), so the browser scales it up rather than the script */
 .sky-canvas.dim { opacity: 0.5; }
@@ -1762,6 +1765,24 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .saturn-rings .ring-b { stroke: #e9dab4; }
 .saturn-rings .ring-c { stroke: #a99a7c; opacity: 0.45; }
 .jupiter-moon { fill: #f4efe4; }
+/* 光污染 */
+.sky-bortle { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.sky-bortle input { width: 100%; accent-color: var(--accent); }
+/* 今晚观星: an hour a bar, as tall and as bright as the hour is good; grey where cloudy */
+.sky-night { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; }
+.sky-night-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; font-size: 13px; }
+.sky-night-strip { display: flex; align-items: flex-end; gap: 2px; height: 46px; }
+.sky-night-hour { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.sky-night-bar {
+  width: 100%; height: calc(6px + 26px * var(--score)); border-radius: 3px 3px 1px 1px;
+  background: color-mix(in srgb, #8a93a8 calc(var(--cloud) * 100%), color-mix(in srgb, #5a7fd6 calc(var(--score) * 100%), #2a3048));
+  transition: height 0.3s ease, background 0.3s ease;
+}
+.sky-night-hour.good .sky-night-bar { box-shadow: 0 0 6px color-mix(in srgb, #7fa2ff 60%, transparent); }
+.sky-night-hour.on .sky-night-bar { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+.sky-night-hour small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1; }
+.sky-night-weather { align-self: flex-start; height: auto; padding: 4px 10px; font-size: 12px; text-align: left; }
+.sky-night-weather small { display: block; font-size: 11px; }
 /* A body drawn as a globe (SkyGlobe): the canvas fills its box on the map; the body's hit circle
    below takes the pointer */
 .sky-globes { position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s ease; }

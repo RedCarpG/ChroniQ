@@ -42,6 +42,10 @@ import { play } from '../sound'
 import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour } from './skyPaint'
 import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
 import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
+import { SkyNight } from './SkyNight'
+import { paintClouds } from './skyClouds'
+import { BORTLE } from '../lib/stargazing'
+import { fetchForecast, weatherAt, type WeatherHour } from '../lib/weather'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -90,6 +94,8 @@ const MANSION_TRAD = new Map(MANSION_FIGURES.map((c) => [c.name, c.trad]))
 const zoneOf = (name: string): MansionZone | undefined => MANSION_BY_NAME.get(name)?.zone
 const FIGURES_KEY = 'chroniq-sky-figures'
 const QUALITY_KEY = 'chroniq-sky-quality'
+const BORTLE_KEY = 'chroniq-sky-bortle'
+const WEATHER_KEY = 'chroniq-sky-weather'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** A sentence with elements (links) put in its {slots}, as the text came from t() with them kept */
@@ -393,6 +399,53 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   useDismiss(placeRef, placeOpen, () => setPlaceOpen(false))
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
+  // 光污染: how dark the place's sky is, on the Bortle scale (remembered in this browser)
+  const [bortle, setBortle] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(BORTLE_KEY))
+      return v >= 1 && v <= 9 ? v : 2
+    } catch {
+      return 2
+    }
+  })
+  const pickBortle = (v: number) => {
+    setBortle(v)
+    try {
+      localStorage.setItem(BORTLE_KEY, String(v))
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+  }
+  // 云量: the cloud forecast, once switched on (it asks Open-Meteo, sending the place's latitude and
+  // longitude; remembered in this browser)
+  const [weatherOn, setWeatherOn] = useState(() => {
+    try {
+      return localStorage.getItem(WEATHER_KEY) === 'on'
+    } catch {
+      return false
+    }
+  })
+  const toggleWeather = () =>
+    setWeatherOn((on) => {
+      try {
+        localStorage.setItem(WEATHER_KEY, on ? 'off' : 'on')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !on
+    })
+  const [weather, setWeather] = useState<{ hours: WeatherHour[]; failed: boolean }>({ hours: [], failed: false })
+  useEffect(() => {
+    if (!weatherOn) return setWeather({ hours: [], failed: false })
+    let gone = false
+    fetchForecast(place.latitude, place.longitude)
+      .then((hours) => !gone && setWeather({ hours, failed: false }))
+      .catch(() => !gone && setWeather({ hours: [], failed: true }))
+    return () => {
+      gone = true
+    }
+  }, [weatherOn, place.latitude, place.longitude])
+
   const [showPaths, setShowPaths] = useState(() => {
     try {
       return localStorage.getItem(PATHS_KEY) !== 'off'
@@ -1028,6 +1081,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // How much of them shows: the Milky Way is gone by day and faint in twilight, when only the
   // brighter stars are out; a bright Moon up washes out the faintest stars and the Milky Way a little.
   const moonLight = !below && moon.alt > 0 ? moon.lit : 0
+  /** How dark the place is (光污染) */
+  const dark = BORTLE[bortle - 1]
+  // The clouds at the moment shown, if the forecast is on and reaches it; they hide what is behind them
+  const cloudNow = weatherOn && !below ? weatherAt(weather.hours, utc.getTime()) : null
+  const cover = cloudNow ? cloudNow.cloud / 100 : 0
+  // The glow low round the sky: at night, more and more orange the brighter the towns about (光污染)
+  const townGlow = light === 'night' ? Math.max(0, (bortle - 2) / 7) : 0
+  const glowColour = townGlow > 0.3 ? '#8d7867' : HORIZON_GLOW[light][0]
+  const glowStrength = Math.min(0.6, HORIZON_GLOW[light][1] + 0.35 * townGlow)
   const canvasLight =
     light === 'below'
       ? { milkyWay: 0.7, stars: 0.85, limit: 6.3 }
@@ -1035,9 +1097,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         ? { milkyWay: 0, stars: 0.35, limit: 5 }
         : light === 'twilight'
           ? { milkyWay: 0.3, stars: 0.7, limit: 4 }
-          : { milkyWay: 1 - 0.3 * moonLight, stars: 1, limit: 6.3 - 0.7 * moonLight }
+          : {
+              milkyWay: dark.milkyWay * (1 - 0.3 * moonLight),
+              stars: 1,
+              limit: Math.min(dark.limit, 6.3 - 0.7 * moonLight),
+            }
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glowRef = useRef<HTMLCanvasElement>(null)
+  const cloudsRef = useRef<HTMLCanvasElement>(null)
   const paint = useRef(() => {})
   paint.current = () => {
     const el = canvasRef.current
@@ -1060,9 +1127,34 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       rough: dragging || smooth,
       lowRes: smooth,
     })
+    if (cloudsRef.current)
+      paintClouds(
+        cloudsRef.current,
+        cloudNow && cover > 0.02
+          ? {
+              width: el.clientWidth,
+              height: el.clientHeight,
+              ox: centre[0] + over - C * scale,
+              oy: centre[1] + over - C * scale,
+              scale,
+              below,
+              cover,
+              low: cloudNow.low / Math.max(1, cloudNow.cloud),
+              wind: cloudNow.wind,
+              windFrom: cloudNow.windFrom,
+              time: utc.getTime(),
+              light: light === 'day' ? 'day' : light === 'twilight' ? 'twilight' : 'night',
+              moon: moonLight,
+              town: Math.max(0, (bortle - 3) / 6),
+            }
+          : null,
+      )
   }
   // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
-  useLayoutEffect(() => paint.current(), [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth])
+  useLayoutEffect(
+    () => paint.current(),
+    [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth, bortle, cloudNow?.time, cover],
+  )
   // The canvas fills the screen: drawn again when the screen's size changes (a phone's address bar
   // folding away), which need not move the sky's window
   useEffect(() => {
@@ -1089,9 +1181,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           ))}
         </radialGradient>
         <radialGradient id={`${clipId}-air`} cx={C} cy={C} r={R} gradientUnits="userSpaceOnUse">
-          <stop offset={0.5} stopColor={HORIZON_GLOW[light][0]} stopOpacity={0} />
-          <stop offset={0.86} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1] * 0.45} />
-          <stop offset={1} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1]} />
+          <stop offset={townGlow ? 0.2 : 0.5} stopColor={glowColour} stopOpacity={townGlow * 0.1} />
+          <stop offset={0.86} stopColor={glowColour} stopOpacity={glowStrength * 0.45} />
+          <stop offset={1} stopColor={glowColour} stopOpacity={glowStrength} />
         </radialGradient>
         <radialGradient id={`${clipId}-ground`} cx={C} cy={C} r={4 * R} gradientUnits="userSpaceOnUse">
           <stop offset={0.25} stopColor="#0a0f1d" />
@@ -1225,6 +1317,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
               at={at}
               size={dot}
               light={`url(#${clipId}-star-${colourIndex(s.bv)})`}
+              seen={Math.min(1, Math.max(0.12, (canvasLight.limit - s.mag) / 0.8))}
               hit={10 * k}
               on={chosen === `hip${s.hip}`}
               hover={focus === `hip${s.hip}`}
@@ -1574,6 +1667,17 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
       {/* On the right, always there: the bodies, or what is chosen, in detail */}
       <aside className="sky-bodies" aria-label={t('天体')}>
+        <SkyNight
+          utc={utc}
+          latitude={place.latitude}
+          longitude={place.longitude}
+          weather={weather.hours}
+          weatherOn={weatherOn}
+          weatherFailed={weather.failed}
+          onWeather={toggleWeather}
+          clock={(ms) => wallTime(new Date(ms), place.timeZone).time}
+          onPick={(ms) => setPicked(wallTime(new Date(ms), place.timeZone))}
+        />
         {event && (
           <div className="sky-event">
             <span className="sky-event-kind">{t('天象预告')}</span>
@@ -1787,6 +1891,13 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         </div>
         <span className="sky-option-title">{t('轨迹')}</span>
         <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
+        <span className="sky-option-title">{t('光污染')}</span>
+        <label className="sky-bortle">
+          <input type="range" min={1} max={9} step={1} value={bortle} aria-label={t('光污染')} onChange={(e) => pickBortle(Number(e.target.value))} />
+          <span>{t('{n} 级 · {name}', { n: bortle, name: t(dark.name) })}</span>
+        </label>
+        <span className="sky-option-title">{t('云量')}</span>
+        <SkySwitch on={weatherOn} label={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
         <span className="sky-option-title">{t('画质')}</span>
         <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
           {(
@@ -1806,7 +1917,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       </DrawerPageTab>
 
       {createPortal(
-        <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
+        <div
+          className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}
+          style={{ '--clear': (1 - 0.85 * cover).toFixed(2) } as CSSProperties}
+        >
           <div className="sky-turner" ref={turnerRef}>
           <div className="sky-zoomer" ref={zoomerRef} style={{ '--over': `${over}px` } as CSSProperties}>
           {backdrop}
@@ -1816,7 +1930,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             aria-hidden="true"
           >
             <canvas ref={glowRef} className="glow" />
-            <canvas ref={canvasRef} />
+            <canvas ref={canvasRef} className="stars" />
+            <canvas ref={cloudsRef} className="clouds" />
           </div>
           {map}
           {/* The Moon and, zoomed in, the planets as globes (SkyGlobe), over the map where each is, set
@@ -1916,6 +2031,7 @@ function Star({
   at,
   size,
   light,
+  seen,
   hit,
   on,
   hover,
@@ -1930,6 +2046,8 @@ function Star({
   size: number
   /** Its light: the gradient of its colour */
   light: string
+  /** How well it shows through the sky's own light (1, or less in a town) */
+  seen: number
   /** The least radius the pointer finds it in, in map units */
   hit: number
   /** Whether it is the chosen one, and whether it is under the pointer */
@@ -1943,7 +2061,7 @@ function Star({
   return (
     <g className={`sky-star${on ? ' on' : ''}${hover ? ' hover' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
       <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
-      <circle className="disc" cx={x} cy={y} r={glowRadius(s.mag) * size} fill={light} fillOpacity={starAlpha(s.mag)} />
+      <circle className="disc" cx={x} cy={y} r={glowRadius(s.mag) * size} fill={light} fillOpacity={starAlpha(s.mag) * seen} />
     </g>
   )
 }
