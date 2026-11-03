@@ -1,0 +1,13 @@
+{
+  // Declarations only: the code itself is built by core/vite.config.ts
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "..",
+    "outDir": "dist/types",
+    "types": ["node"]
+  },
+  "include": ["index.ts", "text.ts"]
+}

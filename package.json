@@ -12,7 +12,9 @@
     "test": "vitest run",
     "gen:trad": "vite-node scripts/gen-trad.ts",
     "gen:stars": "vite-node scripts/gen-stars.ts",
-    "gen:constellations": "vite-node scripts/gen-constellations.ts"
+    "gen:constellations": "vite-node scripts/gen-constellations.ts",
+    "build:core": "vite build --config core/vite.config.ts && tsc -p core/tsconfig.json",
+    "pack:core": "npm run build:core && npm pack ./core --pack-destination core"
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.3.0",
