@@ -3,8 +3,8 @@ import { SETTING_OPTIONS, type Settings } from '../lib/settings'
 import { useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
-/** Chosen on the calendar itself (its 显示 tab), not here */
-const CALENDAR_ONLY: (keyof Settings)[] = ['dayGanzhi', 'moonPhase', 'dipper', 'skyEvents', 'weekStart']
+/** Chosen on the page they belong to (the calendar's 显示 tab, the 紫微 board), not here */
+const CALENDAR_ONLY: (keyof Settings)[] = ['dayGanzhi', 'moonPhase', 'dipper', 'skyEvents', 'weekStart', 'ziweiColor']
 
 /** Gear button in the top bar opening display settings. */
 export function SettingsMenu({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
