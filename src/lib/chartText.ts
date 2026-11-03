@@ -1,14 +1,25 @@
 // What ChroniQ works out, as plain Chinese text to hand to an AI (or read aloud): a day's 黄历, a
-// 八字 or 紫微 chart in full, and the sky's coming events. The app draws all of this; these say it
+// 八字, 紫微 or 星盘 chart in full, and the sky's coming events. The app draws all of this; these say it
 // in words, complete enough that a model can read the chart without casting it itself.
 import { SolarDay } from 'tyme4ts'
-import { buildDayDetail } from '../src/lib/calendar'
-import type { BaziChart, Glyph } from '../src/lib/bazi'
-import type { BaziReading } from '../src/lib/baziReading'
-import { moonOf } from '../src/lib/moon'
-import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from '../src/lib/skyEvents'
-import type { ZiweiChart, ZiweiStar } from '../src/lib/ziwei'
-import type { ZiweiPattern } from '../src/lib/ziweiPatterns'
+import {
+  formatCoords,
+  formatLon,
+  formatOffset,
+  type Aspect,
+  type ChartPoint,
+  type Overlay,
+  type OverlayKind,
+  type StarChart,
+} from './astrology'
+import type { StarSettings } from './starPrefs'
+import { buildDayDetail } from './calendar'
+import type { BaziChart, Glyph } from './bazi'
+import type { BaziReading } from './baziReading'
+import { moonOf } from './moon'
+import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from './skyEvents'
+import type { ZiweiChart, ZiweiStar } from './ziwei'
+import type { ZiweiPattern } from './ziweiPatterns'
 
 const list = (items: string[], none = '无') => (items.length ? items.join('、') : none)
 
@@ -211,4 +222,60 @@ export function upcomingSkyEvents(from: Date, days: number, place: SkyPlaceLike)
     .flatMap((y) => computeSkyEvents(y, place))
     .filter((e) => e.time >= start && e.time < end)
     .sort((a, b) => a.time - b.time)
+}
+
+// ---- 星盘 ----
+
+const HOUSE_SYSTEM: Record<StarSettings['houses'], string> = {
+  placidus: '普拉西度制',
+  whole: '整宫制',
+  equal: '等宫制',
+}
+const OVERLAY_NAME: Record<OverlayKind, string> = { transit: '行运', progressed: '次限推运', synastry: '合盘' }
+
+/** 白羊 → 白羊座, so a position reads 白羊座 12°34′ */
+const sign = (s: string) => `${s}座`
+const pointText = (p: ChartPoint) => `${p.name} ${formatLon(p.lon, sign)}，第${p.house}宫${p.retrograde ? '（逆行）' : ''}`
+const aspectText = (a: Aspect) => `${a.a.name} ${a.type.name} ${a.b.name}（差 ${a.orb.toFixed(1)}°）`
+
+/** A 星盘 in full: when and where, each planet's sign, degree and house, the angles, the house
+ *  cusps, the elements and the aspects, tightest first; and (given one) a 行运, 推运 or 合盘 laid over it */
+export function starChartText(chart: StarChart, settings: StarSettings, overlay?: Overlay | null): string {
+  const wall = new Date(chart.utc.getTime() + chart.offsetMinutes * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const when = `${wall.getUTCFullYear()}年${wall.getUTCMonth() + 1}月${wall.getUTCDate()}日 ${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}`
+  const bodies = chart.points.filter((p) => p.key !== 'asc' && p.key !== 'mc')
+  const counted = bodies.filter((p) => p.key !== 'node' && p.key !== 'southNode')
+  const tally = (names: string[], of: (p: ChartPoint) => number) =>
+    names.map((n, i) => `${n}${counted.filter((p) => of(p) === i).length}`).join(' ')
+  const lines = [
+    `出生：${when}（当地时间，${formatOffset(chart.offsetMinutes)}${chart.dst ? '，夏令时' : ''}）· ${chart.place.name}（${formatCoords(chart.place.latitude, chart.place.longitude)}）`,
+    `宫位制：${chart.housesFallback ? `${HOUSE_SYSTEM.equal}（出生地太靠近极圈，普拉西度制算不出）` : HOUSE_SYSTEM[settings.houses]} · 月交点：${settings.node === 'true' ? '真交点' : '平交点'}`,
+    `上升 ${formatLon(chart.asc, sign)} · 天顶 ${formatLon(chart.mc, sign)}`,
+    '行星：',
+    ...bodies.map((p) => `  ${pointText(p)}`),
+    `宫头：${chart.cusps.map((c, i) => `${i + 1}宫 ${formatLon(c, sign)}`).join('，')}`,
+    `元素（十颗行星）：${tally(['火象', '土象', '风象', '水象'], (p) => p.sign % 4)}`,
+    `模式：${tally(['基本', '固定', '变动'], (p) => p.sign % 3)}`,
+    `相位：${chart.aspects.map(aspectText).join('；') || '无'}`,
+  ]
+  if (overlay) {
+    const target = overlay.target.toISOString().slice(0, 10)
+    lines.push(
+      '',
+      overlay.kind === 'synastry'
+        ? `合盘：对方的行星落在这张盘的哪一宫，和这张盘的相位（对方在前）。`
+        : `${OVERLAY_NAME[overlay.kind]}（${target}，${overlay.age.toFixed(1)} 岁）：${overlay.kind === 'transit' ? '那时天上的行星' : '推进后的行星'}落在本命盘的哪一宫，和本命的相位（${OVERLAY_NAME[overlay.kind]}在前）。`,
+      ...overlay.points.map((p) => `  ${pointText(p)}`),
+      `相位：${overlay.aspects.map(aspectText).join('；') || '无'}`,
+    )
+    if (overlay.partner)
+      lines.push(
+        `对方的盘：上升 ${formatLon(overlay.partner.asc, sign)}，${overlay.partner.points
+          .filter((p) => p.key === 'sun' || p.key === 'moon')
+          .map((p) => `${p.name} ${formatLon(p.lon, sign)}`)
+          .join('，')}`,
+      )
+  }
+  return lines.join('\n')
 }

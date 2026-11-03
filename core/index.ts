@@ -1,5 +1,5 @@
 // chroniq-core: ChroniQ's reckoning without its pages, for other programs (Node or a browser) —
-// the 黄历 of a day, 八字 and 紫微 charts, the sky's events, and all of it as plain Chinese text
+// the 黄历 of a day, 八字, 紫微 and 星盘 charts, the sky's events, and all of it as plain Chinese text
 // to hand to an AI. The same code the app runs (src/lib), so both always agree.
 
 // 黄历
@@ -27,13 +27,36 @@ export { buildZiwei, buildHoroscope, type ZiweiChart, type ZiweiPalace, type Ziw
 export { findPatterns, type ZiweiPattern } from '../src/lib/ziweiPatterns'
 export { DEFAULT_ZIWEI_SCHOOLS, ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../src/lib/ziweiSchools'
 
-// Places (for 真太阳时 and the sky)
+// 星盘 (Western astrology, tropical)
+export {
+  buildStarChart,
+  transits,
+  progressions,
+  synastry,
+  type StarChart,
+  type ChartPoint,
+  type Aspect,
+  type Overlay,
+} from '../src/lib/astrology'
+export { DEFAULT_STAR_SETTINGS, STAR_SCHOOLS, type StarSettings, type StarPlace } from '../src/lib/starPrefs'
+
+// Places (for 真太阳时, 星盘 houses and the sky), and a birth as people say it
 export { CITIES, type City } from '../src/lib/solarTime'
 export { DEFAULT_PLACE, cityPlace, type Place } from '../src/lib/place'
+export { findCity, lunarToSolar } from '../src/lib/birth'
 
 // 天象
 export { computeSkyEvents, type SkyEvent, type SkyEventKind, type SkyPlaceLike } from '../src/lib/skyEvents'
 export { computeTonight, type Tonight } from '../src/lib/tonight'
 
 // In words
-export { almanac, almanacText, baziText, ziweiText, skyEventTitle, skyEventText, upcomingSkyEvents } from './text'
+export {
+  almanac,
+  almanacText,
+  baziText,
+  ziweiText,
+  starChartText,
+  skyEventTitle,
+  skyEventText,
+  upcomingSkyEvents,
+} from '../src/lib/chartText'

@@ -1,9 +1,9 @@
 # chroniq-core
 
-ChroniQ（星曆）的计算部分，单独打成一个包，给别的程序用（比如 Cirra 桌宠的 sidecar）：
+ChroniQ（星曆）的计算部分，单独打成一个包，给别的程序用（比如聊天机器人、桌面助手、自动化脚本）：
 
 - 某一天的**黄历**：农历、干支、节气、节日、月相、建除、值神、星宿、宜忌、吉神凶煞
-- **八字**排盘和旺衰简析，**紫微**排盘和格局
+- **八字**排盘和旺衰简析，**紫微**排盘和格局，**星盘**（西洋占星：本命、行运、推运、合盘）
 - 一段时间内的**天象**：日月食、流星雨、冲日、大距、行星相合、超级月亮
 - 以上全部都能写成**一段中文纯文字**，直接交给 AI 读，或者念出来
 
@@ -24,6 +24,7 @@ import {
   almanacText,
   buildBazi, baziReading, baziText,
   buildZiwei, findPatterns, ziweiText, DEFAULT_ZIWEI_SCHOOLS,
+  buildStarChart, transits, starChartText, DEFAULT_STAR_SETTINGS, findCity, lunarToSolar,
   upcomingSkyEvents, skyEventText, DEFAULT_PLACE,
 } from 'chroniq-core'
 
@@ -43,6 +44,13 @@ baziText(bazi, baziReading(bazi, 2026)) // 四柱、藏干十神、纳音、神�
 // 紫微
 const ziwei = buildZiwei(input, DEFAULT_ZIWEI_SCHOOLS)
 ziweiText(ziwei, findPatterns(ziwei)) // 十二宫的星曜、亮度、四化、宫干飞化、大限、格局
+
+// 星盘（地点用城市名找，或者自己给经纬度和时区）；农历生日先换成公历
+const place = findCity('北京')!
+const star = buildStarChart(input, place, DEFAULT_STAR_SETTINGS)
+starChartText(star, DEFAULT_STAR_SETTINGS) // 行星星座度数和宫位、上升天顶、宫头、元素、相位
+starChartText(star, DEFAULT_STAR_SETTINGS, transits(star, new Date(), DEFAULT_STAR_SETTINGS)) // 加上此刻的行运
+lunarToSolar(1990, 4, 23) // { year: 1990, month: 5, day: 17 }
 
 // 接下来 30 天的天象（地点要有经纬度和时区）
 for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(skyEventText(e, DEFAULT_PLACE.timeZone))

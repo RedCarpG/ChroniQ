@@ -15,6 +15,8 @@ import { dayKey, skyMomentOf, useSkyEventText, useSkyEvents } from './SkyForecas
 import type { SkyMoment } from './SkyView'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { useLocate } from './useLocate'
+import { AiAnalysis } from './AiAnalysis'
+import { dayPrompt } from '../lib/ai/prompts'
 
 const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' }
 
@@ -92,6 +94,15 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
       }
     }
   }
+
+  // AI 解读 of the day: its 黄历, and the chosen chart with what ChroniQ works out between them
+  const aiNotes = [
+    ...(bazi && dayStar ? [`今天的日干${detail.pillars[2].stem.char}对日主${bazi.dayMaster.char}是${dayStar}`] : []),
+    ...(yearSign ? [`今年是这张盘的${yearSign}`] : []),
+    ...(decade ? [`现在走${decade.ganzhi}大运（${decade.startYear}–${decade.endYear}）`] : []),
+    ...todayDays.map((d) => chartText(d)),
+  ]
+  const aiPrompt = dayPrompt(today.getYear(), today.getMonth(), today.getDay(), chart && bazi ? { name: chart.name, bazi, notes: aiNotes } : undefined)
 
   return (
     <div className="today-page">
@@ -263,6 +274,8 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
           </p>
         )}
       </section>
+
+      <AiAnalysis id="today-ai" prompt={aiPrompt} />
     </div>
   )
 }

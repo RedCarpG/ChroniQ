@@ -41,6 +41,8 @@ import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
+import { AiAnalysis } from './AiAnalysis'
+import { starPrompt } from '../lib/ai/prompts'
 import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
 
@@ -104,6 +106,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     return mode === 'transit' ? transits(chart, target, settings) : progressions(chart, target, settings)
   }, [mode, when, chart, place.timeZone, settings, partner])
   const hl = useMemo(() => highlight(chart, overlay, focus), [chart, overlay, focus])
+  // AI 解读: the natal chart, with the 行运, 推运 or 合盘 shown over it
+  const aiPrompt = useMemo(() => starPrompt(chart, settings, overlay), [chart, settings, overlay])
   const compositeChart = useMemo(
     () =>
       mode === 'composite' ? composite(chart, buildStarChart(partner.wall, partner.place, settings), settings) : null,
@@ -147,6 +151,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
           ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
           ['star-houses', t('宫位')],
+          ['star-ai', t('AI 解读')],
         ]}
       />
 
@@ -279,6 +284,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         </p>
       </section>
 
+      <AiAnalysis id="star-ai" prompt={aiPrompt} />
     </div>
   )
 }
