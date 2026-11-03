@@ -345,7 +345,13 @@ export function starPlace(hip: number) {
  * before it and sets after, one down set before it and rises after. A star always up at this
  * latitude, or never, says so instead; a body that does not rise or set within the day has null.
  */
-export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, latitude: number, longitude: number, up: boolean) {
+export function riseSet(
+  what: { body: BodyKey } | { hip: number } | { ra: number; dec: number },
+  utc: Date,
+  latitude: number,
+  longitude: number,
+  up: boolean,
+) {
   const observer = new A.Observer(latitude, longitude, 0)
   let body: A.Body
   if ('body' in what) {
@@ -353,7 +359,7 @@ export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, la
     if (!found) return null
     body = found[1]
   } else {
-    const at = starPlace(what.hip)
+    const at = 'hip' in what ? starPlace(what.hip) : what
     if (!at) return null
     // Circumpolar: always above the horizon, or never
     if (latitude >= 0 ? at.dec > 90 - latitude : at.dec < -90 - latitude) return { always: 'up' as const }
@@ -365,6 +371,41 @@ export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, la
   const rise = A.SearchRiseSet(body, observer, +1, start, up ? -1 : 1)?.date ?? null
   const set = A.SearchRiseSet(body, observer, -1, start, up ? 1 : -1)?.date ?? null
   return { rise, set }
+}
+
+/** The obliquity of the ecliptic at J2000, degrees */
+const OBLIQUITY = 23.4393
+
+/**
+ * The equatorial grid on the sky at a moment and place: circles of declination every 30° (the
+ * celestial equator among them), hour circles every 2 hours of right ascension, each with where
+ * its hour is written on the equator; and the ecliptic, the Sun's yearly way, with a mark every 30°
+ * of longitude (where each zodiac sign begins).
+ */
+export function gridAt(utc: Date, latitude: number, longitude: number) {
+  const toHorizon = horizonOf(utc, latitude, longitude)
+  const decs = [-60, -30, 0, 30, 60].map((dec) => {
+    const pts: { az: number; alt: number }[] = []
+    for (let ra = 0; ra <= 360; ra += 3) pts.push(toHorizon(ra, dec))
+    return { dec, pts }
+  })
+  const hours = Array.from({ length: 12 }, (_, i) => {
+    const ra = i * 30
+    const pts: { az: number; alt: number }[] = []
+    for (let dec = -84; dec <= 84; dec += 3) pts.push(toHorizon(ra, dec))
+    return { hour: i * 2, pts, label: toHorizon(ra, 0) }
+  })
+  const e = OBLIQUITY * RAD
+  const onEcliptic = (lon: number) => {
+    const l = lon * RAD
+    const ra = (Math.atan2(Math.sin(l) * Math.cos(e), Math.cos(l)) / RAD + 360) % 360
+    const dec = Math.asin(Math.sin(e) * Math.sin(l)) / RAD
+    return toHorizon(ra, dec)
+  }
+  const ecliptic: { az: number; alt: number }[] = []
+  for (let lon = 0; lon <= 360; lon += 3) ecliptic.push(onEcliptic(lon))
+  const signs = Array.from({ length: 12 }, (_, i) => ({ lon: i * 30, ...onEcliptic(i * 30) }))
+  return { decs, hours, ecliptic, signs }
 }
 
 /** How far a body is from the Earth's centre at a moment, in astronomical units */

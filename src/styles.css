@@ -1475,6 +1475,23 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-timebar .date-parts .year-input { width: 62px; }
 .sky-timebar .ghost, .sky-place-pop .ghost { height: 28px; margin: 0; padding: 0 10px; font-size: 13px; }
 .sky-place-menu { position: relative; }
+/* 搜索 in the bar above the sky, its matches dropping under it */
+.sky-search { position: relative; }
+.sky-search input { width: 200px; height: 28px; padding: 0 10px; font-size: 13px; border-radius: 14px; }
+.sky-search-list {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 21; width: min(300px, 86vw); margin: 0; padding: 4px;
+  list-style: none; animation: sky-info-in 0.2s ease;
+}
+.app.page-sky .sky-search-list { background: rgb(9 13 26 / 0.94); }
+.sky-search-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.sky-search-list li small { margin-left: auto; white-space: nowrap; }
+.sky-search-list li.on { background: var(--accent-soft); }
+.sky-search-list .sky-search-none { cursor: default; }
+/* 时间流动: back, play or pause, on, and how fast */
+.sky-flow { display: inline-flex; align-items: center; gap: 2px; }
+.sky-timebar .sky-flow .ghost { min-width: 30px; padding: 0 6px; font-size: 11px; letter-spacing: -1px; }
+.sky-timebar .sky-flow .ghost.on { color: var(--accent); border-color: var(--accent); }
+.sky-flow-rate { margin-left: 4px; font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sky-place-button { display: inline-flex; align-items: center; gap: 6px; }
 .sky-place-label { color: var(--muted); }
 .sky-fold-mark {
@@ -1562,7 +1579,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-canvas canvas.stars { mix-blend-mode: plus-lighter; }
 /* Clouds over all of it, and over the map's stars and bodies too, which they dim (--clear) */
 .sky-canvas canvas.clouds { width: auto; height: auto; }
-.sky-map .sky-stars, .sky-map .sky-bodies, .sky-globes, .sky-twinkles { opacity: var(--clear, 1); transition: opacity 0.6s ease; }
+.sky-map .sky-stars, .sky-map .sky-bodies, .sky-map .sky-dsos, .sky-globes, .sky-twinkles { opacity: var(--clear, 1); transition: opacity 0.6s ease; }
 /* The Milky Way's glow is drawn at a quarter of the size and shown four times as large (skyPaint
    sets its size), so the browser scales it up rather than the script */
 .sky-canvas.dim { opacity: 0.5; }
@@ -1907,7 +1924,22 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   from { transform: scale(2.6); opacity: 0; }
 }
 .sky-labels .sky-body-name, .sky-labels .sky-star-name { cursor: pointer; }
-.sky-body .hit, .sky-star .hit { fill: transparent; }
+.sky-body .hit, .sky-star .hit, .sky-dso .hit { fill: transparent; }
+/* 深空天体: thin marks in the colour of their kind, named beside them */
+.sky-dso { cursor: pointer; transition: opacity 0.3s ease; }
+.sky-dso .mark { fill: none; stroke: currentColor; stroke-width: calc(1px * var(--k, 1)); stroke-opacity: 0.75; }
+.sky-dso .mark.dashed { stroke-dasharray: calc(2.5px * var(--k, 1)) calc(2px * var(--k, 1)); }
+.sky-dso-name { fill: currentColor; fill-opacity: 0.75; font-size: calc(10px * var(--k, 1)); }
+.sky-dso:is(.on, .hover, :hover) .mark { stroke-opacity: 1; stroke-width: calc(1.6px * var(--k, 1)); }
+.sky-dso:is(.on, .hover, :hover) .sky-dso-name { fill-opacity: 1; font-weight: 600; }
+.sky-map.has-chosen .sky-dso:not(.on, .hover, :hover) { opacity: 0.4; }
+/* 赤道坐标网 and 黄道 */
+.sky-eqgrid { pointer-events: none; }
+.sky-eqgrid path { fill: none; stroke: rgb(110 165 255 / 0.34); stroke-width: calc(0.9px * var(--k, 1)); }
+.sky-eqgrid path.equator { stroke: rgb(120 175 255 / 0.65); stroke-width: calc(1.3px * var(--k, 1)); }
+.sky-eqgrid text { fill: rgb(150 190 255 / 0.8); font-size: calc(9px * var(--k, 1)); }
+.sky-eqgrid .ecliptic path { stroke: rgb(255 190 90 / 0.75); stroke-width: calc(1.4px * var(--k, 1)); stroke-dasharray: calc(10px * var(--k, 1)) calc(4px * var(--k, 1)); }
+.sky-eqgrid .ecliptic circle { fill: rgb(255 190 90 / 0.9); }
 .sky-stars > *, .sky-body, .sky-labels text, .sky-figures { transition: opacity 0.3s ease; }
 .sky-map.has-chosen .sky-stars > :not(.on, .hover, :hover), .sky-map.has-chosen .sky-body:not(.on, .hover, :hover) { opacity: 0.4; }
 .sky-map.has-chosen .sky-labels text:not(.on, .hover) { opacity: 0.4; }
@@ -2638,3 +2670,8 @@ html.sky-pointing :is(.sky-frame, .drawer) { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .ghost.sky-now-hint::before { animation: none; opacity: 0.7; }
 }
+
+/* 红光夜视: the whole page in dim red, greyed first so every colour comes out as a shade of red */
+html.night-red body::before, html.night-red body::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
+html.night-red body::before { backdrop-filter: grayscale(1) brightness(0.85); }
+html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend-mode: multiply; }

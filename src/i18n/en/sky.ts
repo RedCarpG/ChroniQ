@@ -235,4 +235,43 @@ export const SKY: Record<string, string> = {
   郊区与城市之间: 'suburban/urban transition',
   城市: 'city sky',
   市中心: 'inner-city sky',
+
+  // Search, time flow, deep-sky objects, grids, night light
+  搜索天体: 'Search the sky',
+  '搜索：星、行星、M31、星座…': 'Search: stars, planets, M31, constellations…',
+  搜索结果: 'Results',
+  没有找到: 'Nothing found',
+  时间流动: 'Time flow',
+  慢一点或倒放: 'Slower, or backwards',
+  快一点: 'Faster',
+  暂停: 'Pause',
+  让时间流动: 'Let time run',
+  '{n} 分钟/秒': '{n} min/s',
+  '{n} 小时/秒': '{n} h/s',
+  跟踪: 'Follow',
+  视大小: 'Apparent size',
+  所处星座: 'Constellation',
+  深空天体: 'Deep sky',
+  '梅西耶天体：星系、星团、星云': 'Messier objects: galaxies, clusters, nebulae',
+  星系: 'galaxy',
+  球状星团: 'globular cluster',
+  疏散星团: 'open cluster',
+  弥漫星云: 'nebula',
+  行星状星云: 'planetary nebula',
+  超新星遗迹: 'supernova remnant',
+  星群: 'asterism',
+  坐标: 'Coordinates',
+  赤道坐标网: 'Equatorial grid',
+  黄道: 'Ecliptic',
+  夜视: 'Night vision',
+  '红光模式：整页变暗红，不破坏暗适应': 'Red light: the whole page in dim red, to keep your eyes dark-adapted',
+  '小符号是梅西耶深空天体：椭圆是星系，带十字的圆是球状星团，虚线圆是疏散星团，方框是星云，带刻线的小圆是行星状星云；放大可看到更暗的。':
+    'The small marks are Messier deep-sky objects: an ellipse is a galaxy, a crossed circle a globular cluster, a dashed circle an open cluster, a square a nebula and a ticked circle a planetary nebula; zoom in for fainter ones.',
+  '赤道坐标网：实线是天赤道，纬线每 30° 一条赤纬，经线每 2 小时一条赤经。':
+    'Equatorial grid: the bolder line is the celestial equator, with a circle of declination every 30° and an hour circle of right ascension every 2 hours.',
+  '黄道是太阳一年在星空中走的路，日月行星都在它附近；圆点每 30° 一个，是黄道十二宫的起点。':
+    'The ecliptic is the Sun’s yearly path among the stars, which the Moon and planets keep close to; a dot every 30° marks where each zodiac sign begins.',
+  '时间栏的 ▶ 让时间流动，◀◀ ▶▶ 调快慢或倒放；搜索框可以找到天体、亮星、深空天体和星座并跟踪它。':
+    '▶ in the time bar lets time run, and ◀◀ ▶▶ make it faster, slower or run backwards; the search box finds bodies, bright stars, deep-sky objects and constellations, and follows them.',
+  '；梅西耶天体 {d3}': '; Messier objects {d3}',
 }

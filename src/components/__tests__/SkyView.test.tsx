@@ -287,7 +287,45 @@ describe('SkyView past track', () => {
   it('is not offered for a star, which keeps its place among the others', () => {
     const { map, container } = setUp()
     fireEvent.click([...map.querySelectorAll('.sky-star')].find((g) => g.getAttribute('data-tip')!.startsWith('天狼星'))!)
-    expect([...container.querySelectorAll('.sky-detail [role=switch]')].map((b) => b.textContent)).toEqual(['今日轨迹'])
+    expect([...container.querySelectorAll('.sky-detail [role=switch]')].map((b) => b.textContent)).toEqual(['今日轨迹', '跟踪'])
+  })
+})
+
+describe('SkyView search, deep sky and time flow', () => {
+  it('finds a deep-sky object by name, chooses it and tells of it', () => {
+    const { map, container, info } = setUp()
+    const box = container.querySelector<HTMLInputElement>('.sky-search input')!
+    fireEvent.change(box, { target: { value: 'NGC 1976' } })
+    expect(container.querySelector('.sky-search-list [role=option]')!.textContent).toContain('猎户座大星云')
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(info()).toContain('猎户座大星云')
+    expect(info()).toContain('M42')
+    expect(map.querySelector('.sky-dso.on')).not.toBeNull()
+    expect(map.querySelector('.sky-chosen')).not.toBeNull()
+    expect(container.querySelector('.sky-facts')!.textContent).toContain('66′ × 60′')
+    // Followed as the time runs
+    expect(container.querySelector('.sky-detail [role=switch][aria-checked=true]')!.textContent).toBe('跟踪')
+  })
+
+  it('lets the time run, faster, and stops it', () => {
+    // The clock and the timers the flow runs on (faked afresh: a second call alone would leave them be)
+    vi.useRealTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval', 'performance'] })
+    vi.setSystemTime(new Date('2026-10-24T18:57:00Z'))
+    const { container, time } = setUp()
+    const [, play, faster] = container.querySelectorAll<HTMLButtonElement>('.sky-flow button')
+    fireEvent.click(play)
+    expect(container.querySelector('.sky-flow-rate')!.textContent).toBe('10 分钟/秒')
+    act(() => void vi.advanceTimersByTime(3000))
+    expect(time()).toBe('03:27')
+    fireEvent.click(faster)
+    expect(container.querySelector('.sky-flow-rate')!.textContent).toBe('1 小时/秒')
+    act(() => void vi.advanceTimersByTime(2000))
+    expect(time()).toBe('05:27')
+    fireEvent.click(play)
+    expect(container.querySelector('.sky-flow-rate')).toBeNull()
+    act(() => void vi.advanceTimersByTime(2000))
+    expect(time()).toBe('05:27')
   })
 })
 
