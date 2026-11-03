@@ -60,24 +60,41 @@ export function blocks(md: string): Block[] {
   return out
 }
 
+/** A block as an element */
+function block(b: Block, k: string) {
+  if (b.kind === 'h') return b.level <= 2 ? <h4 key={k}>{inline(b.text, k)}</h4> : <h5 key={k}>{inline(b.text, k)}</h5>
+  if (b.kind === 'hr') return <hr key={k} />
+  if (b.kind === 'p') return <p key={k}>{inline(b.text, k)}</p>
+  const List = b.kind
+  return (
+    <List key={k}>
+      {b.items.map((item, j) => (
+        <li key={j}>{inline(item, `${k}-${j}`)}</li>
+      ))}
+    </List>
+  )
+}
+
+/**
+ * The answer, each part under its heading (##) a section of its own, so a long reading can be
+ * taken in a part at a time; what comes before the first heading stands as an opening.
+ */
 export function AiText({ text }: { text: string }) {
+  const parts: { head?: Block; body: Block[] }[] = [{ body: [] }]
+  for (const b of blocks(text)) {
+    if (b.kind === 'h' && b.level <= 2) parts.push({ head: b, body: [] })
+    else parts[parts.length - 1].body.push(b)
+  }
   return (
     <div className="ai-text">
-      {blocks(text).map((b, i) => {
-        const k = String(i)
-        if (b.kind === 'h')
-          return b.level <= 2 ? <h4 key={k}>{inline(b.text, k)}</h4> : <h5 key={k}>{inline(b.text, k)}</h5>
-        if (b.kind === 'hr') return <hr key={k} />
-        if (b.kind === 'p') return <p key={k}>{inline(b.text, k)}</p>
-        const List = b.kind
-        return (
-          <List key={k}>
-            {b.items.map((item, j) => (
-              <li key={j}>{inline(item, `${k}-${j}`)}</li>
-            ))}
-          </List>
-        )
-      })}
+      {parts.map((part, i) =>
+        part.head || part.body.length > 0 ? (
+          <section key={i} className={part.head ? 'ai-section' : 'ai-opening'}>
+            {part.head && block(part.head, `${i}-h`)}
+            {part.body.map((b, j) => block(b, `${i}-${j}`))}
+          </section>
+        ) : null,
+      )}
     </div>
   )
 }
