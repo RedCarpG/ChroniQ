@@ -415,19 +415,29 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   }
   /** Shows a view at once by moving the drawn map; draws it properly after `rest` ms without another
    *  (long enough that the notches of a wheel spun on a slow machine still count as one gesture) */
+  /** A zoom or pan under way, drawn so far only the quick way (rough canvas, no faint star field) */
+  const [moving, setMoving] = useState(false)
   const preview = (next: typeof view, rest = 250) => {
     if (!frameRef.current || !zoomerRef.current) return setView(next)
     live.current = next
     // Moved past what is drawn: drawn soon, while the gesture goes on, rather than showing the dark
     // until it rests (not put off by the gesture's further steps, as the rest is)
+    // That drawing is the quick one (as while dragging), as the gesture is still going: the full sky
+    // is drawn once it rests
     if (shift(next) && !early.current)
       early.current = window.setTimeout(() => {
         early.current = 0
-        if (live.current) setView(live.current)
+        if (live.current) {
+          setMoving(true)
+          setView(live.current)
+        }
       }, 60)
     if (tipRef.current?.classList.contains('on')) tipRef.current.classList.remove('on')
     clearTimeout(settle.current)
-    settle.current = window.setTimeout(() => live.current && setView(live.current), rest)
+    settle.current = window.setTimeout(() => {
+      if (live.current) setView(live.current)
+      setMoving(false)
+    }, rest)
   }
   // A view has been drawn: if it is the one shown, the transform goes before the frame is painted;
   // if the gesture went on meanwhile, the transform now starts from the view just drawn
@@ -989,7 +999,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       dsoNamed.add(d.m.n)
     }
   }
-  const { milkyWay, deepSky } = useSkyBackdrop(utc, place.latitude, place.longitude, below, view.z, smooth, dragging)
+  const { milkyWay, deepSky } = useSkyBackdrop(utc, place.latitude, place.longitude, below, view.z, smooth, dragging || moving)
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
   // place in the list, which shifts as figures rise and set: a remount would draw the chosen one in again
@@ -1356,7 +1366,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       faint: deepSky?.faint ?? null,
       field: deepSky?.field ?? null,
       light: canvasLight,
-      rough: dragging || smooth,
+      rough: dragging || moving || smooth,
       lowRes: smooth,
     })
     if (cloudsRef.current)
@@ -1385,7 +1395,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
   useLayoutEffect(
     () => paint.current(),
-    [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth, bortle, cloudNow?.time, cover],
+    [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, moving, smooth, bortle, cloudNow?.time, cover],
   )
   // The canvas fills the screen: drawn again when the screen's size changes (a phone's address bar
   // folding away), which need not move the sky's window
