@@ -25,6 +25,7 @@ jobs:
           test "core-v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME, package $version"; exit 1; }
       - run: npx vitest run core
       - run: npm run pack:core
+      - run: npm run check:core
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}

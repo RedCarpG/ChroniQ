@@ -58,6 +58,7 @@ for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(sk
 
 - `npm run build:core`：打包到 `core/dist`（一个 ES 模块加类型声明）
 - `npm run pack:core`：打包并生成 `core/chroniq-core-<版本>.tgz`
+- `npm run check:core`：在打好的包上，按 Node 项目（`NodeNext`）的方式检查类型能不能用（`core/consumer/`）
 - 测试和网页的一起跑（`npm test`），`core/__tests__` 是在 Node 里跑的，保证离开浏览器也能用
 
 发布新版：改 `core/package.json` 的 `version`，合进 `main` 后打标签 `core-v<版本>` 并推送，GitHub Actions 会打包并建好 Release。
