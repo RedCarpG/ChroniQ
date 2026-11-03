@@ -73,7 +73,7 @@ describe('chroniq-core', () => {
     // China kept summer time in 1986–1991: May 1990 was UTC+9
     expect(text).toContain('出生：1990年5月17日 10:30（当地时间，UTC+9，夏令时）· 北京')
     expect(text).toContain('宫位制：普拉西度制')
-    expect(text).toMatch(/太阳 金牛 2\d°\d\d′座，第\d+宫/)
+    expect(text).toMatch(/太阳 金牛座 2\d°\d\d′，第\d+宫/)
     expect(text).toMatch(/^相位：.+（差 \d\.\d°）/m)
     const over = starChartText(
       chart,

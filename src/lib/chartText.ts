@@ -233,7 +233,9 @@ const HOUSE_SYSTEM: Record<StarSettings['houses'], string> = {
 }
 const OVERLAY_NAME: Record<OverlayKind, string> = { transit: '行运', progressed: '次限推运', synastry: '合盘' }
 
-const pointText = (p: ChartPoint) => `${p.name} ${formatLon(p.lon)}座，第${p.house}宫${p.retrograde ? '（逆行）' : ''}`
+/** 白羊 → 白羊座, so a position reads 白羊座 12°34′ */
+const sign = (s: string) => `${s}座`
+const pointText = (p: ChartPoint) => `${p.name} ${formatLon(p.lon, sign)}，第${p.house}宫${p.retrograde ? '（逆行）' : ''}`
 const aspectText = (a: Aspect) => `${a.a.name} ${a.type.name} ${a.b.name}（差 ${a.orb.toFixed(1)}°）`
 
 /** A 星盘 in full: when and where, each planet's sign, degree and house, the angles, the house
@@ -249,10 +251,10 @@ export function starChartText(chart: StarChart, settings: StarSettings, overlay?
   const lines = [
     `出生：${when}（当地时间，${formatOffset(chart.offsetMinutes)}${chart.dst ? '，夏令时' : ''}）· ${chart.place.name}（${formatCoords(chart.place.latitude, chart.place.longitude)}）`,
     `宫位制：${chart.housesFallback ? `${HOUSE_SYSTEM.equal}（出生地太靠近极圈，普拉西度制算不出）` : HOUSE_SYSTEM[settings.houses]} · 月交点：${settings.node === 'true' ? '真交点' : '平交点'}`,
-    `上升 ${formatLon(chart.asc)}座 · 天顶 ${formatLon(chart.mc)}座`,
+    `上升 ${formatLon(chart.asc, sign)} · 天顶 ${formatLon(chart.mc, sign)}`,
     '行星：',
     ...bodies.map((p) => `  ${pointText(p)}`),
-    `宫头：${chart.cusps.map((c, i) => `${i + 1}宫 ${formatLon(c)}`).join('，')}`,
+    `宫头：${chart.cusps.map((c, i) => `${i + 1}宫 ${formatLon(c, sign)}`).join('，')}`,
     `元素（十颗行星）：${tally(['火象', '土象', '风象', '水象'], (p) => p.sign % 4)}`,
     `模式：${tally(['基本', '固定', '变动'], (p) => p.sign % 3)}`,
     `相位：${chart.aspects.map(aspectText).join('；') || '无'}`,
@@ -269,9 +271,9 @@ export function starChartText(chart: StarChart, settings: StarSettings, overlay?
     )
     if (overlay.partner)
       lines.push(
-        `对方的盘：上升 ${formatLon(overlay.partner.asc)}座，${overlay.partner.points
+        `对方的盘：上升 ${formatLon(overlay.partner.asc, sign)}，${overlay.partner.points
           .filter((p) => p.key === 'sun' || p.key === 'moon')
-          .map((p) => `${p.name} ${formatLon(p.lon)}座`)
+          .map((p) => `${p.name} ${formatLon(p.lon, sign)}`)
           .join('，')}`,
       )
   }
