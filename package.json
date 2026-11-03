@@ -18,6 +18,7 @@
     "check:core": "tsc -p core/consumer/tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@fontsource/noto-serif-sc": "^5.3.1",
     "astronomy-engine": "^2.1.19",

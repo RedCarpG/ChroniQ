@@ -2,13 +2,13 @@
 // 八字 or 紫微 chart in full, and the sky's coming events. The app draws all of this; these say it
 // in words, complete enough that a model can read the chart without casting it itself.
 import { SolarDay } from 'tyme4ts'
-import { buildDayDetail } from '../src/lib/calendar'
-import type { BaziChart, Glyph } from '../src/lib/bazi'
-import type { BaziReading } from '../src/lib/baziReading'
-import { moonOf } from '../src/lib/moon'
-import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from '../src/lib/skyEvents'
-import type { ZiweiChart, ZiweiStar } from '../src/lib/ziwei'
-import type { ZiweiPattern } from '../src/lib/ziweiPatterns'
+import { buildDayDetail } from './calendar'
+import type { BaziChart, Glyph } from './bazi'
+import type { BaziReading } from './baziReading'
+import { moonOf } from './moon'
+import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from './skyEvents'
+import type { ZiweiChart, ZiweiStar } from './ziwei'
+import type { ZiweiPattern } from './ziweiPatterns'
 
 const list = (items: string[], none = '无') => (items.length ? items.join('、') : none)
 

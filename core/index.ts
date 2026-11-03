@@ -36,4 +36,4 @@ export { computeSkyEvents, type SkyEvent, type SkyEventKind, type SkyPlaceLike }
 export { computeTonight, type Tonight } from '../src/lib/tonight'
 
 // In words
-export { almanac, almanacText, baziText, ziweiText, skyEventTitle, skyEventText, upcomingSkyEvents } from './text'
+export { almanac, almanacText, baziText, ziweiText, skyEventTitle, skyEventText, upcomingSkyEvents } from '../src/lib/chartText'

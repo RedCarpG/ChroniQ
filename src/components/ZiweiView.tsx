@@ -29,6 +29,8 @@ import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
+import { AiAnalysis } from './AiAnalysis'
+import { ziweiPrompt } from '../lib/ai/prompts'
 import { ZiweiReadingCard } from './ChartReadingCards'
 import { SanFangTip, StarTip } from './ZiweiTips'
 
@@ -231,6 +233,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
   // 格局: the patterns the chart forms; hovering or picking one lights up its palaces on the board
   // (in place of a palace's 三方四正)
   const patterns = useMemo(() => findPatterns(chart), [chart])
+  const aiPrompt = useMemo(() => ziweiPrompt(chart, patterns), [chart, patterns])
   const patternPick = usePick<string>()
   const litPattern = patterns.find((pt) => pt.name === patternPick.active)
   const roles = useMemo(() => {
@@ -427,6 +430,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           ['ziwei-reading', t('解读')],
           ['ziwei-patterns', term('格局')],
           ['ziwei-fortune', term('运限')],
+          ['ziwei-ai', t('AI 解读')],
         ]}
       />
       <section className="card" id="ziwei-board">
@@ -568,6 +572,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
       <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />
 
       {fortunes}
+
+      <AiAnalysis id="ziwei-ai" prompt={aiPrompt} />
     </div>
   )
 }

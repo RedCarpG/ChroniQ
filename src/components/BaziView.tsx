@@ -3,6 +3,8 @@ import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
 import { SectionNav } from './SectionNav'
+import { AiAnalysis } from './AiAnalysis'
+import { baziPrompt } from '../lib/ai/prompts'
 import { useScrollHints } from './useScrollHints'
 import {
   ELEMENTS,
@@ -42,6 +44,7 @@ interface Props {
 
 export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
   const chart = useMemo(() => buildBazi(input, schools), [input, schools])
+  const aiPrompt = useMemo(() => baziPrompt(chart), [chart])
   const term = useTerm()
   const t = useT()
   const { language, birthSky } = useSettings()
@@ -201,6 +204,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           ['bazi-natal', term('原局')],
           ['bazi-reading', t('解读')],
           ['bazi-fortune', term('岁运')],
+          ['bazi-ai', t('AI 解读')],
         ]}
       />
 
@@ -448,6 +452,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </HighlightScope>
         </div>
       </section>
+
+      <AiAnalysis id="bazi-ai" prompt={aiPrompt} />
     </div>
   )
 }
