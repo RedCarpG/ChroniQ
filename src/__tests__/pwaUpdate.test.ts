@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { watchForUpdate } from '../pwa'
+import { isStaleBuild, watchForUpdate } from '../pwa'
 
 type Listener = () => void
 const worker = (state = 'installing') => {
@@ -55,5 +55,15 @@ describe('watchForUpdate', () => {
     reg.found(w)
     w.become('installed')
     expect(onReady).not.toHaveBeenCalled()
+  })
+})
+
+describe('isStaleBuild', () => {
+  it('knows a lazy part of an old build failing to load, as each browser words it', () => {
+    expect(isStaleBuild(new TypeError('Failed to fetch dynamically imported module: https://x/assets/index-B.js'))).toBe(true)
+    expect(isStaleBuild(new TypeError('Importing a module script failed.'))).toBe(true)
+    expect(isStaleBuild(new TypeError('error loading dynamically imported module: https://x/a.js'))).toBe(true)
+    expect(isStaleBuild(new Error('Network down'))).toBe(false)
+    expect(isStaleBuild('text')).toBe(false)
   })
 })

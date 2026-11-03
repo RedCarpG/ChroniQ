@@ -18,6 +18,16 @@ const subscribe = (l: () => void) => {
 
 /** A new build's worker, installed and waiting for the pages on the old one to close */
 let waiting: ServiceWorker | null = null
+/** This page's build has been replaced on the server: a part of it not yet loaded could not be */
+let stale = false
+
+/**
+ * Whether an error is a part of the page's build failing to load: the site has been deployed
+ * again since the page was opened, and each deploy replaces every file. Worded differently by
+ * Chrome, Safari and Firefox.
+ */
+export const isStaleBuild = (err: unknown) =>
+  err instanceof Error && /dynamically imported module|Importing a module script failed|module script/i.test(err.message)
 
 /**
  * Watches a registration for a new build. A worker installing with one already in charge is an
@@ -56,6 +66,12 @@ function registerWorker() {
 }
 
 export function setUpPwa() {
+  // A lazy part of the page failed to load (Vite says so for each): the page is from an older
+  // build, so the 有新版本 note offers a reload. The error still goes to whoever asked for the part.
+  window.addEventListener('vite:preloadError', () => {
+    stale = true
+    notify()
+  })
   if (import.meta.env.PROD && 'serviceWorker' in navigator) window.addEventListener('load', registerWorker)
   window.addEventListener('beforeinstallprompt', (e) => {
     // Keep the offer for the 安装 button instead of the browser's own banner.
@@ -85,10 +101,12 @@ function installState(): InstallState {
 }
 
 export const useInstallState = () => useSyncExternalStore(subscribe, installState)
-export const useUpdateReady = () => useSyncExternalStore(subscribe, () => waiting !== null)
+export const useUpdateReady = () => useSyncExternalStore(subscribe, () => waiting !== null || stale)
 /** Puts the waiting build in charge and reloads, once it is active (the change of controller may have reloaded already) */
 export function applyUpdate() {
   const worker = waiting
+  // With no worker waiting (the page simply outlived its build), a reload is the update
+  if (!worker) return location.reload()
   worker?.addEventListener('statechange', () => {
     if (worker.state === 'activated') location.reload()
   })

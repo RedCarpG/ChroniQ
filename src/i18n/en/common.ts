@@ -99,6 +99,7 @@ export const COMMON: Record<string, string> = {
   简体中文: 'Chinese (Simplified)',
   繁體中文: 'Chinese (Traditional)',
   有新版本: 'A new version is ready',
+  '网站已经更新，这个页面还是旧版本。请刷新页面后再试。': 'The site has been updated and this page is still the old version. Please reload it and try again.',
   生辰星空海报: 'Birth sky poster',
   生辰星空海报预览: 'Preview of the birth sky poster',
   出生时的星空: 'The sky when I was born',
