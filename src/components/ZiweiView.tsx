@@ -30,6 +30,7 @@ import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
 import { AiAnalysis } from './AiAnalysis'
+import { RightDrawer } from './RightDrawer'
 import { ziweiPrompt } from '../lib/ai/prompts'
 import { ZiweiReadingCard } from './ChartReadingCards'
 import { SanFangTip, StarTip } from './ZiweiTips'
@@ -430,7 +431,6 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
           ['ziwei-reading', t('解读')],
           ['ziwei-patterns', term('格局')],
           ['ziwei-fortune', term('运限')],
-          ['ziwei-ai', t('AI 解读')],
         ]}
       />
       <section className="card" id="ziwei-board">
@@ -573,7 +573,10 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
 
       {fortunes}
 
-      <AiAnalysis id="ziwei-ai" prompt={aiPrompt} />
+      {/* At the right edge, opened over the page when wanted */}
+      <RightDrawer label={t('AI 解读')}>
+        <AiAnalysis id="ziwei-ai" prompt={aiPrompt} />
+      </RightDrawer>
     </div>
   )
 }

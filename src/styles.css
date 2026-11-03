@@ -2742,3 +2742,30 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 @media (max-width: 860px) { .right-drawer { bottom: var(--foot-nav-h, 0px); } }
 @media (prefers-reduced-motion: reduce) { .right-drawer { transition: none; } }
 @media print { .right-drawer { display: none; } }
+
+/* ---------- 今日: tonight and what is coming, each in its own colours ---------- */
+/* A body's colour (--c) read against the page: pale planets stay visible on the light theme */
+.tonight-bodies li, .coming-events li { --tone: color-mix(in srgb, var(--c) 78%, var(--text)); }
+.tonight-bodies button, .coming-events button { display: flex; align-items: flex-start; gap: 12px; }
+.tonight-what { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.tonight-bodies strong, .coming-events strong { color: var(--tone); }
+.tonight-mark { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 2px; }
+.tonight-mark i { display: block; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent); }
+.tonight-mark .moon { width: 22px; height: 22px; }
+/* The night from sunset to sunrise, the stretch it is up, and its best moment */
+.tonight-night { position: relative; height: 5px; margin: 2px 0; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.tonight-up { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 30%, transparent), color-mix(in srgb, var(--c) 75%, transparent), color-mix(in srgb, var(--c) 30%, transparent)); }
+.tonight-best { position: absolute; top: -2px; width: 3px; height: 9px; margin-left: -1.5px; border-radius: 2px; background: var(--tone); }
+.coming-leaf {
+  flex: none; display: grid; justify-items: center; width: 42px; padding: 3px 0 4px; line-height: 1.1;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, var(--border)); border-top: 3px solid var(--c); border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 8%, transparent);
+}
+.coming-leaf small { font-size: 10px; color: var(--muted); }
+.coming-leaf b { font-family: var(--font-title); font-size: 19px; font-weight: 600; font-variant-numeric: lining-nums; color: var(--tone); }
+.coming-events strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.coming-glyph { font-size: 14px; color: var(--c); text-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent); }
+.coming-away {
+  margin-left: auto; padding: 1px 7px; font-family: var(--font-ui, inherit); font-size: 11px; font-weight: 500; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+}

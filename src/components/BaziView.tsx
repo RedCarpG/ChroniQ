@@ -4,6 +4,7 @@ import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
 import { SectionNav } from './SectionNav'
 import { AiAnalysis } from './AiAnalysis'
+import { RightDrawer } from './RightDrawer'
 import { baziPrompt } from '../lib/ai/prompts'
 import { useScrollHints } from './useScrollHints'
 import {
@@ -204,7 +205,6 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           ['bazi-natal', term('原局')],
           ['bazi-reading', t('解读')],
           ['bazi-fortune', term('岁运')],
-          ['bazi-ai', t('AI 解读')],
         ]}
       />
 
@@ -453,7 +453,10 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
         </div>
       </section>
 
-      <AiAnalysis id="bazi-ai" prompt={aiPrompt} />
+      {/* At the right edge, opened over the page when wanted */}
+      <RightDrawer label={t('AI 解读')}>
+        <AiAnalysis id="bazi-ai" prompt={aiPrompt} />
+      </RightDrawer>
     </div>
   )
 }

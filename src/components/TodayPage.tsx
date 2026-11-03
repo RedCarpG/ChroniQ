@@ -10,6 +10,9 @@ import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { computeTonight, type TonightBody } from '../lib/tonight'
 import { useSettings, useT, useTerm } from '../settingsContext'
 import { MoonGlyph } from './MoonGlyph'
+import { BODY_COLOUR } from './bodyColours'
+import type { SkyEvent } from '../lib/skyEvents'
+import type { CSSProperties } from 'react'
 import { PlacePicker } from './PlacePicker'
 import { dayKey, skyMomentOf, useSkyEventText, useSkyEvents } from './SkyForecast'
 import type { SkyMoment } from './SkyView'
@@ -18,6 +21,17 @@ import { useLocate } from './useLocate'
 import { AiAnalysis } from './AiAnalysis'
 import { RightDrawer } from './RightDrawer'
 import { dayPrompt } from '../lib/ai/prompts'
+
+/** Each kind of event's mark and colour, so the list can be told apart at a glance */
+const EVENT_LOOK: Record<SkyEvent['kind'], { glyph: string; colour: (e: SkyEvent) => string }> = {
+  solarEclipse: { glyph: '◐', colour: () => BODY_COLOUR.sun },
+  lunarEclipse: { glyph: '◑', colour: () => '#d0704a' },
+  supermoon: { glyph: '◯', colour: () => BODY_COLOUR.moon },
+  meteors: { glyph: '☄', colour: () => '#9cc0ff' },
+  opposition: { glyph: '☍', colour: (e) => ('body' in e ? BODY_COLOUR[e.body.toLowerCase()] : BODY_COLOUR.mars) },
+  elongation: { glyph: '∠', colour: (e) => ('body' in e ? BODY_COLOUR[e.body.toLowerCase()] : BODY_COLOUR.venus) },
+  conjunction: { glyph: '☌', colour: (e) => ('body' in e ? BODY_COLOUR[e.body.toLowerCase()] : BODY_COLOUR.jupiter) },
+}
 
 const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' }
 
@@ -69,10 +83,6 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
   const skyText = useSkyEventText(place)
   const nowMs = now.getTime()
   const coming = sky.all.filter((e) => e.time >= nowMs - 6 * 3600_000).slice(0, 3)
-  const dateText = (date: string) => {
-    const [y, m, d] = date.split('-').map(Number)
-    return en ? enDate(y, m, d, { day: 'numeric', month: 'short' }) : `${m}月${d}日`
-  }
 
   // 命盘: the chart chosen in the drawer
   const chartDays = useChartDays()
@@ -236,19 +246,33 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
         {tonight ? (
           <>
             <p className="muted today-note">{t('日落 {sunset} · 日出 {sunrise}', { sunset: time(tonight.sunset), sunrise: time(tonight.sunrise) })}</p>
-            <ul className="today-bodies">
-              {[...(tonight.moon ? [tonight.moon] : []), ...tonight.planets].map((b) => (
-                <li key={b.key}>
-                  <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky({ time: b.best, chosen: b.key })}>
-                    <strong>{t(BODY_NAME[b.key])}</strong>
-                    <span className="sky-when">{range(b)}</span>
-                    <span className="muted">
-                      {where(b)}
-                      {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
-                    </span>
-                  </button>
-                </li>
-              ))}
+            <ul className="today-bodies tonight-bodies">
+              {[...(tonight.moon ? [tonight.moon] : []), ...tonight.planets].map((b) => {
+                // Where in the night it is up, as a bar from sunset to sunrise, and its best moment on it
+                const night = tonight.sunrise - tonight.sunset
+                const at = (ms: number) => `${(((ms - tonight.sunset) / night) * 100).toFixed(1)}%`
+                return (
+                  <li key={b.key} style={{ '--c': BODY_COLOUR[b.key] } as CSSProperties}>
+                    <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky({ time: b.best, chosen: b.key })}>
+                      <span className="tonight-mark" aria-hidden="true">
+                        {b.key === 'moon' ? <MoonGlyph moon={moon} /> : <i style={{ width: `${Math.max(7, 13 - b.mag * 1.4)}px`, height: `${Math.max(7, 13 - b.mag * 1.4)}px` }} />}
+                      </span>
+                      <span className="tonight-what">
+                        <strong>{t(BODY_NAME[b.key])}</strong>
+                        <span className="sky-when">{range(b)}</span>
+                        <span className="tonight-night" aria-hidden="true">
+                          <span className="tonight-up" style={{ left: at(b.from), right: `calc(100% - ${at(b.to)})` }} />
+                          <span className="tonight-best" style={{ left: at(b.best) }} />
+                        </span>
+                        <span className="muted">
+                          {where(b)}
+                          {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
               {!tonight.moon && tonight.planets.length === 0 && <li className="muted">{t('今晚这里看不到月亮和行星。')}</li>}
             </ul>
           </>
@@ -264,18 +288,33 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
             {t('天象预告计算失败，请重试。')} <button onClick={sky.retry}>{t('重试')}</button>
           </p>
         )}
-        <ul className="today-bodies">
-          {coming.map((e) => (
-            <li key={e.id}>
-              <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky(skyMomentOf(e))}>
-                <strong>{skyText.title(e)}</strong>
-                <span className="sky-when">
-                  {dateText(e.date)} · {skyText.when(e)}
-                </span>
-                <span className="muted">{skyText.note(e)}</span>
-              </button>
-            </li>
-          ))}
+        <ul className="today-bodies coming-events">
+          {coming.map((e) => {
+            const [, m, d] = e.date.split('-').map(Number)
+            const away = Math.round((Date.parse(`${e.date}T00:00:00Z`) - Date.parse(`${dayKey(today)}T00:00:00Z`)) / 86400_000)
+            return (
+              <li key={e.id} style={{ '--c': EVENT_LOOK[e.kind].colour(e) } as CSSProperties}>
+                <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky(skyMomentOf(e))}>
+                  {/* A calendar leaf: the day large, the month over it */}
+                  <span className="coming-leaf" aria-hidden="true">
+                    <small>{en ? enDate(today.getYear(), m, d, { month: 'short' }) : `${m}月`}</small>
+                    <b>{d}</b>
+                  </span>
+                  <span className="tonight-what">
+                    <strong>
+                      <span className="coming-glyph" aria-hidden="true">
+                        {EVENT_LOOK[e.kind].glyph}
+                      </span>
+                      {skyText.title(e)}
+                      <span className="coming-away">{away <= 0 ? t('今天') : away === 1 ? t('明天') : t('{n} 天后', { n: away })}</span>
+                    </strong>
+                    <span className="sky-when">{skyText.when(e)}</span>
+                    <span className="muted">{skyText.note(e)}</span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
           {sky.loading && coming.length === 0 && <li className="muted">{t('计算中…')}</li>}
           {!sky.loading && !sky.failed && coming.length === 0 && <li className="muted">{t('未来一年此地没有可见的天象')}</li>}
         </ul>

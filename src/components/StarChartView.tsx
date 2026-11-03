@@ -42,6 +42,7 @@ import { smoothUpdate } from './smoothUpdate'
 import { SchoolSettingsPanel } from './Schools'
 import { SectionNav } from './SectionNav'
 import { AiAnalysis } from './AiAnalysis'
+import { RightDrawer } from './RightDrawer'
 import { starPrompt } from '../lib/ai/prompts'
 import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
@@ -151,7 +152,6 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
           ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
           ['star-houses', t('宫位')],
-          ['star-ai', t('AI 解读')],
         ]}
       />
 
@@ -284,7 +284,10 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         </p>
       </section>
 
-      <AiAnalysis id="star-ai" prompt={aiPrompt} />
+      {/* At the right edge, opened over the page when wanted */}
+      <RightDrawer label={t('AI 解读')}>
+        <AiAnalysis id="star-ai" prompt={aiPrompt} />
+      </RightDrawer>
     </div>
   )
 }
