@@ -11,7 +11,7 @@ import type { Plugin } from 'vite'
  *  page's 2K colour map, for a large Moon (offline, the page makes do with the 1K map), and the slices
  *  of the titles' 思源宋体, of which a page needs a few (offline, a slice not yet fetched falls back to
  *  a system serif) */
-const ON_DEMAND = [/^assets\/lroc_color_2k-/, /^assets\/noto-serif-sc-/]
+const ON_DEMAND = [/^assets\/lroc_color_2k-/, /^assets\/noto-serif-sc-/, /^assets\/cn2t-/]
 
 export function serviceWorker(): Plugin {
   return {

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CalendarView } from './components/CalendarView'
 import { AboutBadges } from './components/AboutBadges'
 import { Logo } from './components/Logo'
@@ -19,6 +19,8 @@ import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/sta
 import { DEFAULT_PLACE } from './lib/place'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
+import { hantReady, loadHant } from './lib/hant'
+import { startHantDom } from './hantDom'
 import { translate, type Vars } from './i18n'
 import { play, setSoundEnabled, startClickSounds } from './sound'
 
@@ -141,8 +143,27 @@ export function App() {
   const [creditBefore, creditAfter] = t('历法数据由 {lib} 提供 · 仅供参考').split('{lib}')
   useEffect(() => applyTheme(settings.theme), [settings.theme])
   useEffect(() => {
-    document.documentElement.lang = settings.language === 'en' ? 'en' : 'zh-CN'
+    document.documentElement.lang = settings.language === 'en' ? 'en' : settings.language === 'zh-Hant' ? 'zh-Hant' : 'zh-CN'
   }, [settings.language])
+  // 繁體中文: the page converted as it is shown, once OpenCC is in (the loading screen up till then)
+  useLayoutEffect(() => {
+    if (settings.language !== 'zh-Hant') return
+    let stop: (() => void) | null = null
+    let cancelled = false
+    const release = hantReady() ? null : holdSplash()
+    loadHant()
+      .then(() => {
+        if (!cancelled) stop = startHantDom()
+      })
+      .catch(() => {})
+      .finally(() => release?.())
+    return () => {
+      cancelled = true
+      stop?.()
+    }
+  }, [settings.language])
+  // In Chinese the proper nouns follow the language; the 专有名词 choice is for English
+  const shown: Settings = settings.language === 'en' ? settings : { ...settings, script: settings.language === 'zh-Hant' ? 'trad' : 'simp' }
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
   // The interface sounds: one listener for the page's clicks, and a chime to say they are back on
   useEffect(() => startClickSounds(), [])
@@ -220,7 +241,10 @@ export function App() {
   }, [])
 
   return (
-    <SettingsContext.Provider value={settings}>
+    <SettingsContext.Provider value={shown}>
+      {/* Leaving 繁體 builds the page afresh: its text was converted in place, and unchanged text is
+          not rendered again */}
+      <Fragment key={settings.language === 'zh-Hant' ? 'hant' : 'source'}>
       {updateReady && (
         <div className="update-bar" role="status">
           {t('有新版本')}
@@ -399,6 +423,7 @@ export function App() {
         <SavedChartsDrawer input={baziInput} onLoad={loadChart} calendar={tab === 'calendar' || tab === 'today'} charts={tab !== 'sky'} />
       )}
       <SplashOverlay />
+      </Fragment>
     </SettingsContext.Provider>
   )
 }

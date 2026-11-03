@@ -30,7 +30,7 @@ ChroniQ is a static web app for mobile and desktop browsers, combining calendar 
 | F-09 | Western astrology | Natal charts, transits, progressions, synastry and composite charts; selectable house systems, nodes and related progression methods |
 | F-14 | Life timeline | The current chart's 大运, 大限, Saturn returns and oppositions, Uranus opposition, Jupiter returns and 本命年 from birth to 90 years on; years where turning points in two or more systems fall within a year are marked; any year can be read |
 | F-10 | Chart management | Local save, load and delete; saving under an existing name updates that chart; birth-data share links, PNG export and printing; a birth sky poster (made on the device; the time and place of birth can be hidden) |
-| F-11 | Interface | Chinese/English text, traditional/simplified Chinese terminology, light/dark themes, interface scale, sound and responsive layouts |
+| F-11 | Interface | Simplified Chinese, Traditional Chinese (converted word by word with OpenCC, its dictionaries loaded on demand) and English, with terms in the interface's own script in Chinese and a choice of script in English, light/dark themes, interface scale, sound and responsive layouts |
 
 ## 3. Input and time contracts
 

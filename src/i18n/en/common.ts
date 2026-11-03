@@ -96,6 +96,8 @@ export const COMMON: Record<string, string> = {
   导出命盘: 'Export chart',
   '导出命盘：保存为图片或打印': 'Export chart: save as an image or print',
   保存为图片: 'Save as image',
+  简体中文: 'Chinese (Simplified)',
+  繁體中文: 'Chinese (Traditional)',
   有新版本: 'A new version is ready',
   生辰星空海报: 'Birth sky poster',
   生辰星空海报预览: 'Preview of the birth sky poster',

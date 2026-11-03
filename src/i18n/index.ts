@@ -8,9 +8,10 @@
 // - Fill slots with t('{n} 颗亮星', { n }): words around a number or name move
 //   with the language instead of being glued together in JSX.
 // - Text with no entry yet falls back to the Chinese.
+// - 繁體中文 is the 简体 text, converted on the page as it is shown (src/hantDom.ts).
 import { EN } from './en'
 
-export type Lang = 'zh' | 'en'
+export type Lang = 'zh' | 'zh-Hant' | 'en'
 export type Vars = Record<string, string | number>
 
 export function translate(lang: Lang, text: string, vars?: Vars): string {

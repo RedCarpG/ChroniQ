@@ -1,10 +1,10 @@
 // App-wide display settings, kept per viewer in localStorage.
 
 export interface Settings {
-  /** 界面语言 (proper nouns stay Chinese) */
-  language: 'zh' | 'en'
+  /** 界面语言: 简体, 繁體 or English (proper nouns stay Chinese) */
+  language: 'zh' | 'zh-Hant' | 'en'
   theme: 'system' | 'light' | 'dark'
-  /** 专有名词字形 */
+  /** 专有名词字形, in English only: in Chinese they follow the language */
   script: 'trad' | 'simp'
   weekStart: 'mon' | 'sun'
   /** 日历格子里显示日干支 */
@@ -31,7 +31,8 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
   language: {
     title: '语言',
     options: [
-      { value: 'zh', label: '中文' },
+      { value: 'zh', label: '简体中文' },
+      { value: 'zh-Hant', label: '繁體中文' },
       { value: 'en', label: 'English' },
     ],
   },
