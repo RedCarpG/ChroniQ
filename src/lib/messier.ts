@@ -21,6 +21,8 @@ export interface Messier {
   /** Its common name: Chinese, English (either may be empty) */
   zh: string
   en: string
+  /** Which way its long axis lies: degrees from north through east, if known */
+  pa: number | null
 }
 
 /** Common Chinese names */
@@ -61,7 +63,7 @@ const ZH: Record<number, string> = {
   110: '仙女座伴星系 M110',
 }
 
-export const MESSIER: Messier[] = MESSIER_ROWS.map(([n, ra, dec, kind, mag, a, b, desig, en]) => ({
+export const MESSIER: Messier[] = MESSIER_ROWS.map(([n, ra, dec, kind, mag, a, b, desig, en, pa]) => ({
   n,
   ra,
   dec,
@@ -71,6 +73,7 @@ export const MESSIER: Messier[] = MESSIER_ROWS.map(([n, ra, dec, kind, mag, a, b
   desig,
   zh: ZH[n] ?? '',
   en,
+  pa,
 }))
 
 /** What each kind is called */
@@ -166,6 +169,8 @@ export interface MessierView {
   m: Messier
   az: number
   alt: number
+  /** A point half a degree along its long axis, to turn its mark that way on the map */
+  axis: { az: number; alt: number } | null
 }
 
 /** Where each object stands in the sky at a moment, on the half of the sky shown */
@@ -174,7 +179,16 @@ export function messierAt(utc: Date, latitude: number, longitude: number, below 
   const out: MessierView[] = []
   for (const m of MESSIER) {
     const p = toHorizon(m.ra, m.dec)
-    if (p.alt < 0 === below) out.push({ m, ...p })
+    if (p.alt < 0 !== below) continue
+    let axis = null
+    if (m.pa !== null) {
+      const pa = (m.pa * Math.PI) / 180
+      axis = toHorizon(
+        m.ra + (0.5 * Math.sin(pa)) / Math.max(0.05, Math.cos((m.dec * Math.PI) / 180)),
+        m.dec + 0.5 * Math.cos(pa),
+      )
+    }
+    out.push({ m, ...p, axis })
   }
   return out
 }
