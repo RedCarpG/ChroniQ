@@ -1,10 +1,14 @@
 {
   "name": "chroniq-core",
-  "version": "0.1.0",
-  "description": "ChroniQ's reckoning for other programs: 黄历, 八字, 紫微 and the sky's events, with plain-text summaries for AI",
+  "version": "0.2.0",
+  "description": "ChroniQ's reckoning for other programs: 黄历, 八字, 紫微, 星盘 and the sky's events, with plain-text summaries for AI",
   "license": "UNLICENSED",
   "author": "RedCarpG",
-  "repository": { "type": "git", "url": "https://github.com/RedCarpG/ChroniQ", "directory": "core" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RedCarpG/ChroniQ",
+    "directory": "core"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/types/core/index.d.ts",
@@ -14,8 +18,13 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "astronomy-engine": "^2.1.19",
     "iztro": "^2.6.3",

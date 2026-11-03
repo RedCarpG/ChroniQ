@@ -4,7 +4,9 @@
 
 import { baziReading } from '../baziReading'
 import type { BaziChart } from '../bazi'
-import { almanacText, baziText, ziweiText } from '../chartText'
+import type { Overlay, StarChart } from '../astrology'
+import { almanacText, baziText, starChartText, ziweiText } from '../chartText'
+import type { StarSettings } from '../starPrefs'
 import type { ZiweiChart } from '../ziwei'
 import type { ZiweiPattern } from '../ziweiPatterns'
 
@@ -12,9 +14,9 @@ export type AiLang = 'zh' | 'en'
 
 export function systemPrompt(lang: AiLang): string {
   return [
-    '你是一位精通子平八字、紫微斗数和传统黄历的命理研究者，替使用 ChroniQ（星曆）的人解读他们排好的盘。',
-    '盘已经由程序按所选流派排好，数据以给你的为准：不要自己重新排盘，不要改动干支、星曜、四化、大运的年份，引用时照抄。',
-    '解读要具体，指出依据（哪一柱、哪个十神、哪颗星在哪一宫、哪个格局），把术语用一句话讲明白；好的和需要留意的都说，语气温和、给出能做的建议。',
+    '你是一位精通子平八字、紫微斗数、传统黄历和西洋占星的命理研究者，替使用 ChroniQ（星曆）的人解读他们排好的盘。',
+    '盘已经由程序按所选流派排好，数据以给你的为准：不要自己重新排盘，不要改动干支、星曜、四化、大运的年份、行星的星座度数和宫位，引用时照抄。',
+    '解读要具体，指出依据（哪一柱、哪个十神、哪颗星在哪一宫、哪个格局或相位），把术语用一句话讲明白；好的和需要留意的都说，语气温和、给出能做的建议。',
     '不渲染宿命和灾祸，不预言具体的生死、疾病、官司；健康和钱财的事只说倾向，提醒以现实为准。命理是传统文化的参考，不是定论。',
     '用 Markdown：小标题（##）分段，要点用短列表，不要表格。',
     lang === 'en'
@@ -75,4 +77,15 @@ export function dayPrompt(
 /** Everything in one piece, to paste into a chat with an AI that has no API here (a subscription) */
 export function promptForPasting(system: string, first: string): string {
   return `${system}\n\n---\n\n${first}`
+}
+
+/** The first message for a 星盘, with the 行运, 推运 or 合盘 shown over it if any */
+export function starPrompt(chart: StarChart, settings: StarSettings, overlay?: Overlay | null): string {
+  const ask = !overlay
+    ? '请解读这张本命盘：先说太阳、月亮、上升三要素和整体的元素、模式分布；再看行星落的星座和宫位、最紧的几个相位，' +
+      '分性格、事业、感情、人际、成长课题几方面；有逆行、合相集中的宫位、四宫或空宫的特点也说一说。'
+    : overlay.kind === 'synastry'
+      ? '请解读这两个人的合盘：对方的行星落在这张盘的哪些宫、形成的主要相位，说两人在哪些方面合得来、哪些地方容易摩擦，给相处的建议。'
+      : `请结合本命盘解读这段${overlay.kind === 'transit' ? '行运' : '推运'}：最紧的几个相位和落宫说明这段时间的主题是什么，哪些方面顺、哪些要留意，给几条建议。本命盘只简要带过。`
+  return ['这是一张西洋占星的星盘（回归黄道）：', '', starChartText(chart, settings, overlay), '', ask].join('\n')
 }

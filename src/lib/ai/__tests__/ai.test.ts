@@ -4,7 +4,10 @@ import { buildBazi } from '../../bazi'
 import { buildZiwei } from '../../ziwei'
 import { DEFAULT_ZIWEI_SCHOOLS } from '../../ziweiSchools'
 import { findPatterns } from '../../ziweiPatterns'
-import { baziPrompt, dayPrompt, promptForPasting, systemPrompt, ziweiPrompt } from '../prompts'
+import { baziPrompt, dayPrompt, promptForPasting, starPrompt, systemPrompt, ziweiPrompt } from '../prompts'
+import { buildStarChart, synastry } from '../../astrology'
+import { DEFAULT_PLACE } from '../../place'
+import { DEFAULT_STAR_SETTINGS } from '../../starPrefs'
 import { aiLabel, aiReady, DEFAULT_AI, loadAi, saveAi } from '../settings'
 import { AiError, readChatStream, streamAnswer } from '../stream'
 
@@ -101,6 +104,9 @@ describe('AI prompts', () => {
     expect(bazi).toContain('2026 年流年')
     const chart = buildZiwei(INPUT, DEFAULT_ZIWEI_SCHOOLS)
     expect(ziweiPrompt(chart, findPatterns(chart), 2026)).toMatch(/命宫（戊子）/)
+    const star = buildStarChart(INPUT, DEFAULT_PLACE, DEFAULT_STAR_SETTINGS)
+    expect(starPrompt(star, DEFAULT_STAR_SETTINGS)).toContain('请解读这张本命盘')
+    expect(starPrompt(star, DEFAULT_STAR_SETTINGS, synastry(star, star))).toContain('合盘：对方的行星')
   })
 
   it('read a day alone, or with a chart and what ChroniQ found between them', () => {
