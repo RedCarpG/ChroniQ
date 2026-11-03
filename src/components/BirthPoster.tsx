@@ -6,7 +6,7 @@ import { enDate } from '../lib/calendar'
 import { DEFAULT_PLACE } from '../lib/place'
 import { moonPhaseName } from '../lib/sky'
 import { toUtc } from '../lib/timeZone'
-import { useSettings, useT, useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm, useZhOut } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -20,6 +20,8 @@ const degrees = (v: number, pos: string, neg: string) => `${Math.abs(v).toFixed(
 export default function BirthPoster({ input, onClose }: { input: BaziInput; onClose: () => void }) {
   const t = useT()
   const term = useTerm()
+  // Drawn on a canvas, out of the page converter's reach
+  const zh = useZhOut()
   const { language, script } = useSettings()
   const en = language === 'en'
   const place = input.place ?? DEFAULT_PLACE
@@ -44,7 +46,7 @@ export default function BirthPoster({ input, onClose }: { input: BaziInput; onCl
     const { year, month, day, hour, minute } = input
     const date = en ? enDate(year, month, day, { day: 'numeric', month: 'long', year: 'numeric' }) : `${year}年${month}月${day}日`
     const phase = scene.moonPhase === undefined ? '' : t('{phase} · 照亮 {pct}%', { phase: t(moonPhaseName(scene.moonPhase)), pct: Math.round(scene.moonLit * 100) })
-    return {
+    const words: PosterText = {
       title: title.trim() || t('出生时的星空'),
       lines: [
         withTime ? `${date} ${pad(hour)}:${pad(minute)}` : date,
@@ -56,7 +58,16 @@ export default function BirthPoster({ input, onClose }: { input: BaziInput; onCl
       bodyName: (b) => t(b.name),
       figureName: (c) => (figures === 'west' && c.rank > 2 ? '' : figures === 'west' && en ? c.en : script === 'trad' ? c.trad : c.name),
     }
-  }, [input, title, withTime, withPlace, figures, scene, en, script, place, language])
+    return {
+      ...words,
+      title: zh(words.title),
+      lines: words.lines.map(zh),
+      note: words.note && zh(words.note),
+      compass: words.compass.map(zh) as PosterText['compass'],
+      bodyName: (b) => zh(words.bodyName(b)),
+      figureName: (c) => zh(words.figureName(c)),
+    }
+  }, [input, title, withTime, withPlace, figures, scene, en, script, place, language, zh])
 
   // Drawn once its fonts are in, and again on each change
   useEffect(() => {

@@ -34,10 +34,16 @@ export function SettingsMenu({ settings, onChange }: { settings: Settings; onCha
       {open && (
         <div className="settings-panel" role="dialog" aria-label={t('设置')}>
           {/* What the calendar shows and 每周起始 are chosen on the calendar itself (its 显示 tab) */}
-          {(Object.keys(SETTING_OPTIONS) as (keyof Settings)[]).filter((key) => !CALENDAR_ONLY.includes(key)).map((key) => (
+          {(Object.keys(SETTING_OPTIONS) as (keyof Settings)[]).filter((key) => !CALENDAR_ONLY.includes(key) && (key !== 'script' || settings.language === 'en')).map((key) => (
             <div key={key} className="setting-row">
               <span className="setting-title">{t(SETTING_OPTIONS[key].title)}</span>
-              <div className="seg small" role="group" aria-label={t(SETTING_OPTIONS[key].title)}>
+              <div
+                className="seg small"
+                role="group"
+                aria-label={t(SETTING_OPTIONS[key].title)}
+                // The languages are named in their own script, which 繁體中文 would turn
+                data-no-hant={key === 'language' ? '' : undefined}
+              >
                 {SETTING_OPTIONS[key].options.map((o) => (
                   <button
                     key={o.value}

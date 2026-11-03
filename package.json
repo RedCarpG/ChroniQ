@@ -24,6 +24,7 @@
     "astronomy-engine": "^2.1.19",
     "iztro": "^2.6.3",
     "modern-screenshot": "^4.7.0",
+    "opencc-js": "^1.4.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tyme4ts": "^1.5.3"
@@ -36,7 +37,6 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
     "happy-dom": "^21.0.4",
-    "opencc-js": "^1.4.2",
     "typescript": "^5.9.0",
     "vite": "^7.1.0",
     "vitest": "^3.2.7"

@@ -10,7 +10,7 @@ import { formatAzimuth } from '../lib/sky'
 import type { SkyEvent } from '../lib/skyEvents'
 import { peekSkyEvents, skyEventsAsync } from '../lib/skyEventsClient'
 import type { StarPlace } from '../lib/starPrefs'
-import { useSettings, useT, useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm, useZhOut } from '../settingsContext'
 import { PlacePicker } from './PlacePicker'
 import type { SkyMoment } from './SkyView'
 import { useDismiss } from './useDismiss'
@@ -218,6 +218,7 @@ export function SkyForecast({
   const { language } = useSettings()
   const en = language === 'en'
   const text = useSkyEventText(place)
+  const zh = useZhOut()
   const [open, setOpen] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
   const close = useMemo(() => () => setOpen(false), [])
@@ -297,7 +298,9 @@ export function SkyForecast({
         }
       }
       if (withChart && canChart) entries.push(...(await entriesOfChart(today, end)))
-      downloadIcs('chroniq.ics', buildIcs(t('星曆 ChroniQ'), entries))
+      // A file for another program, out of the page converter's reach
+      const words = (e: IcsEntry): IcsEntry => ({ ...e, title: zh(e.title), description: e.description && zh(e.description), location: e.location && zh(e.location) })
+      downloadIcs('chroniq.ics', buildIcs(zh(t('星曆 ChroniQ')), entries.map(words)))
       setSaving('idle')
     } catch {
       setSaving('failed')
