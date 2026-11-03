@@ -1,4 +1,4 @@
-// chroniq-core in Node (no DOM): what another program, such as Cirra's sidecar, gets from it
+// chroniq-core in Node (no DOM): what another program gets from it
 import { describe, expect, it } from 'vitest'
 import {
   almanac,
