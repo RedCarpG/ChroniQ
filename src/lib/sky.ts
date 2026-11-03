@@ -345,7 +345,13 @@ export function starPlace(hip: number) {
  * before it and sets after, one down set before it and rises after. A star always up at this
  * latitude, or never, says so instead; a body that does not rise or set within the day has null.
  */
-export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, latitude: number, longitude: number, up: boolean) {
+export function riseSet(
+  what: { body: BodyKey } | { hip: number } | { ra: number; dec: number },
+  utc: Date,
+  latitude: number,
+  longitude: number,
+  up: boolean,
+) {
   const observer = new A.Observer(latitude, longitude, 0)
   let body: A.Body
   if ('body' in what) {
@@ -353,7 +359,7 @@ export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, la
     if (!found) return null
     body = found[1]
   } else {
-    const at = starPlace(what.hip)
+    const at = 'hip' in what ? starPlace(what.hip) : what
     if (!at) return null
     // Circumpolar: always above the horizon, or never
     if (latitude >= 0 ? at.dec > 90 - latitude : at.dec < -90 - latitude) return { always: 'up' as const }
@@ -365,6 +371,41 @@ export function riseSet(what: { body: BodyKey } | { hip: number }, utc: Date, la
   const rise = A.SearchRiseSet(body, observer, +1, start, up ? -1 : 1)?.date ?? null
   const set = A.SearchRiseSet(body, observer, -1, start, up ? 1 : -1)?.date ?? null
   return { rise, set }
+}
+
+/** The obliquity of the ecliptic at J2000, degrees */
+const OBLIQUITY = 23.4393
+
+/**
+ * The equatorial grid on the sky at a moment and place: circles of declination every 30° (the
+ * celestial equator among them), hour circles every 2 hours of right ascension, each with where
+ * its hour is written on the equator; and the ecliptic, the Sun's yearly way, with a mark every 30°
+ * of longitude (where each zodiac sign begins).
+ */
+export function gridAt(utc: Date, latitude: number, longitude: number) {
+  const toHorizon = horizonOf(utc, latitude, longitude)
+  const decs = [-60, -30, 0, 30, 60].map((dec) => {
+    const pts: { az: number; alt: number }[] = []
+    for (let ra = 0; ra <= 360; ra += 3) pts.push(toHorizon(ra, dec))
+    return { dec, pts }
+  })
+  const hours = Array.from({ length: 12 }, (_, i) => {
+    const ra = i * 30
+    const pts: { az: number; alt: number }[] = []
+    for (let dec = -84; dec <= 84; dec += 3) pts.push(toHorizon(ra, dec))
+    return { hour: i * 2, pts, label: toHorizon(ra, 0) }
+  })
+  const e = OBLIQUITY * RAD
+  const onEcliptic = (lon: number) => {
+    const l = lon * RAD
+    const ra = (Math.atan2(Math.sin(l) * Math.cos(e), Math.cos(l)) / RAD + 360) % 360
+    const dec = Math.asin(Math.sin(e) * Math.sin(l)) / RAD
+    return toHorizon(ra, dec)
+  }
+  const ecliptic: { az: number; alt: number }[] = []
+  for (let lon = 0; lon <= 360; lon += 3) ecliptic.push(onEcliptic(lon))
+  const signs = Array.from({ length: 12 }, (_, i) => ({ lon: i * 30, ...onEcliptic(i * 30) }))
+  return { decs, hours, ecliptic, signs }
 }
 
 /** How far a body is from the Earth's centre at a moment, in astronomical units */
@@ -747,4 +788,108 @@ const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 /** 方位 in words and degrees, e.g. 东南 135° (or SE 135° in English) */
 export function formatAzimuth(az: number, lang: 'zh' | 'en' = 'zh'): string {
   return `${(lang === 'en' ? COMPASS_EN : COMPASS)[Math.round(az / 45) % 8]} ${Math.round(az)}°`
+}
+
+/* ---------- How the bodies look: their faces, for drawing them close up ---------- */
+
+/** North poles (J2000 RA, Dec, degrees; IAU), to set each face upright as it stands in the sky */
+const POLES: Partial<Record<BodyKey, [number, number]>> = {
+  sun: [286.13, 63.87],
+  moon: [269.99, 66.54],
+  mercury: [281.01, 61.41],
+  venus: [272.76, 67.16],
+  mars: [317.68, 52.89],
+  jupiter: [268.06, 64.5],
+  saturn: [40.59, 83.54],
+  uranus: [257.31, -15.18],
+  neptune: [299.36, 43.46],
+}
+/** Jupiter's equatorial radius, in AU */
+const JUPITER_RADIUS_AU = 71492 / 149_597_870.7
+
+export interface BodyFace {
+  /** Lit fraction of the disc, 0–1, as seen from here */
+  lit: number
+  /** A point a little way from the body towards its north pole: where its north is on the map */
+  north: { az: number; alt: number }
+  /** Saturn's rings: their tilt towards us, degrees (positive: their north face) */
+  ringTilt?: number
+  /** Jupiter's four great moons: a point a little way from Jupiter in the direction of each, how far
+   *  it is across the sky in Jupiter radii, and whether it is in front of the planet */
+  moons?: { name: string; toward: { az: number; alt: number }; rj: number; front: boolean }[]
+  /** For drawing it as a globe: its own axes (x to its prime meridian, z its north pole) and the
+   *  direction of the Sun from it, in the viewer's frame (x right, y towards the zenith, z towards
+   *  the viewer); the rows of `body` are its axes */
+  frame: { body: [V3, V3, V3]; sun: V3 }
+}
+type V3 = [number, number, number]
+const dot3 = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+const cross3 = (a: number[], b: number[]): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+const unit3 = (a: number[]): V3 => {
+  const n = Math.hypot(a[0], a[1], a[2]) || 1
+  return [a[0] / n, a[1] / n, a[2] / n]
+}
+
+/** For each body: its phase, which way its north lies on the sky, and Saturn's rings and Jupiter's moons */
+export function bodyFaces(utc: Date, latitude: number, longitude: number): Partial<Record<BodyKey, BodyFace>> {
+  const rotation = rotationFor(utc, latitude, longitude)
+  const toHorizon = toHorizonOf(rotation)
+  const time = rotation.time
+  /** A point a small step (about 0.6°) from the direction u towards the direction d, on the sky */
+  const stepToward = (u: number[], d: number[]) => {
+    const along = d[0] * u[0] + d[1] * u[1] + d[2] * u[2]
+    const p = [d[0] - along * u[0], d[1] - along * u[1], d[2] - along * u[2]]
+    const n = Math.hypot(p[0], p[1], p[2]) || 1
+    return toHorizon(u[0] + (0.01 * p[0]) / n, u[1] + (0.01 * p[1]) / n, u[2] + (0.01 * p[2]) / n)
+  }
+  const out: Partial<Record<BodyKey, BodyFace>> = {}
+  // The zenith, in J2000 (the third column of the rotation to the horizon)
+  const r = rotation.rot
+  const zenith = [r[0][2], r[1][2], r[2][2]]
+  const sunAt = A.GeoVector(A.Body.Sun, time, true)
+  for (const [key, body] of SKY_BODIES) {
+    const g = A.GeoVector(body, time, true)
+    const dist = Math.hypot(g.x, g.y, g.z)
+    const u = [g.x / dist, g.y / dist, g.z / dist]
+    const [ra, dec] = POLES[key] ?? [0, 90]
+    const pole = [Math.cos(dec * RAD) * Math.cos(ra * RAD), Math.cos(dec * RAD) * Math.sin(ra * RAD), Math.sin(dec * RAD)]
+    const info = key === 'sun' ? null : A.Illumination(body, time)
+    // The viewer's frame at the body: z back towards the viewer, y up towards the zenith
+    const zs: V3 = [-u[0], -u[1], -u[2]]
+    const ys = unit3(zenith.map((v, i) => v - dot3(zenith, u) * u[i]))
+    const xs = cross3(ys, zs)
+    const inView = (a: number[]): V3 => [dot3(a, xs), dot3(a, ys), dot3(a, zs)]
+    // The body's own axes: its pole, and its prime meridian turned by its spin from the node of its equator
+    const axis = A.RotationAxis(body, time)
+    const zb = unit3([axis.north.x, axis.north.y, axis.north.z])
+    const node = unit3(cross3([0, 0, 1], zb))
+    const w = axis.spin * RAD
+    const xb = unit3(node.map((v, i) => Math.cos(w) * v + Math.sin(w) * cross3(zb, node)[i]))
+    const yb = cross3(zb, xb)
+    const sun = unit3([sunAt.x - g.x, sunAt.y - g.y, sunAt.z - g.z])
+    const face: BodyFace = {
+      lit: info ? info.phase_fraction : 1,
+      north: stepToward(u, pole),
+      frame: { body: [inView(xb), inView(yb), inView(zb)], sun: key === 'sun' ? [0, 0, 1] : inView(sun) },
+    }
+    if (key === 'saturn' && info?.ring_tilt !== undefined) face.ringTilt = info.ring_tilt
+    if (key === 'jupiter') {
+      const m = A.JupiterMoons(time)
+      face.moons = (
+        [
+          ['木卫一', m.io],
+          ['木卫二', m.europa],
+          ['木卫三', m.ganymede],
+          ['木卫四', m.callisto],
+        ] as const
+      ).map(([name, s]) => {
+        const o = [s.x, s.y, s.z]
+        const along = o[0] * u[0] + o[1] * u[1] + o[2] * u[2]
+        const across = Math.hypot(o[0] - along * u[0], o[1] - along * u[1], o[2] - along * u[2])
+        return { name, toward: stepToward(u, o.map((v, i) => u[i] + v)), rj: across / JUPITER_RADIUS_AU, front: along < 0 }
+      })
+    }
+    out[key] = face
+  }
+  return out
 }

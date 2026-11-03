@@ -13,13 +13,15 @@ import {
   formatAzimuth,
   horizonOf,
   historyTrack,
-  litPart,
   mansionsAt,
   moonPhaseName,
   riseSet,
   skyAt,
   starPlace,
   towards,
+  bodyFaces,
+  gridAt,
+  STAR_NAMES,
   trackOf,
   tracksAt,
   type SkyBody,
@@ -40,13 +42,24 @@ import { DrawerPageTab } from './SavedCharts'
 import { useDismiss } from './useDismiss'
 import { play } from '../sound'
 import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAlpha, starColour } from './skyPaint'
+import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
+import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
+import { SkyNight } from './SkyNight'
+import { paintClouds } from './skyClouds'
+import { BORTLE } from '../lib/stargazing'
+import { fetchForecast, weatherAt, type WeatherHour } from '../lib/weather'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
+import { KIND_NAME, MESSIER, MESSIER_INTRO, messierAt, messierConstellation, messierName, type Messier } from '../lib/messier'
+import { SkySearch, type SearchItem } from './SkySearch'
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** A star's size for what is placed round it (its name, the chosen ring), in map units at the full view */
 const starRadius = (mag: number) => Math.max(0.6, 3.2 - 0.55 * mag)
 
+/** How large each planet's face is, against Jupiter's, once zoomed in to show it */
+const PLANET_SIZE: Partial<Record<string, number>> = { jupiter: 1, saturn: 0.84, venus: 0.62, mars: 0.42, mercury: 0.3, uranus: 0.36, neptune: 0.34 }
+/** The Sun's and Moon's discs (map units at the full view); a planet's own size is worked out with the zoom */
 const bodyRadius = (b: SkyBody) => (b.key === 'sun' ? 8 : b.key === 'moon' ? 7 : Math.min(5, Math.max(2.4, 3.6 - 0.35 * b.mag)))
 /** Dragging the sky across the disc turns the time by six hours (later to the right, as the stars go) */
 const DRAG_MINUTES = 360 / (2 * R)
@@ -85,6 +98,50 @@ const MANSION_TRAD = new Map(MANSION_FIGURES.map((c) => [c.name, c.trad]))
 const zoneOf = (name: string): MansionZone | undefined => MANSION_BY_NAME.get(name)?.zone
 const FIGURES_KEY = 'chroniq-sky-figures'
 const QUALITY_KEY = 'chroniq-sky-quality'
+const BORTLE_KEY = 'chroniq-sky-bortle'
+const WEATHER_KEY = 'chroniq-sky-weather'
+const DSO_KEY = 'chroniq-sky-dso'
+const EQ_GRID_KEY = 'chroniq-sky-eqgrid'
+const ECLIPTIC_KEY = 'chroniq-sky-ecliptic'
+const RED_KEY = 'chroniq-sky-red'
+
+/** 时间流动: how fast the time runs, in minutes of sky per second (negative: backwards) */
+const SPEEDS = [-360, -60, -10, -1, 0, 1, 10, 60, 360]
+
+/** A switch remembered in this browser */
+function usePref(key: string, initial: boolean): [boolean, () => void] {
+  const [on, setOn] = useState(() => {
+    try {
+      const v = localStorage.getItem(key)
+      return v === null ? initial : v === 'on'
+    } catch {
+      return initial
+    }
+  })
+  const toggle = () =>
+    setOn((v) => {
+      try {
+        localStorage.setItem(key, v ? 'off' : 'on')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !v
+    })
+  return [on, toggle]
+}
+
+/** Each kind of deep-sky object's colour on the map (as Stellarium marks them) */
+const DSO_COLOUR: Record<Messier['kind'], string> = {
+  galaxy: '#ff9a8a',
+  gc: '#ffd27a',
+  oc: '#ffd27a',
+  nebula: '#8fe3a8',
+  pn: '#8fe3a8',
+  snr: '#8fe3a8',
+  asterism: '#b8c0d8',
+}
+/** A deep-sky object's size on the map (map units at the full view, near the zenith): half its long axis */
+const dsoRadius = (m: Messier) => ((m.size[0] / 60 / 2) * R) / 90
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** A sentence with elements (links) put in its {slots}, as the text came from t() with them kept */
@@ -162,6 +219,51 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const [hh, mm] = picked.time.split(':').map(Number)
     return toUtc({ year: y, month: m, day: d, hour: hh || 0, minute: mm || 0 }, place.timeZone).date
   }, [picked, now, place.timeZone])
+  // 时间流动: the sky runs on by itself, faster or slower than the clock or backwards, from the moment
+  // shown; a time set meanwhile (typed, dragged, picked) carries on from there
+  const [speed, setSpeed] = useState(0)
+  const utcRef = useRef(utc)
+  utcRef.current = utc
+  const pickedRef = useRef(picked)
+  pickedRef.current = picked
+  useEffect(() => {
+    if (!speed) return
+    const minute = (ms: number) => Math.floor(ms / 60_000) * 60_000
+    const start = () => ({ from: minute(utcRef.current.getTime()), at: performance.now() })
+    let flow = start()
+    let lastTick = performance.now()
+    // Where it started, and the moments it has set lately (some may not be drawn yet): any other was set elsewhere
+    let base = pickedRef.current
+    const ours: NonNullable<typeof picked>[] = []
+    const tick = () => {
+      const now = performance.now()
+      const gap = now - lastTick
+      lastTick = now
+      // Set elsewhere (typed, dragged, picked), or the tab was away (its timers held back): on from
+      // what is shown now
+      const shown = pickedRef.current
+      if ((shown !== base && !(shown && ours.includes(shown))) || gap > 1500) {
+        flow = start()
+        base = shown
+        ours.length = 0
+        return
+      }
+      const ms = flow.from + Math.round(((now - flow.at) / 1000) * speed) * 60_000
+      const next = wallTime(new Date(ms), place.timeZone)
+      const last = ours[ours.length - 1] ?? base
+      if (last && last.date === next.date && last.time === next.time) return
+      ours.push(next)
+      if (ours.length > 8) ours.shift()
+      setPicked(next)
+    }
+    const id = setInterval(tick, Math.max(100, 1000 / Math.abs(speed)))
+    return () => clearInterval(id)
+  }, [speed, place.timeZone])
+  /** Faster (or less backwards), or slower (towards backwards) */
+  const changeSpeed = (step: 1 | -1) =>
+    setSpeed((v) => SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, SPEEDS.indexOf(v) + step))])
+  // Running fast, the sky is drawn as while dragged: what is slow to work out waits until it stops
+  const flowing = Math.abs(speed) >= 10
   // 头顶 / 脚下: the half of the sky above the horizon, or the half beneath one's feet, seen as if
   // through the Earth: the nadir in the middle, and east and west swapped (looking down, east is right).
   const [below, setBelow] = useState(false)
@@ -215,6 +317,25 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const scale = fit * view.z
   const k = Math.round((1 / scale) * 1000) / 1000
   const dot = Math.round((1 / Math.sqrt(view.z)) * 100) / 100
+  // A planet is a point of light far out (glowing as bright as it is), and opens into its face once
+  // zoomed in: the face's radius in screen pixels, 0 until then
+  const faceSize = (key: string) => (PLANET_SIZE[key] ?? 0) * fit * 4.2 * Math.max(0, view.z - 1.4)
+  /** The Sun's or Moon's disc, or a planet's face (map units): zoomed in, the Sun and Moon stay well
+   *  larger than Jupiter, as they are */
+  const discOf = (b: SkyBody) =>
+    b.key === 'sun' || b.key === 'moon' ? Math.max(bodyRadius(b) * dot, 1.9 * faceSize('jupiter') * k) : faceSize(b.key) * k
+  /** The globe's half-width (map units) where a body is drawn as a globe: the Moon always, a planet
+   *  once its face is a few pixels across; none where the browser cannot draw them */
+  const globeOf = (b: SkyBody) =>
+    b.key !== 'sun' && faces[b.key] && canDrawGlobes() && (b.key === 'moon' || faceSize(b.key) >= 6)
+      ? discOf(b) * globeExtent(b.key)
+      : null
+  /** Turn (degrees) that sets a globe's zenith-up picture upright at a point on the map */
+  const upTurn = (x: number, y: number) =>
+    Math.hypot(x - C, y - C) < 0.01 ? 0 : (Math.atan2(below ? y - C : C - y, below ? x - C : C - x) * 180) / Math.PI + 90
+  /** A body's size for what goes round it (its name, the ring, where it can be clicked), map units */
+  const bodySize = (b: SkyBody) =>
+    b.key === 'sun' || b.key === 'moon' ? discOf(b) : Math.max(glowRadius(b.mag) * dot * 0.32, discOf(b) * (b.key === 'saturn' ? 2.2 : 1))
   const centre = frame ? [frame.left + frame.width / 2 + view.x, frame.top + frame.height / 2 + view.y] : [C, C]
   /** Keeps the zoom in range, and the window's centre on the sky */
   const clampView = (v: { z: number; x: number; y: number }) => {
@@ -369,6 +490,66 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   useDismiss(placeRef, placeOpen, () => setPlaceOpen(false))
 
   // The bodies' paths across the sky, on unless switched off (remembered in this browser)
+  // 光污染: how dark the place's sky is, on the Bortle scale (remembered in this browser)
+  const [bortle, setBortle] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(BORTLE_KEY))
+      return v >= 1 && v <= 9 ? v : 2
+    } catch {
+      return 2
+    }
+  })
+  const pickBortle = (v: number) => {
+    setBortle(v)
+    try {
+      localStorage.setItem(BORTLE_KEY, String(v))
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+  }
+  // 云量: the cloud forecast, once switched on (it asks Open-Meteo, sending the place's latitude and
+  // longitude; remembered in this browser)
+  const [weatherOn, setWeatherOn] = useState(() => {
+    try {
+      return localStorage.getItem(WEATHER_KEY) === 'on'
+    } catch {
+      return false
+    }
+  })
+  const toggleWeather = () =>
+    setWeatherOn((on) => {
+      try {
+        localStorage.setItem(WEATHER_KEY, on ? 'off' : 'on')
+      } catch {
+        // storage unavailable: lasts for this visit
+      }
+      return !on
+    })
+  const [weather, setWeather] = useState<{ hours: WeatherHour[]; failed: boolean }>({ hours: [], failed: false })
+  useEffect(() => {
+    if (!weatherOn) return setWeather({ hours: [], failed: false })
+    let gone = false
+    fetchForecast(place.latitude, place.longitude)
+      .then((hours) => !gone && setWeather({ hours, failed: false }))
+      .catch(() => !gone && setWeather({ hours: [], failed: true }))
+    return () => {
+      gone = true
+    }
+  }, [weatherOn, place.latitude, place.longitude])
+
+  // 深空天体, the equatorial grid, the ecliptic and the red night light (remembered in this browser)
+  const [showDso, toggleDso] = usePref(DSO_KEY, true)
+  const [eqGrid, toggleEqGrid] = usePref(EQ_GRID_KEY, false)
+  const [showEcliptic, toggleEcliptic] = usePref(ECLIPTIC_KEY, false)
+  const [red, toggleRed] = usePref(RED_KEY, false)
+  // 红光夜视: the whole page in dim red, which keeps the eyes used to the dark (as at a telescope)
+  useEffect(() => {
+    document.documentElement.classList.toggle('night-red', red)
+    return () => document.documentElement.classList.remove('night-red')
+  }, [red])
+  // 跟踪: the map keeps the chosen one in its middle as the time runs
+  const [tracking, setTracking] = useState(false)
+
   const [showPaths, setShowPaths] = useState(() => {
     try {
       return localStorage.getItem(PATHS_KEY) !== 'off'
@@ -479,14 +660,64 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         ? `${figureName(c)} · ${c.en}`
         : figureName(c)
 
+  // 搜索: everything that can be found by name, and going to it: the map turns to the half of the
+  // sky it is on, glides to it and zooms in, and it is chosen (and followed as the time runs)
+  const figureSet = figures === 'none' ? 'west' : figures
+  const searchItems = useMemo((): SearchItem[] => {
+    const set = figureSet === 'west' ? WESTERN : figureSet === 'mansions' ? MANSION_FIGURES : XINGGUAN
+    return [
+      ...sky.bodies.map((b) => ({ key: b.key, label: t(b.name), sub: b.key === 'sun' ? t('恒星') : b.key === 'moon' ? t('卫星') : t('行星'), names: [b.name, t(b.name), term(b.name), b.key], colour: BODY_COLOUR[b.key] })),
+      ...Object.entries(STAR_NAMES).map(([hip, name]) => ({ key: `hip${hip}`, label: t(name), sub: t('恒星'), names: [name, t(name), term(name), `HIP ${hip}`], colour: '#fff3d6' })),
+      ...MESSIER.map((m) => ({
+        key: `dso${m.n}`,
+        label: messierName(m, en),
+        sub: `M${m.n} · ${t(KIND_NAME[m.kind])}`,
+        names: [`M${m.n}`, `Messier ${m.n}`, m.desig, m.zh, m.en, term(m.zh)].filter(Boolean),
+        colour: DSO_COLOUR[m.kind],
+      })),
+      ...set.map((c) => ({
+        key: `fig${c.id}`,
+        label: figureSet === 'west' && en ? c.en : script === 'trad' ? c.trad : c.name,
+        sub: figureSet === 'west' ? t('西方星座') : figureSet === 'mansions' ? t('二十八宿') : t('中国星官'),
+        names: [c.name, c.trad, c.en, ...(figureSet === 'west' ? [c.id] : [])],
+        colour: '#9fb6ff',
+      })),
+    ]
+    // t and term change only with the settings
+  }, [figureSet, language, script])
+  const goTo = (key: string) => {
+    const toHorizon = horizonOf(utc, place.latitude, place.longitude)
+    let p: { az: number; alt: number } | null = null
+    if (key.startsWith('hip')) {
+      const star = starPlace(Number(key.slice(3)))
+      if (star) p = toHorizon(star.ra, star.dec)
+    } else if (key.startsWith('dso')) {
+      const m = MESSIER.find((x) => `dso${x.n}` === key)
+      if (m) p = toHorizon(m.ra, m.dec)
+    } else if (key.startsWith('fig')) {
+      const set = figureSet === 'west' ? WESTERN : figureSet === 'mansions' ? MANSION_FIGURES : XINGGUAN
+      const c = set.find((x) => `fig${x.id}` === key)
+      if (c) p = toHorizon(...c.label)
+      if (figures === 'none') pickFigures('west')
+    } else p = sky.bodies.find((b) => b.key === key) ?? null
+    if (!p) return
+    const under = p.alt < 0
+    if (under !== below) setBelow(under)
+    setChosen(key)
+    setTracking(!key.startsWith('fig'))
+    const [x, y] = projectSky(p.az, p.alt, under)
+    const z = Math.max(current().z, key.startsWith('fig') ? 1.8 : key.startsWith('dso') ? 3.2 : 2.4)
+    glideTo(clampView({ z, x: (C - x) * fit * z, y: (C - y) * fit * z }))
+  }
+
   // One body's way among the stars over the past days, drawn on tonight's sky: switched on in a
   // chosen body's details, it then follows whichever body is chosen
   const [history, setHistory] = useState({ on: false, days: 90 })
-  const historyBody = history.on && chosen && !/^(hip|fig)/.test(chosen) ? (chosen as SkyBody['key']) : null
+  const historyBody = history.on && chosen && !/^(hip|fig|dso)/.test(chosen) ? (chosen as SkyBody['key']) : null
   // While the sky is dragged through time, the paths and the history track (too slow to redo at
   // every step) wait until it is let go
   const [dragShift, setDragShift] = useState<number | null>(null)
-  const dragging = dragShift !== null
+  const dragging = dragShift !== null || flowing
   const historyLine = useMemo(() => {
     if (!historyBody || dragging) return null
     const points = historyTrack(historyBody, utc, place.latitude, place.longitude, history.days)
@@ -547,15 +778,41 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
   // A constellation or 星官 can be chosen too (its key is fig + its id)
   const pickFigure = chosen?.startsWith('fig') ? figureViews.find((c) => `fig${c.id}` === chosen) : undefined
+  // The Messier objects on this half of the sky (all of them, for the search and a chosen one, even
+  // with the layer off); a deep-sky object can be chosen too (its key is dso + its number)
+  const dsos = useMemo(() => messierAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
+  const pickDso = chosen?.startsWith('dso') ? dsos.find((d) => `dso${d.m.n}` === chosen) : undefined
   // A star that has set, or is on the other half of the sky now, lets go; so does a figure gone from view
   useEffect(() => {
-    if (chosen && !pick && !pickFigure) setChosen(null)
-  }, [chosen, pick, pickFigure])
+    if (chosen && !pick && !pickFigure && !pickDso) setChosen(null)
+  }, [chosen, pick, pickFigure, pickDso])
+  useEffect(() => {
+    if (!chosen) setTracking(false)
+  }, [chosen])
   const pickName = pick && ('key' in pick ? t(pick.name) : t(pick.name!))
-  const pickColour = pick && ('key' in pick ? BODY_COLOUR[pick.key] : starColour(pick.bv))
-  const pickRadius = pick && ('key' in pick ? bodyRadius(pick) : starRadius(pick.mag))
+  const pickColour = pick ? ('key' in pick ? BODY_COLOUR[pick.key] : starColour(pick.bv)) : pickDso && DSO_COLOUR[pickDso.m.kind]
+  /** How large a deep-sky object's mark is: its true size, but never too small to see */
+  const dsoMark = (m: Messier) => Math.max(3.2 * dot, dsoRadius(m))
+  const pickRadius = pick ? ('key' in pick ? bodySize(pick) : starRadius(pick.mag) * dot) : pickDso && dsoMark(pickDso.m)
   // Where the chosen one is on the map, if it is on this half of the sky
-  const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : null
+  const spot = pick && shown(pick.alt) ? at(pick.az, pick.alt) : pickDso ? at(pickDso.az, pickDso.alt) : null
+  /** 跟踪 on: the map glides in to the chosen one first */
+  const toggleTracking = () => {
+    if (tracking) return setTracking(false)
+    setTracking(true)
+    if (!spot) return
+    const z = Math.max(current().z, 2.4)
+    glideTo(clampView({ z, x: (C - spot[0]) * fit * z, y: (C - spot[1]) * fit * z }))
+  }
+  // 跟踪: as the time moves, the map moves with the chosen one, before the frame is painted
+  useLayoutEffect(() => {
+    if (!tracking || !spot || !frameRef.current || live.current) return
+    const v = viewRef.current
+    const s = fit * v.z
+    const next = clampView({ z: v.z, x: (C - spot[0]) * s, y: (C - spot[1]) * s })
+    if (Math.abs(next.x - v.x) > 0.5 || Math.abs(next.y - v.y) > 0.5) setView(next)
+    // spot follows the time
+  }, [utc, tracking])
   // What the panel tells of the chosen body or star: what it is, when it rises and sets, which 宿 it
   // is in and how far off it is. Not worked out again at each step of a drag through time.
   const five = pick && 'key' in pick ? FIVE_STARS.find((f) => f.key === pick.key) : undefined
@@ -585,6 +842,29 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     // pick follows chosen and the sky (utc, place)
   }, [chosen, dragging, utc, place.latitude, place.longitude])
   lastDetails.current = details
+  // The same for a chosen deep-sky object: when it rises and sets, its 宿 and its constellation
+  const lastDsoDetails = useRef<{
+    times: ReturnType<typeof riseSet>
+    mansion: (typeof MANSIONS)[number]
+    constellation: (typeof WESTERN)[number] | undefined
+  } | null>(null)
+  const dsoDetails = useMemo(() => {
+    if (!pickDso) return null
+    if (dragging) return lastDsoDetails.current
+    const m = pickDso.m
+    return {
+      times: riseSet({ ra: m.ra, dec: m.dec }, utc, place.latitude, place.longitude, pickDso.alt > 0),
+      mansion: mansionOf(m.ra).mansion,
+      constellation: WESTERN.find((c) => c.id === messierConstellation(m)),
+    }
+    // pickDso follows chosen and the sky
+  }, [chosen, dragging, utc, place.latitude, place.longitude])
+  lastDsoDetails.current = dsoDetails
+  // The equatorial grid and the ecliptic, when either is on
+  const grid = useMemo(
+    () => (eqGrid || showEcliptic ? gridAt(utc, place.latitude, place.longitude) : null),
+    [eqGrid, showEcliptic, utc, place.latitude, place.longitude],
+  )
   /** A rise or set: its local time, marked if it falls on the day before or after */
   const clock = (d: Date | null) => {
     if (!d) return '—'
@@ -608,7 +888,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // Tracks already worked out for these moments and this place, so hovering the same star again is free
   const trackCache = useMemo(() => new Map<string, { az: number; alt: number }[]>(), [pathTimes, place.latitude, place.longitude])
   const extraPath = (key: string | null) => {
-    if (!pathTimes || !key || key.startsWith('fig') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
+    if (!pathTimes || !key || key.startsWith('fig') || key.startsWith('dso') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
     let track = trackCache.get(key)
     if (!track) {
       const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
@@ -671,7 +951,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const eventText = useSkyEventText(place)
   const shade = event && eclipseShade(event, utc.getTime())
   const radiant = event?.kind === 'meteors' && !below ? horizonOf(utc, place.latitude, place.longitude)(event.ra, event.dec) : null
-  /** Which way (degrees, on the map) the Sun lies from the Moon: its lit side faces that way */
+  // Each body's face: phase, which way its north is, Saturn's rings, Jupiter's moons (lib/sky.ts)
+  const faces = useMemo(() => bodyFaces(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+  /** Which way (degrees, on the map) a point lies from a body */
+  const turnTo = (b: SkyBody, p: { az: number; alt: number }) => {
+    const [x0, y0] = at(b.az, b.alt)
+    const [x1, y1] = at(p.az, p.alt)
+    return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
+  }
+  /** Which way (degrees, on the map) the Sun lies from the Moon (or a planet): its lit side faces that way */
   const moonTurn = (moon: SkyBody) => {
     const [x0, y0] = at(moon.az, moon.alt)
     const step = towards(moon, sky.bodies[0], 0.5)
@@ -679,6 +967,26 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
   }
   const light = below ? 'below' : sky.light
+  // The deep-sky objects drawn: more of the fainter ones as the map zooms in; none by day but the chosen one
+  const dsoLimit = 5 + 2.2 * (view.z - 1)
+  const shownDsos =
+    showDso && light !== 'day'
+      ? dsos.filter((d) => d.m.mag <= dsoLimit || `dso${d.m.n}` === chosen)
+      : pickDso
+        ? [pickDso]
+        : []
+  // Named where there is room: a brighter one's name keeps the ones close by from being written over it
+  const dsoNamed = new Set<number>()
+  {
+    const placed: [number, number][] = []
+    for (const d of [...shownDsos].sort((a, b) => a.m.mag - b.m.mag)) {
+      if (!(view.z >= 1.8 || d.m.mag <= 4.6)) continue
+      const [x, y] = at(d.az, d.alt)
+      if (placed.some(([px, py]) => Math.abs(px - x) < 40 * k && Math.abs(py - y) < 10 * k)) continue
+      placed.push([x, y])
+      dsoNamed.add(d.m.n)
+    }
+  }
   const { milkyWay, deepSky } = useSkyBackdrop(utc, place.latitude, place.longitude, below, view.z, smooth, dragging)
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
@@ -749,7 +1057,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           .sort((a, b) => a.mag - b.mag)
           .map((b) => {
             const [x, y] = at(b.az, b.alt)
-            return { key: b.key, text: t(b.name), x, y, r: bodyRadius(b) * dot, kind: 'body' as const }
+            return { key: b.key, text: t(b.name), x, y, r: bodySize(b), kind: 'body' as const }
           }),
         ...sky.stars
           .filter((st) => st.name)
@@ -890,6 +1198,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       }
       tipRef.current?.classList.remove('on')
       pointAt(null)
+      // Taking the time or the map in hand stops it running, or following the chosen one
+      if (d.time) setSpeed(0)
+      else setTracking(false)
     }
     if (d.time) {
       const minutes = Math.round((dx / scale) * DRAG_MINUTES)
@@ -942,6 +1253,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return () => svg.removeEventListener('wheel', onWheel)
     // zoomAt uses refs, setView and the transform only
   }, [])
+  /** How fast the time runs: "10 分钟/秒", "−1 小时/秒" */
+  const rateLabel = (v: number) =>
+    (v < 0 ? '−' : '') +
+    (Math.abs(v) >= 60 ? t('{n} 小时/秒', { n: Math.abs(v) / 60 }) : t('{n} 分钟/秒', { n: Math.abs(v) }))
   const shiftLabel = (minutes: number) => {
     const h = Math.floor(Math.abs(minutes) / 60)
     const m = Math.abs(minutes) % 60
@@ -996,6 +1311,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // How much of them shows: the Milky Way is gone by day and faint in twilight, when only the
   // brighter stars are out; a bright Moon up washes out the faintest stars and the Milky Way a little.
   const moonLight = !below && moon.alt > 0 ? moon.lit : 0
+  /** How dark the place is (光污染) */
+  const dark = BORTLE[bortle - 1]
+  // The clouds at the moment shown, if the forecast is on and reaches it; they hide what is behind them
+  const cloudNow = weatherOn && !below ? weatherAt(weather.hours, utc.getTime()) : null
+  const cover = cloudNow ? cloudNow.cloud / 100 : 0
+  // The glow low round the sky: at night, more and more orange the brighter the towns about (光污染)
+  const townGlow = light === 'night' ? Math.max(0, (bortle - 2) / 7) : 0
+  const glowColour = townGlow > 0.3 ? '#8d7867' : HORIZON_GLOW[light][0]
+  const glowStrength = Math.min(0.6, HORIZON_GLOW[light][1] + 0.35 * townGlow)
   const canvasLight =
     light === 'below'
       ? { milkyWay: 0.7, stars: 0.85, limit: 6.3 }
@@ -1003,9 +1327,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         ? { milkyWay: 0, stars: 0.35, limit: 5 }
         : light === 'twilight'
           ? { milkyWay: 0.3, stars: 0.7, limit: 4 }
-          : { milkyWay: 1 - 0.3 * moonLight, stars: 1, limit: 6.3 - 0.7 * moonLight }
+          : {
+              milkyWay: dark.milkyWay * (1 - 0.3 * moonLight),
+              stars: 1,
+              limit: Math.min(dark.limit, 6.3 - 0.7 * moonLight),
+            }
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glowRef = useRef<HTMLCanvasElement>(null)
+  const cloudsRef = useRef<HTMLCanvasElement>(null)
   const paint = useRef(() => {})
   paint.current = () => {
     const el = canvasRef.current
@@ -1028,9 +1357,34 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       rough: dragging || smooth,
       lowRes: smooth,
     })
+    if (cloudsRef.current)
+      paintClouds(
+        cloudsRef.current,
+        cloudNow && cover > 0.02
+          ? {
+              width: el.clientWidth,
+              height: el.clientHeight,
+              ox: centre[0] + over - C * scale,
+              oy: centre[1] + over - C * scale,
+              scale,
+              below,
+              cover,
+              low: cloudNow.low / Math.max(1, cloudNow.cloud),
+              wind: cloudNow.wind,
+              windFrom: cloudNow.windFrom,
+              time: utc.getTime(),
+              light: light === 'day' ? 'day' : light === 'twilight' ? 'twilight' : 'night',
+              moon: moonLight,
+              town: Math.max(0, (bortle - 3) / 6),
+            }
+          : null,
+      )
   }
   // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
-  useLayoutEffect(() => paint.current(), [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth])
+  useLayoutEffect(
+    () => paint.current(),
+    [milkyWay, deepSky, plainStars, frame, view, below, light, moonLight, dragging, smooth, bortle, cloudNow?.time, cover],
+  )
   // The canvas fills the screen: drawn again when the screen's size changes (a phone's address bar
   // folding away), which need not move the sky's window
   useEffect(() => {
@@ -1057,9 +1411,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           ))}
         </radialGradient>
         <radialGradient id={`${clipId}-air`} cx={C} cy={C} r={R} gradientUnits="userSpaceOnUse">
-          <stop offset={0.5} stopColor={HORIZON_GLOW[light][0]} stopOpacity={0} />
-          <stop offset={0.86} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1] * 0.45} />
-          <stop offset={1} stopColor={HORIZON_GLOW[light][0]} stopOpacity={HORIZON_GLOW[light][1]} />
+          <stop offset={townGlow ? 0.2 : 0.5} stopColor={glowColour} stopOpacity={townGlow * 0.1} />
+          <stop offset={0.86} stopColor={glowColour} stopOpacity={glowStrength * 0.45} />
+          <stop offset={1} stopColor={glowColour} stopOpacity={glowStrength} />
         </radialGradient>
         <radialGradient id={`${clipId}-ground`} cx={C} cy={C} r={4 * R} gradientUnits="userSpaceOnUse">
           <stop offset={0.25} stopColor="#0a0f1d" />
@@ -1088,6 +1442,20 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             ))}
           </radialGradient>
         ))}
+        {/* A planet's point of light, in its colour */}
+        {Object.entries(BODY_COLOUR).map(([key, hex]) => (
+          <radialGradient key={key} id={`${clipId}-pglow-${key}`}>
+            {PSF.map(([offset, white, alpha]) => (
+              <stop key={offset} offset={offset} stopColor={white ? mixWhite(hex, white) : hex} stopOpacity={alpha} />
+            ))}
+          </radialGradient>
+        ))}
+        <SkyFaceDefs id={clipId} />
+        <radialGradient id={`${clipId}-fuzz`}>
+          <stop offset={0} stopColor="#e8ecff" stopOpacity={0.9} />
+          <stop offset={0.4} stopColor="#c8d2f0" stopOpacity={0.35} />
+          <stop offset={1} stopColor="#c8d2f0" stopOpacity={0} />
+        </radialGradient>
         <radialGradient id={`${clipId}-halo`}>
           <stop offset={0} stopColor="#ffffff" stopOpacity={0.55} />
           <stop offset={0.35} stopColor="#ffffff" stopOpacity={0.12} />
@@ -1165,13 +1533,93 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             })}
           </g>
         )}
+        {grid && (
+          <g className="sky-eqgrid" aria-hidden="true">
+            {eqGrid && (
+              <>
+                {grid.decs.map((d) => (
+                  <path key={`d${d.dec}`} className={d.dec === 0 ? 'equator' : undefined} d={pathData(d.pts, at)} />
+                ))}
+                {grid.hours.map((h) => (
+                  <path key={`h${h.hour}`} d={pathData(h.pts, at)} />
+                ))}
+                {grid.hours
+                  .filter((h) => shown(h.label.alt))
+                  .map((h) => {
+                    const [x, y] = at(h.label.az, h.label.alt)
+                    return (
+                      <text key={`l${h.hour}`} x={x + 3 * k} y={y - 3 * k}>
+                        {h.hour}h
+                      </text>
+                    )
+                  })}
+              </>
+            )}
+            {showEcliptic && (
+              <g className="ecliptic">
+                <path d={pathData(grid.ecliptic, at)} />
+                {grid.signs
+                  .filter((p) => shown(p.alt))
+                  .map((p) => {
+                    const [x, y] = at(p.az, p.alt)
+                    return <circle key={p.lon} cx={x} cy={y} r={1.6 * dot} />
+                  })}
+              </g>
+            )}
+          </g>
+        )}
         {figuresLayer}
+        {shownDsos.length > 0 && (
+          <g className="sky-dsos">
+            {shownDsos.map(({ m, az, alt }) => {
+              const key = `dso${m.n}`
+              const [x, y] = at(az, alt)
+              const r = dsoMark(m)
+              const tip = t('{name} · {direction} · 高 {altitude}°', {
+                name: `${messierName(m, en)} · ${t(KIND_NAME[m.kind])}`,
+                direction: azimuth(az),
+                altitude: alt.toFixed(1),
+              })
+              const named = view.z >= 3 && (en ? m.en : m.zh)
+              return (
+                <g
+                  key={key}
+                  className={`sky-dso sky-dso-${m.kind}${chosen === key ? ' on' : ''}${focus === key ? ' hover' : ''}`}
+                  style={{ color: DSO_COLOUR[m.kind] }}
+                  aria-label={tip}
+                  data-tip={tip}
+                  {...chooseProps(key)}
+                  {...focusProps(key)}
+                >
+                  <circle className="hit" cx={x} cy={y} r={Math.max(r + 3 * k, 9 * k)} />
+                  {m.kind !== 'oc' && m.kind !== 'asterism' && (
+                    <ellipse
+                      className="fuzz"
+                      cx={x}
+                      cy={y}
+                      rx={dsoRadius(m) * 1.15 + 1.2 * dot}
+                      ry={(dsoRadius(m) * Math.max(0.45, m.size[1] / m.size[0])) * 1.15 + 1.2 * dot}
+                      fill={`url(#${clipId}-fuzz)`}
+                      opacity={Math.min(0.55, Math.max(0.12, (11 - m.mag) / 12))}
+                    />
+                  )}
+                  <DsoMark m={m} x={x} y={y} r={r} />
+                  {dsoNamed.has(m.n) && (
+                    <text className="sky-dso-name" x={x + r + 3 * k} y={y} dominantBaseline="central">
+                      {named ? `M${m.n} ${named}` : `M${m.n}`}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
+          </g>
+        )}
         <g className="sky-halos" aria-hidden="true">
           {up
-            .filter((b) => b.key !== 'sun')
+            .filter((b) => b.key === 'moon')
             .map((b) => {
               const [x, y] = at(b.az, b.alt)
-              const r = bodyRadius(b) * dot * (b.key === 'moon' ? 4.5 : 3.6)
+              const r = discOf(b) * 4.5
               return <circle key={b.key} cx={x} cy={y} r={r} fill={`url(#${clipId}-halo)`} opacity={b.key === 'moon' ? 0.4 + 0.5 * b.lit : 0.55} />
             })}
         </g>
@@ -1184,6 +1632,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
               at={at}
               size={dot}
               light={`url(#${clipId}-star-${colourIndex(s.bv)})`}
+              seen={Math.min(1, Math.max(0.12, (canvasLight.limit - s.mag) / 0.8))}
               hit={10 * k}
               on={chosen === `hip${s.hip}`}
               hover={focus === `hip${s.hip}`}
@@ -1231,7 +1680,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           </>
         )}
         <g className="sky-bodies">
-          {up.map((b) => {
+          {/* The Moon last: nearer than any planet, it passes in front of them */}
+          {[...up.filter((b) => b.key !== 'moon'), ...up.filter((b) => b.key === 'moon')].map((b) => {
             const [x, y] = at(b.az, b.alt)
             const tip = t('{name} · {direction} · 高 {altitude}°', { name: t(b.name), direction: azimuth(b.az), altitude: b.alt.toFixed(1) })
             return (
@@ -1243,33 +1693,39 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 {...chooseProps(b.key)}
                 {...focusProps(b.key)}
               >
-                <circle className="hit" cx={x} cy={y} r={Math.max(bodyRadius(b) * dot + 4 * k, 12 * k)} />
-                {b.key === 'moon' ? (
-                  // The Moon as it looks: its lit part (litPart) turned towards the Sun, the rest faintly
-                  // there by earthshine. The turn is worked out on the map: a step from the Moon towards
-                  // the Sun along the sky, projected, gives the way the Sun lies from it here.
-                  <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${moonTurn(b).toFixed(1)})`}>
-                    <g className="disc">
-                      <circle className="moon-dark" r={bodyRadius(b) * dot} />
-                      <path d={litPart(b.lit, bodyRadius(b) * dot)} fill={BODY_COLOUR.moon} />
-                    </g>
-                  </g>
-                ) : (
-                  <circle className="disc" cx={x} cy={y} r={bodyRadius(b) * dot} fill={BODY_COLOUR[b.key]} />
+                <circle className="hit" cx={x} cy={y} r={Math.max(bodySize(b) + 4 * k, 12 * k)} />
+                {/* As it looks: the Moon's face lit towards the Sun, a planet's point of light or, zoomed in,
+                    its face, each turned upright to its own north as it stands in the sky here */}
+                {globeOf(b) ? null : (
+                <BodyFaceView
+                  kind={b.key}
+                  x={x}
+                  y={y}
+                  r={discOf(b)}
+                  close={faceSize(b.key) >= 4}
+                  glow={Math.max(glowRadius(b.mag), 2.6) * dot}
+                  glowFill={`url(#${clipId}-pglow-${b.key})`}
+                  colour={BODY_COLOUR[b.key]}
+                  face={faces[b.key]}
+                  north={faces[b.key] ? turnTo(b, faces[b.key]!.north) : -90}
+                  sun={moonTurn(b)}
+                  moonTurns={faces[b.key]?.moons?.map((m) => turnTo(b, m.toward))}
+                  id={clipId}
+                />
                 )}
                 {shade?.body === b.key && (
                   // The eclipse, over the body: the Earth's shadow on the Moon, the Moon on the Sun
                   <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`} className={`sky-eclipse sky-eclipse-${b.key}${shade.dim ? ' dim' : ''}`}>
                     <clipPath id={`${clipId}-eclipse`}>
-                      <circle r={bodyRadius(b) * dot} />
+                      <circle r={discOf(b)} />
                     </clipPath>
                     {/* A disc too, to grow with the body when it is chosen */}
                     <g className="disc">
                       <circle
                         clipPath={`url(#${clipId}-eclipse)`}
-                        cx={0.8 * shade.offset * bodyRadius(b) * dot}
-                        cy={-0.6 * shade.offset * bodyRadius(b) * dot}
-                        r={shade.radius * bodyRadius(b) * dot}
+                        cx={0.8 * shade.offset * discOf(b)}
+                        cy={-0.6 * shade.offset * discOf(b)}
+                        r={shade.radius * discOf(b)}
                       />
                     </g>
                   </g>
@@ -1334,7 +1790,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         <g className="sky-labels" aria-hidden="true">
           {labels.map((l) => {
             // The chosen one's name moves out past its ring
-            const push = l.key === chosen && spot ? pickRadius! * dot * 0.4 + 6 * k : 0
+            const push = l.key === chosen && spot ? pickRadius! * 0.4 + 6 * k : 0
             return (
               <text
                 key={l.key}
@@ -1389,8 +1845,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       {/* The ring round the chosen one: it closes in on it (keyed, so it does again for the next) and pulses */}
       {spot && (
         <g key={chosen} className="sky-chosen" style={{ color: pickColour }} aria-hidden="true">
-          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
-          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * dot * 1.4 + 6 * k} />
+          <circle cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 6 * k} />
+          <circle className="pulse" cx={spot[0]} cy={spot[1]} r={pickRadius! * 1.4 + 6 * k} />
         </g>
       )}
       </g>
@@ -1417,6 +1873,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           name: t(sky.bodies.find((b) => b.key === historyLine.key)!.name),
           span: history.days === 30 ? t('1 个月') : history.days === 90 ? t('3 个月') : t('1 年'),
         })}
+      {showDso && en && ' '}
+      {showDso &&
+        t('小符号是梅西耶深空天体：椭圆是星系，带十字的圆是球状星团，虚线圆是疏散星团，方框是星云，带刻线的小圆是行星状星云；放大可看到更暗的。')}
+      {eqGrid && en && ' '}
+      {eqGrid && t('赤道坐标网：实线是天赤道，纬线每 30° 一条赤纬，经线每 2 小时一条赤经。')}
+      {showEcliptic && en && ' '}
+      {showEcliptic && t('黄道是太阳一年在星空中走的路，日月行星都在它附近；圆点每 30° 一个，是黄道十二宫的起点。')}
+      {en && ' '}
+      {t('时间栏的 ▶ 让时间流动，◀◀ ▶▶ 调快慢或倒放；搜索框可以找到天体、亮星、深空天体和星座并跟踪它。')}
       {figures === 'mansions' && en && ' '}
       {figures === 'mansions' &&
         t(
@@ -1450,6 +1915,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         xhip: sourceLink('https://cdsarc.cds.unistra.fr/viz-bin/cat/V/137D', t('XHIP 依巴谷星表')),
       })}
       {figures === 'west' && withSlots(t('；星座连线 {d3}', { d3: '{d3}' }), { d3: D3 })}
+      {showDso && withSlots(t('；梅西耶天体 {d3}', { d3: '{d3}' }), { d3: D3 })}
       {(figures === 'china' || figures === 'mansions') &&
         withSlots(t('；星官连线 {stellarium}（{licence}），经 {d3} 整理', { stellarium: '{stellarium}', licence: '{licence}', d3: '{d3}' }), {
           stellarium: sourceLink('https://github.com/Stellarium/stellarium-skycultures/tree/master/chinese', t('Stellarium 中国星空文化')),
@@ -1467,6 +1933,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           <TitleMark />
           {t('此刻天空')}
         </h3>
+        <SkySearch items={searchItems} onPick={goTo} />
         {canPoint() && (
           <button type="button" className="ghost sky-point-btn" onClick={startPointing}>
             {t('对准天空')}
@@ -1489,12 +1956,33 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           // Already following the clock: pressing again only refreshes it
           data-sound={picked ? 'on' : 'tap'}
           onClick={() => {
+            setSpeed(0)
             setNow(new Date())
             setPicked(null)
           }}
         >
           {t('现在')}
         </button>
+        <div className="sky-flow" role="group" aria-label={t('时间流动')}>
+          <button type="button" className="ghost" data-sound="tick" aria-label={t('慢一点或倒放')} title={t('慢一点或倒放')} disabled={speed === SPEEDS[0]} onClick={() => changeSpeed(-1)}>
+            ◀◀
+          </button>
+          <button
+            type="button"
+            className={`ghost${speed ? ' on' : ''}`}
+            data-sound={speed ? 'off' : 'on'}
+            aria-pressed={speed !== 0}
+            aria-label={speed ? t('暂停') : t('让时间流动')}
+            title={speed ? t('暂停') : t('让时间流动')}
+            onClick={() => setSpeed((v) => (v ? 0 : 10))}
+          >
+            {speed ? '❚❚' : '▶'}
+          </button>
+          <button type="button" className="ghost" data-sound="tick" aria-label={t('快一点')} title={t('快一点')} disabled={speed === SPEEDS[SPEEDS.length - 1]} onClick={() => changeSpeed(1)}>
+            ▶▶
+          </button>
+          {speed !== 0 && <span className="sky-flow-rate">{rateLabel(speed)}</span>}
+        </div>
           <div className="sky-place-menu" ref={placeRef}>
             <button
               type="button"
@@ -1526,6 +2014,17 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
       {/* On the right, always there: the bodies, or what is chosen, in detail */}
       <aside className="sky-bodies" aria-label={t('天体')}>
+        <SkyNight
+          utc={utc}
+          latitude={place.latitude}
+          longitude={place.longitude}
+          weather={weather.hours}
+          weatherOn={weatherOn}
+          weatherFailed={weather.failed}
+          onWeather={toggleWeather}
+          clock={(ms) => wallTime(new Date(ms), place.timeZone).time}
+          onPick={(ms) => setPicked(wallTime(new Date(ms), place.timeZone))}
+        />
         {event && (
           <div className="sky-event">
             <span className="sky-event-kind">{t('天象预告')}</span>
@@ -1570,6 +2069,62 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
               <dd>{`${pickFigure.label.alt.toFixed(1)}°`}</dd>
             </dl>
             {introText}
+          </div>
+        ) : pickDso ? (
+          <div className="sky-detail">
+            <button type="button" className="ghost sky-back" data-sound="unpick" onClick={() => setChosen(null)}>
+              ‹ {t('全部天体')}
+            </button>
+            <div className="sky-chosen-info">
+              <span className="sky-dot" style={{ background: pickColour }} />
+              <strong>{messierName(pickDso.m, en)}</strong>
+              <span className="muted">
+                {[(en ? pickDso.m.en : pickDso.m.zh) && `M${pickDso.m.n}`, pickDso.m.desig, t(KIND_NAME[pickDso.m.kind])].filter(Boolean).join(' · ')}
+              </span>
+              <button type="button" className="ghost sky-unchoose" data-sound="unpick" aria-label={t('取消选中')} title={t('取消选中')} onClick={() => setChosen(null)}>
+                ✕
+              </button>
+            </div>
+            <dl className="sky-facts">
+              <dt>{t('方位')}</dt>
+              <dd>{azimuth(pickDso.az)}</dd>
+              <dt>{t('高度')}</dt>
+              <dd>{pickDso.alt < 0 ? `${t('地平线下')} · ${pickDso.alt.toFixed(1)}°` : `${pickDso.alt.toFixed(1)}°`}</dd>
+              <dt>{t('星等')}</dt>
+              <dd>{pickDso.m.mag.toFixed(1)}</dd>
+              <dt>{t('视大小')}</dt>
+              <dd>{pickDso.m.size[0] === pickDso.m.size[1] ? `${pickDso.m.size[0]}′` : `${pickDso.m.size[0]}′ × ${pickDso.m.size[1]}′`}</dd>
+              {dsoDetails?.constellation && (
+                <>
+                  <dt>{t('所处星座')}</dt>
+                  <dd>{en ? dsoDetails.constellation.en : script === 'trad' ? dsoDetails.constellation.trad : dsoDetails.constellation.name}</dd>
+                </>
+              )}
+              {dsoDetails?.times &&
+                ('always' in dsoDetails.times ? (
+                  <>
+                    <dt>{t('出没')}</dt>
+                    <dd>{dsoDetails.times.always === 'up' ? t('终年不落（拱极）') : t('终年不升')}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt>{t('升起')}</dt>
+                    <dd>{clock(dsoDetails.times.rise)}</dd>
+                    <dt>{t('落下')}</dt>
+                    <dd>{clock(dsoDetails.times.set)}</dd>
+                  </>
+                ))}
+              {dsoDetails && (
+                <>
+                  <dt>{t('宿')}</dt>
+                  <dd className={`sky-mansion-cell zone-${dsoDetails.mansion.zone}`}>{mansionName(dsoDetails.mansion.name)}</dd>
+                </>
+              )}
+            </dl>
+            <div className="sky-switches">
+              <SkySwitch on={tracking} label={t('跟踪')} onChange={toggleTracking} />
+            </div>
+            {MESSIER_INTRO[pickDso.m.n] && <p className="sky-intro">{en ? MESSIER_INTRO[pickDso.m.n].en : MESSIER_INTRO[pickDso.m.n].zh}</p>}
           </div>
         ) : pick ? (
           <div className="sky-detail">
@@ -1638,6 +2193,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             {/* Its path today, and for a body its track over the past months */}
             <div className="sky-switches">
               <SkySwitch on={showPaths} label={t('今日轨迹')} onChange={togglePaths} />
+              <SkySwitch on={tracking} label={t('跟踪')} onChange={toggleTracking} />
               {'key' in pick && (
                 <>
                   <SkySwitch on={history.on} label={t('历史轨迹')} onChange={() => setHistory((h) => ({ ...h, on: !h.on }))} />
@@ -1737,8 +2293,22 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             </button>
           ))}
         </div>
+        <span className="sky-option-title">{t('深空天体')}</span>
+        <SkySwitch on={showDso} label={t('梅西耶天体：星系、星团、星云')} onChange={toggleDso} />
+        <span className="sky-option-title">{t('坐标')}</span>
+        <SkySwitch on={eqGrid} label={t('赤道坐标网')} onChange={toggleEqGrid} />
+        <SkySwitch on={showEcliptic} label={t('黄道')} onChange={toggleEcliptic} />
         <span className="sky-option-title">{t('轨迹')}</span>
         <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
+        <span className="sky-option-title">{t('光污染')}</span>
+        <label className="sky-bortle">
+          <input type="range" min={1} max={9} step={1} value={bortle} aria-label={t('光污染')} onChange={(e) => pickBortle(Number(e.target.value))} />
+          <span>{t('{n} 级 · {name}', { n: bortle, name: t(dark.name) })}</span>
+        </label>
+        <span className="sky-option-title">{t('云量')}</span>
+        <SkySwitch on={weatherOn} label={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
+        <span className="sky-option-title">{t('夜视')}</span>
+        <SkySwitch on={red} label={t('红光模式：整页变暗红，不破坏暗适应')} onChange={toggleRed} />
         <span className="sky-option-title">{t('画质')}</span>
         <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
           {(
@@ -1758,7 +2328,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       </DrawerPageTab>
 
       {createPortal(
-        <div className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}>
+        <div
+          className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}
+          style={{ '--clear': (1 - 0.85 * cover).toFixed(2) } as CSSProperties}
+        >
           <div className="sky-turner" ref={turnerRef}>
           <div className="sky-zoomer" ref={zoomerRef} style={{ '--over': `${over}px` } as CSSProperties}>
           {backdrop}
@@ -1768,9 +2341,36 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             aria-hidden="true"
           >
             <canvas ref={glowRef} className="glow" />
-            <canvas ref={canvasRef} />
+            <canvas ref={canvasRef} className="stars" />
+            <canvas ref={cloudsRef} className="clouds" />
           </div>
           {map}
+          {/* The Moon and, zoomed in, the planets as globes (SkyGlobe), over the map where each is, set
+              upright with the zenith towards the map's centre; the map's hit circles below take the pointer */}
+          <div className={`sky-globes${entering ? ' entering' : ''}`} aria-hidden="true">
+            {frame &&
+              [...up.filter((b) => b.key !== 'moon'), ...up.filter((b) => b.key === 'moon')].map((b) => {
+                const half = globeOf(b)
+                if (!half) return null
+                const [x, y] = at(b.az, b.alt)
+                const px = half * scale
+                return (
+                  <div
+                    key={b.key}
+                    className={`sky-globe-box sky-globe-${b.key}${spot && chosen !== b.key ? ' dim' : ''}`}
+                    style={{
+                      left: centre[0] + (x - C) * scale - px,
+                      top: centre[1] + (y - C) * scale - px,
+                      width: 2 * px,
+                      height: 2 * px,
+                      transform: `rotate(${upTurn(x, y).toFixed(1)}deg)${below ? ' scaleX(-1)' : ''}`,
+                    }}
+                  >
+                    <SkyGlobe kind={b.key} face={faces[b.key]!} pixels={2 * px * Math.min(2, window.devicePixelRatio || 1)} />
+                  </div>
+                )
+              })}
+          </div>
           <div className={`sky-twinkles${entering ? ' entering' : ''}`} aria-hidden="true">
             {twinkles.map((tw) => (
               <i
@@ -1803,9 +2403,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           {/* What sits on the sky's window and does not zoom: the readout or hint, and the zoom buttons */}
           {frame && (
             <div className="sky-frame" style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}>
-              {dragging ? (
-                <div className="sky-drag-chip" aria-live="polite">
-                  {wall.date} {wall.time} · {shiftLabel(dragShift)}
+              {dragShift !== null || speed ? (
+                <div className="sky-drag-chip" aria-live="off">
+                  {wall.date} {wall.time} · {dragShift !== null ? shiftLabel(dragShift) : rateLabel(speed)}
                 </div>
               ) : (
                 <>
@@ -1842,6 +2442,7 @@ function Star({
   at,
   size,
   light,
+  seen,
   hit,
   on,
   hover,
@@ -1856,6 +2457,8 @@ function Star({
   size: number
   /** Its light: the gradient of its colour */
   light: string
+  /** How well it shows through the sky's own light (1, or less in a town) */
+  seen: number
   /** The least radius the pointer finds it in, in map units */
   hit: number
   /** Whether it is the chosen one, and whether it is under the pointer */
@@ -1869,7 +2472,7 @@ function Star({
   return (
     <g className={`sky-star${on ? ' on' : ''}${hover ? ' hover' : ''}`} aria-label={tip} data-tip={tip} {...chooseProps}>
       <circle className="hit" cx={x} cy={y} r={Math.max(r + hit * 0.4, hit)} />
-      <circle className="disc" cx={x} cy={y} r={glowRadius(s.mag) * size} fill={light} fillOpacity={starAlpha(s.mag)} />
+      <circle className="disc" cx={x} cy={y} r={glowRadius(s.mag) * size} fill={light} fillOpacity={starAlpha(s.mag) * seen} />
     </g>
   )
 }
@@ -1899,4 +2502,33 @@ function MansionFacts({ name }: { name: string }) {
       {t('宿度 {width}°', { width: mansionWidth(x).toFixed(1) })}
     </>
   )
+}
+
+/** A deep-sky object's mark, as star atlases draw them: an ellipse for a galaxy, a circle crossed for
+ *  a globular cluster, a dashed circle for an open one, a square for a nebula, a ringed dot for a
+ *  planetary nebula */
+function DsoMark({ m, x, y, r }: { m: Messier; x: number; y: number; r: number }) {
+  switch (m.kind) {
+    case 'galaxy':
+      return <ellipse className="mark" cx={x} cy={y} rx={r} ry={r * Math.max(0.45, m.size[1] / m.size[0])} />
+    case 'gc':
+      return (
+        <>
+          <circle className="mark" cx={x} cy={y} r={r} />
+          <path className="mark" d={`M${x - r} ${y}h${2 * r}M${x} ${y - r}v${2 * r}`} />
+        </>
+      )
+    case 'oc':
+    case 'asterism':
+      return <circle className="mark dashed" cx={x} cy={y} r={r} />
+    case 'pn':
+      return (
+        <>
+          <circle className="mark" cx={x} cy={y} r={r * 0.6} />
+          <path className="mark" d={`M${x - r} ${y}h${r * 0.4}M${x + r} ${y}h${-r * 0.4}M${x} ${y - r}v${r * 0.4}M${x} ${y + r}v${-r * 0.4}`} />
+        </>
+      )
+    default:
+      return <rect className="mark" x={x - r} y={y - r} width={2 * r} height={2 * r} rx={r * 0.2} />
+  }
 }
