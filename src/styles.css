@@ -2739,6 +2739,8 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 .right-drawer.open .right-drawer-panel { box-shadow: -8px 0 32px rgb(0 0 0 / 0.22); }
 .right-drawer-panel > .card { padding: 0; background: none; border: 0; box-shadow: none; }
 .right-drawer-close { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 4px 8px; }
+/* The AI card's header keeps clear of the ✕ above it, so 设置 is not crowded against it */
+.right-drawer-panel .ai-head { padding-right: 52px; }
 @media (max-width: 860px) { .right-drawer { bottom: var(--foot-nav-h, 0px); } }
 @media (prefers-reduced-motion: reduce) { .right-drawer { transition: none; } }
 @media print { .right-drawer { display: none; } }
