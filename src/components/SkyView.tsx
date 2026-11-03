@@ -337,11 +337,13 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const bodySize = (b: SkyBody) =>
     b.key === 'sun' || b.key === 'moon' ? discOf(b) : Math.max(glowRadius(b.mag) * dot * 0.32, discOf(b) * (b.key === 'saturn' ? 2.2 : 1))
   const centre = frame ? [frame.left + frame.width / 2 + view.x, frame.top + frame.height / 2 + view.y] : [C, C]
-  /** Keeps the zoom in range, and the window's centre on the sky */
+  /** Keeps the zoom in range, and the window's centre on the sky: zoomed in twice or more, as far out
+   *  as the horizon (so what has just risen, or is about to set, can be looked at in the middle); at
+   *  full size, fixed */
   const clampView = (v: { z: number; x: number; y: number }) => {
     const f = frameRef.current
     const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z))
-    const room = f ? (R * Math.min(f.width, f.height) * (z - 1)) / (2 * C) : 0
+    const room = f ? (R * Math.min(f.width, f.height) * Math.min(z, 2 * (z - 1))) / (2 * C) : 0
     const off = Math.hypot(v.x, v.y)
     const keep = off > room ? room / off : 1
     return { z, x: v.x * keep, y: v.y * keep }
@@ -478,10 +480,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     }
     tween.current = requestAnimationFrame(step)
   }
+  /** The zoom buttons: about the middle of the window, so what is looked at stays there */
   const zoomBy = (factor: number) => {
     const f = frameRef.current
-    const v = current()
-    if (f) glideTo(zoomedAt(v, f.left + f.width / 2 + v.x, f.top + f.height / 2 + v.y, factor))
+    if (f) glideTo(zoomedAt(current(), f.left + f.width / 2, f.top + f.height / 2, factor))
   }
 
   // 地点 in the bar above the sky opens the place's details under it; a click elsewhere or Esc shuts them
@@ -1571,9 +1573,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         {figuresLayer}
         {shownDsos.length > 0 && (
           <g className="sky-dsos">
-            {shownDsos.map(({ m, az, alt }) => {
+            {shownDsos.map(({ m, az, alt, axis }) => {
               const key = `dso${m.n}`
               const [x, y] = at(az, alt)
+              // Its long axis turned as it lies on the sky here (its position angle from the north)
+              const [ax, ay] = axis ? at(axis.az, axis.alt) : [x + 1, y]
+              const turn = `rotate(${((Math.atan2(ay - y, ax - x) * 180) / Math.PI).toFixed(1)} ${x.toFixed(2)} ${y.toFixed(2)})`
               const r = dsoMark(m)
               const tip = t('{name} · {direction} · 高 {altitude}°', {
                 name: `${messierName(m, en)} · ${t(KIND_NAME[m.kind])}`,
@@ -1600,10 +1605,13 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                       rx={dsoRadius(m) * 1.15 + 1.2 * dot}
                       ry={(dsoRadius(m) * Math.max(0.45, m.size[1] / m.size[0])) * 1.15 + 1.2 * dot}
                       fill={`url(#${clipId}-fuzz)`}
+                      transform={turn}
                       opacity={Math.min(0.55, Math.max(0.12, (11 - m.mag) / 12))}
                     />
                   )}
-                  <DsoMark m={m} x={x} y={y} r={r} />
+                  <g transform={m.kind === 'galaxy' ? turn : undefined}>
+                    <DsoMark m={m} x={x} y={y} r={r} />
+                  </g>
                   {dsoNamed.has(m.n) && (
                     <text className="sky-dso-name" x={x + r + 3 * k} y={y} dominantBaseline="central">
                       {named ? `M${m.n} ${named}` : `M${m.n}`}

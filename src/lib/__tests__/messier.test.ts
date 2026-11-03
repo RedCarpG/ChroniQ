@@ -28,6 +28,21 @@ describe('the Messier catalogue', () => {
     expect(up.length + down.length).toBe(110)
   })
 
+  it('knows which way a galaxy lies: a point half a degree along its long axis', () => {
+    const up = messierAt(EVENING, ...BEIJING)
+    const m31 = up.find((d) => d.m.n === 31)!
+    expect(m31.m.pa).toBe(35)
+    const rad = Math.PI / 180
+    const apart =
+      Math.acos(
+        Math.sin(m31.alt * rad) * Math.sin(m31.axis!.alt * rad) +
+          Math.cos(m31.alt * rad) * Math.cos(m31.axis!.alt * rad) * Math.cos((m31.az - m31.axis!.az) * rad),
+      ) / rad
+    expect(apart).toBeCloseTo(0.5, 1)
+    // None for the round ones
+    expect(up.find((d) => d.m.n === 13)!.axis).toBeNull()
+  })
+
   it('finds when one rises and sets from its RA and Dec', () => {
     const m42 = MESSIER[41]
     const times = riseSet({ ra: m42.ra, dec: m42.dec }, EVENING, ...BEIJING, false)
