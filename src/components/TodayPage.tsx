@@ -16,6 +16,7 @@ import type { SkyMoment } from './SkyView'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { useLocate } from './useLocate'
 import { AiAnalysis } from './AiAnalysis'
+import { RightDrawer } from './RightDrawer'
 import { dayPrompt } from '../lib/ai/prompts'
 
 const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', venus: '金星', mars: '火星', jupiter: '木星', saturn: '土星' }
@@ -106,6 +107,7 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
 
   return (
     <div className="today-page">
+      <div className="today-col">
       <section className="card today-day">
         <div className="detail-hero">
           <div className="big">{today.getDay()}</div>
@@ -147,63 +149,6 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
           <span className="tag-title bad">{term('忌')}</span>
           <p>{detail.avoids.slice(0, 8).map(term).join(' ') || '—'}</p>
         </div>
-      </section>
-
-      <section className="card today-sky">
-        <h3 className="section-title">{t('今晚的天空')}</h3>
-        <details className="sky-forecast-place">
-          <summary>{t('{place} · 更换观测地', { place: t(place.name) })}</summary>
-          <div className="sky-forecast-place-body">
-            <PlacePicker label={t('观测地')} place={place} onChange={setPlace} />
-            <button type="button" className="ghost" onClick={locate} disabled={locating === 'busy'}>
-              {locating === 'busy' ? t('定位中…') : t('📍 用我的位置')}
-            </button>
-            {locating === 'failed' && <small className="muted">{t('无法取得位置（可能未授权），请从列表中选择城市。')}</small>}
-          </div>
-        </details>
-        {tonight ? (
-          <>
-            <p className="muted today-note">{t('日落 {sunset} · 日出 {sunrise}', { sunset: time(tonight.sunset), sunrise: time(tonight.sunrise) })}</p>
-            <ul className="today-bodies">
-              {[...(tonight.moon ? [tonight.moon] : []), ...tonight.planets].map((b) => (
-                <li key={b.key}>
-                  <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky({ time: b.best, chosen: b.key })}>
-                    <strong>{t(BODY_NAME[b.key])}</strong>
-                    <span className="sky-when">{range(b)}</span>
-                    <span className="muted">
-                      {where(b)}
-                      {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {!tonight.moon && tonight.planets.length === 0 && <li className="muted">{t('今晚这里看不到月亮和行星。')}</li>}
-            </ul>
-          </>
-        ) : (
-          <p className="muted">{t('这里这几天没有日落或日出。')}</p>
-        )}
-        <h4 className="section-title today-sub">{t('接下来的天象')}</h4>
-        {sky.failed && (
-          <p role="alert">
-            {t('天象预告计算失败，请重试。')} <button onClick={sky.retry}>{t('重试')}</button>
-          </p>
-        )}
-        <ul className="today-bodies">
-          {coming.map((e) => (
-            <li key={e.id}>
-              <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky(skyMomentOf(e))}>
-                <strong>{skyText.title(e)}</strong>
-                <span className="sky-when">
-                  {dateText(e.date)} · {skyText.when(e)}
-                </span>
-                <span className="muted">{skyText.note(e)}</span>
-              </button>
-            </li>
-          ))}
-          {sky.loading && coming.length === 0 && <li className="muted">{t('计算中…')}</li>}
-          {!sky.loading && !sky.failed && coming.length === 0 && <li className="muted">{t('未来一年此地没有可见的天象')}</li>}
-        </ul>
       </section>
 
       <section className="card today-chart">
@@ -274,8 +219,73 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
           </p>
         )}
       </section>
+      </div>
 
-      <AiAnalysis id="today-ai" prompt={aiPrompt} />
+      <section className="card today-sky">
+        <h3 className="section-title">{t('今晚的天空')}</h3>
+        <details className="sky-forecast-place">
+          <summary>{t('{place} · 更换观测地', { place: t(place.name) })}</summary>
+          <div className="sky-forecast-place-body">
+            <PlacePicker label={t('观测地')} place={place} onChange={setPlace} />
+            <button type="button" className="ghost" onClick={locate} disabled={locating === 'busy'}>
+              {locating === 'busy' ? t('定位中…') : t('📍 用我的位置')}
+            </button>
+            {locating === 'failed' && <small className="muted">{t('无法取得位置（可能未授权），请从列表中选择城市。')}</small>}
+          </div>
+        </details>
+        {tonight ? (
+          <>
+            <p className="muted today-note">{t('日落 {sunset} · 日出 {sunrise}', { sunset: time(tonight.sunset), sunrise: time(tonight.sunrise) })}</p>
+            <ul className="today-bodies">
+              {[...(tonight.moon ? [tonight.moon] : []), ...tonight.planets].map((b) => (
+                <li key={b.key}>
+                  <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky({ time: b.best, chosen: b.key })}>
+                    <strong>{t(BODY_NAME[b.key])}</strong>
+                    <span className="sky-when">{range(b)}</span>
+                    <span className="muted">
+                      {where(b)}
+                      {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {!tonight.moon && tonight.planets.length === 0 && <li className="muted">{t('今晚这里看不到月亮和行星。')}</li>}
+            </ul>
+          </>
+        ) : (
+          <p className="muted">{t('这里这几天没有日落或日出。')}</p>
+        )}
+      </section>
+
+      <section className="card today-coming">
+        <h3 className="section-title">{t('接下来的天象')}</h3>
+        {sky.failed && (
+          <p role="alert">
+            {t('天象预告计算失败，请重试。')} <button onClick={sky.retry}>{t('重试')}</button>
+          </p>
+        )}
+        <ul className="today-bodies">
+          {coming.map((e) => (
+            <li key={e.id}>
+              <button type="button" data-sound="gong" title={t('在天象中查看')} onClick={() => onViewSky(skyMomentOf(e))}>
+                <strong>{skyText.title(e)}</strong>
+                <span className="sky-when">
+                  {dateText(e.date)} · {skyText.when(e)}
+                </span>
+                <span className="muted">{skyText.note(e)}</span>
+              </button>
+            </li>
+          ))}
+          {sky.loading && coming.length === 0 && <li className="muted">{t('计算中…')}</li>}
+          {!sky.loading && !sky.failed && coming.length === 0 && <li className="muted">{t('未来一年此地没有可见的天象')}</li>}
+        </ul>
+      </section>
+
+
+      {/* At the right edge, opened over the page when wanted */}
+      <RightDrawer label={t('AI 解读')}>
+        <AiAnalysis id="today-ai" prompt={aiPrompt} />
+      </RightDrawer>
     </div>
   )
 }
