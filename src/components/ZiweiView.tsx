@@ -34,6 +34,7 @@ import { RightDrawer } from './RightDrawer'
 import { ziweiPrompt } from '../lib/ai/prompts'
 import { ZiweiReadingCard } from './ChartReadingCards'
 import { SanFangTip, StarTip } from './ZiweiTips'
+import type { Settings } from '../lib/settings'
 
 /** A palace's part in the selected palace's 三方四正 */
 type Role = 'self' | 'opposite' | 'trine'
@@ -100,10 +101,12 @@ interface Props {
   /** 紫微's own 流派设置, separate from 八字 */
   schools: ZiweiSchoolSettings
   onSchoolsChange: (schools: ZiweiSchoolSettings) => void
+  /** 星曜配色, chosen by the board it colours rather than in the settings */
+  onColourChange: (colour: Settings['ziweiColor']) => void
 }
 
 /** 紫微斗数 page: shared birth form plus the twelve-palace board. */
-export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) {
+export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourChange }: Props) {
   const chart = useMemo(() => buildZiwei(input, schools), [input, schools])
   const term = useTerm()
   const t = useT()
@@ -540,7 +543,18 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange }: Props) 
                 <span className="luck-bad">{t('煞星')}</span>
               </>
             )}
-            <span className="muted">{t('星曜配色（可在设置中切换）')}</span>
+            <div className="seg small zc-colour" role="group" aria-label={t('紫微星曜配色')}>
+              {(
+                [
+                  ['element', t('按五行')],
+                  ['luck', t('按吉凶')],
+                ] as const
+              ).map(([value, label]) => (
+                <button key={value} type="button" className={ziweiColor === value ? 'on' : undefined} aria-pressed={ziweiColor === value} onClick={() => onColourChange(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {mode === 'feihua' && (
             <div className="zc-legend">

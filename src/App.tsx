@@ -377,6 +377,7 @@ export function App() {
                 onChange={setBaziInput}
                 schools={ziweiSchools}
                 onSchoolsChange={changeZiweiSchools}
+                onColourChange={(ziweiColor) => changeSettings({ ...settings, ziweiColor })}
               />
             </Suspense>
           )}

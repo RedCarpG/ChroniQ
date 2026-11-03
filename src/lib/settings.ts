@@ -25,7 +25,7 @@ export interface Settings {
   sound: 'on' | 'off'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'on' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'off' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -119,6 +119,8 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
 }
 
 const STORAGE_KEY = 'chroniq-settings'
+/** Set once the sounds' default turned to off: settings saved before then had them on by default, not by choice */
+const SOUND_OFF_SINCE = 'chroniq-sound-default-off'
 
 export function loadSettings(): Settings {
   try {
@@ -127,6 +129,11 @@ export function loadSettings(): Settings {
     for (const key of Object.keys(SETTING_OPTIONS) as (keyof Settings)[]) {
       const value = saved[key]
       if (SETTING_OPTIONS[key].options.some((o) => o.value === value)) (merged as Record<string, unknown>)[key] = value
+    }
+    // The sounds are off by default now; a choice made since is kept
+    if (!localStorage.getItem(SOUND_OFF_SINCE)) {
+      merged.sound = 'off'
+      localStorage.setItem(SOUND_OFF_SINCE, '1')
     }
     return merged
   } catch {
