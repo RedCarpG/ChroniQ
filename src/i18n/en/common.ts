@@ -99,6 +99,8 @@ export const COMMON: Record<string, string> = {
   简体中文: 'Chinese (Simplified)',
   繁體中文: 'Chinese (Traditional)',
   有新版本: 'A new version is ready',
+  清除对话: 'Clear conversation',
+  '这段对话存在这个浏览器里，换页面回来还在；清除后就没有了': 'This conversation is kept in this browser, so it is still here when you come back; clearing it removes it',
   '想问什么？比如「今天适合谈合作吗？」留空就生成完整解读': 'What would you like to ask? For example “Is today good for a partnership talk?” Leave it empty for the whole reading',
   想问的问题: 'Your question',
   提问: 'Ask',
