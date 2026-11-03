@@ -316,6 +316,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const fit = frame && Math.min(frame.width, frame.height) > 100 ? Math.min(frame.width, frame.height) / (2 * C) : 1
   const scale = fit * view.z
   const k = Math.round((1 / scale) * 1000) / 1000
+  const kRef = useRef(k)
+  kRef.current = k
   const dot = Math.round((1 / Math.sqrt(view.z)) * 100) / 100
   // A planet is a point of light far out (glowing as bright as it is), and opens into its face once
   // zoomed in: the face's radius in screen pixels, 0 until then
@@ -396,6 +398,24 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     : Math.round(Math.max(window.innerWidth, window.innerHeight) * (smooth ? 0.08 : 0.15))
   const overRef = useRef(over)
   overRef.current = over
+  // The labels keep their size on screen meanwhile, as they will have once drawn again, rather than
+  // growing with the map and shrinking back when it rests. Set on each label (once above them would
+  // restyle the whole map), and at most every 100 ms: laying the labels out again costs ~15 ms
+  const labelsAt = useRef(0)
+  const labelsLater = useRef(0)
+  const sizeLabels = (g: number) => {
+    const el = zoomerRef.current
+    if (!el) return
+    clearTimeout(labelsLater.current)
+    const wait = labelsAt.current + 100 - performance.now()
+    if (wait > 0) {
+      labelsLater.current = window.setTimeout(() => live.current && sizeLabels(live.current.z / viewRef.current.z), wait)
+      return
+    }
+    labelsAt.current = performance.now()
+    const kg = String(kRef.current / g)
+    for (const label of el.querySelectorAll<SVGTextElement>('text')) label.style.setProperty('--k', kg)
+  }
   /** The view on screen: the one a gesture has reached, or the one drawn */
   const current = () => live.current ?? viewRef.current
   /** Moves the drawn map (drawn at viewRef's view) to show another; true if the drawn layers, past
@@ -408,6 +428,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const [wx, wy] = [f.left + f.width / 2, f.top + f.height / 2]
     const [tx, ty] = [wx + next.x - (wx + v.x) * g, wy + next.y - (wy + v.y) * g]
     el.style.transform = `translate(${tx}px, ${ty}px) scale(${g})`
+    sizeLabels(g)
     if (!el.classList.contains('moving')) el.classList.add('moving')
     const m = overRef.current
     const [w, h] = [window.innerWidth, window.innerHeight]
@@ -445,16 +466,22 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const el = zoomerRef.current
     if (!el) return
     if (live.current && live.current !== view) {
+      // Labels drawn anew have no size of their own yet: set at once
+      labelsAt.current = 0
       shift(live.current)
       return
     }
     live.current = null
     el.style.transform = ''
+    clearTimeout(labelsLater.current)
+    labelsAt.current = 0
+    for (const label of el.querySelectorAll<SVGTextElement>('text')) label.style.removeProperty('--k')
     el.classList.remove('moving')
   }, [view])
   useEffect(() => () => {
     clearTimeout(settle.current)
     clearTimeout(early.current)
+    clearTimeout(labelsLater.current)
     cancelAnimationFrame(tween.current)
   }, [])
   /** The view zoomed by a factor about a point on the screen, which stays where it is */
