@@ -137,6 +137,21 @@ function rotationFor(utc: Date, latitude: number, longitude: number) {
   return lastRotation
 }
 
+/**
+ * The turn from J2000 directions to the horizon frame the dome view uses (x east, y north, z up),
+ * without refraction, as rows: (east, north, up) = M · v. Made once per moment and place (rotationFor
+ * keeps the last), so a view can turn its camera rather than every point.
+ */
+export function horizonMatrix(utc: Date, latitude: number, longitude: number): number[][] {
+  const r = rotationFor(utc, latitude, longitude).rot
+  // rotationFor's horizon frame is (north, west, up), its vectors' parts down the columns
+  return [
+    [-r[0][1], -r[1][1], -r[2][1]],
+    [r[0][0], r[1][0], r[2][0]],
+    [r[0][2], r[1][2], r[2][2]],
+  ]
+}
+
 /** A J2000 unit vector → azimuth / altitude, refraction included (RotateVector + HorizonFromVector) */
 function toHorizonOf({ time, rot: r }: { time: A.AstroTime; rot: number[][] }) {
   return (x: number, y: number, z: number) => {

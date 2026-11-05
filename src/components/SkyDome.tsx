@@ -2,13 +2,16 @@
 // sky overhead, the horizon an arc with the compass points on it, and the ground a see-through shade,
 // so the sky under one's feet shows dimly through it. Dragged to look about and pinched to zoom; or,
 // in 对准天空, turned by the phone itself (viewRef, written by the sensors, drawn on the next frame).
-// One canvas, redrawn whole each frame the view moves.
-import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+// One canvas, redrawn whole each frame the view moves, at a lower resolution while it keeps moving.
+//
+// The stars, figures and Milky Way stay as J2000 directions, worked out once: the moment and place only
+// turn the camera (turnCamera), so time running on costs no more than looking about.
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { BRIGHT_STARS, STAR_FIELDS } from '../lib/brightStars'
 import { WESTERN } from '../lib/constellations'
 import { XINGGUAN } from '../lib/xingguan'
-import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, projectDir, type DomeView, type V3 } from '../lib/domeProjection'
-import { cloudLight, directionsAt, STAR_NAMES, vectorsOfStars, type SkyBody } from '../lib/sky'
+import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, projectDir, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
+import { cloudLight, horizonMatrix, milkyWayCloud, STAR_NAMES, vectorsOfStars, type SkyBody } from '../lib/sky'
 import type { Constellation } from '../lib/sky'
 import { BODY_COLOUR } from './bodyColours'
 import { starColour } from './skyPaint'
@@ -29,8 +32,6 @@ export interface DomeScene {
   en: boolean
   /** Name of a body or star in the reader's language */
   name: (zh: string) => string
-  /** The Milky Way's points (useSkyBackdrop), when loaded */
-  cloud: { az: Float32Array; alt: Float32Array; light: Float32Array } | null
   /** The ground: a see-through shade (the sky below shows through it), or none at all */
   ground: boolean
 }
@@ -45,33 +46,51 @@ interface Props {
   onPick?: (key: string) => void
 }
 
-/** Turn a list of J2000 lines into horizon directions at a moment and place */
-function figureLines(set: Constellation[], utc: Date, lat: number, lon: number) {
+/** A direction from right ascension and declination (degrees), J2000 */
+function unitOf(ra: number, dec: number, out: Float64Array | V3, at = 0) {
+  out[at] = Math.cos(dec * RAD) * Math.cos(ra * RAD)
+  out[at + 1] = Math.cos(dec * RAD) * Math.sin(ra * RAD)
+  out[at + 2] = Math.sin(dec * RAD)
+}
+
+/** A set of figures as J2000 directions: each line packed x, y, z after one another, and the label's */
+function figureLines(set: Constellation[]) {
   return set.map((c) => ({
     c,
     lines: c.lines.map((line) => {
       const v = new Float64Array(line.length * 1.5)
-      for (let i = 0, j = 0; i < line.length; i += 2, j += 3) {
-        const ra = line[i] * RAD
-        const dec = line[i + 1] * RAD
-        v[j] = Math.cos(dec) * Math.cos(ra)
-        v[j + 1] = Math.cos(dec) * Math.sin(ra)
-        v[j + 2] = Math.sin(dec)
-      }
-      const { az, alt } = directionsAt(v, utc, lat, lon)
-      return Array.from(az, (a, i) => dirOf(a, alt[i]))
+      for (let i = 0, j = 0; i < line.length; i += 2, j += 3) unitOf(line[i], line[i + 1], v, j)
+      return v
     }),
     label: (() => {
-      const v = new Float64Array(3)
-      const [ra, dec] = [c.label[0] * RAD, c.label[1] * RAD]
-      v[0] = Math.cos(dec) * Math.cos(ra)
-      v[1] = Math.cos(dec) * Math.sin(ra)
-      v[2] = Math.sin(dec)
-      const { az, alt } = directionsAt(v, utc, lat, lon)
-      return dirOf(az[0], alt[0])
+      const v: V3 = [0, 0, 0]
+      unitOf(c.label[0], c.label[1], v)
+      return v
     })(),
   }))
 }
+type Figures = ReturnType<typeof figureLines>
+
+/** The bright stars as J2000 directions (packed), with what drawing them needs (made once) */
+let starList: { v: Float64Array; hip: Int32Array; mag: Float32Array; colour: string[]; named: number[] } | null = null
+function brightStars() {
+  if (!starList) {
+    const count = BRIGHT_STARS.length / STAR_FIELDS
+    const hip = Int32Array.from({ length: count }, (_, i) => BRIGHT_STARS[i * STAR_FIELDS])
+    starList = {
+      v: vectorsOfStars(BRIGHT_STARS),
+      hip,
+      mag: Float32Array.from({ length: count }, (_, i) => BRIGHT_STARS[i * STAR_FIELDS + 3]),
+      colour: Array.from({ length: count }, (_, i) => starColour(BRIGHT_STARS[i * STAR_FIELDS + 4])),
+      named: [...hip.keys()].filter((i) => STAR_NAMES[hip[i]]),
+    }
+  }
+  return starList
+}
+type Stars = ReturnType<typeof brightStars>
+
+/** The Milky Way's brighter points (as the full view of the map draws them), each with its light */
+type Cloud = { v: Float64Array; light: Float32Array; count: number }
 
 const COMPASS: [string, string, number][] = [
   ['北', 'N', 0],
@@ -86,53 +105,74 @@ const COMPASS: [string, string, number][] = [
 
 export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { utc, latitude, longitude } = scene
 
-  // What moves only with the time and place: every star, figure and cloud point as a direction
-  const stars = useMemo(() => {
-    const { az, alt } = directionsAt(vectorsOfStars(BRIGHT_STARS), utc, latitude, longitude)
-    return Array.from(az, (a, i) => ({
-      v: dirOf(a, alt[i]),
-      hip: BRIGHT_STARS[i * STAR_FIELDS],
-      mag: BRIGHT_STARS[i * STAR_FIELDS + 3],
-      colour: starColour(BRIGHT_STARS[i * STAR_FIELDS + 4]),
-    }))
-  }, [utc, latitude, longitude])
+  const stars = useMemo(brightStars, [])
   const figures = useMemo(
-    () =>
-      scene.figures === 'none'
-        ? []
-        : figureLines(scene.figures === 'west' ? WESTERN : scene.figures === 'mansions' ? XINGGUAN.filter((c) => c.rank === 1) : XINGGUAN, utc, latitude, longitude),
-    [scene.figures, utc, latitude, longitude],
+    () => (scene.figures === 'none' ? [] : figureLines(scene.figures === 'west' ? WESTERN : scene.figures === 'mansions' ? XINGGUAN.filter((c) => c.rank === 1) : XINGGUAN)),
+    [scene.figures],
   )
-  const cloud = useMemo(() => {
-    if (!scene.cloud) return null
-    const { az, alt, light } = scene.cloud
-    return { v: Array.from(az, (a, i) => dirOf(a, alt[i])), light }
-  }, [scene.cloud])
+  // The Milky Way is made once for the whole page (sky.milkyWayCloud keeps it); the first time it
+  // takes a moment, so it comes after the first frame
+  const [cloud, setCloud] = useState<Cloud | null>(null)
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const c = milkyWayCloud()
+      setCloud({ v: c.v, light: Float32Array.from(c.weight.subarray(0, c.bright), cloudLight), count: c.bright })
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
 
-  const sceneRef = useRef({ scene, stars, figures, cloud })
+  const sceneRef = useRef<Drawn>({ scene, stars, figures, cloud })
   sceneRef.current = { scene, stars, figures, cloud }
   const dirty = useRef(true)
   dirty.current = true
 
-  // Drawn on the next frame whenever anything changed (the view by a drag or the sensors, the scene)
+  // Drawn on the next frame whenever anything changed (the view by a drag or the sensors, the scene).
+  // A shift of under a quarter pixel (a phone's sensors trembling) is not drawn at all; while the view
+  // keeps moving, or the time keeps running, it is drawn at one pixel to the CSS pixel (a quarter of
+  // the work on a phone), and sharp again once it has been still for a moment. Its size comes from a
+  // ResizeObserver: reading it off the canvas each frame would make the page lay itself out again
+  // straight after every change React makes to it
   useEffect(() => {
     let frame = 0
-    let last = ''
-    const tick = () => {
+    const el0 = canvasRef.current
+    let [width, height] = el0 ? [el0.clientWidth, el0.clientHeight] : [0, 0]
+    const watch =
+      el0 && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(([entry]) => {
+            width = entry.contentRect.width
+            height = entry.contentRect.height
+          })
+        : null
+    if (el0) watch?.observe(el0)
+    let last: DomeView | null = null
+    let size = ''
+    let drawnAt = -Infinity
+    let rough = false
+    const tick = (now: number) => {
       frame = requestAnimationFrame(tick)
       const el = canvasRef.current
       if (!el) return
       const v = viewRef.current
-      const key = `${v.az.toFixed(2)} ${v.alt.toFixed(2)} ${v.fov.toFixed(2)} ${el.clientWidth} ${el.clientHeight}`
-      if (!dirty.current && key === last) return
+      if (!watch) [width, height] = [el.clientWidth, el.clientHeight]
+      const box = `${width} ${height}`
+      const shift = last && box === size ? viewShift(last, v, Math.min(width, height)) : Infinity
+      const settled = now - drawnAt > SETTLE
+      if (!dirty.current && shift < 0.25 && !(rough && settled)) return
+      // Moving: a real shift since the last frame, or the scene changing again straight after the last
+      rough = (shift >= 1 && shift !== Infinity) || (dirty.current && !settled && last !== null)
       dirty.current = false
-      last = key
-      draw(el, v, sceneRef.current)
+      last = { ...v }
+      size = box
+      drawnAt = now
+      const sharp = Math.min(2, window.devicePixelRatio || 1)
+      draw(el, width, height, v, sceneRef.current, rough ? Math.min(sharp, 1) : sharp, rough)
     }
     frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      watch?.disconnect()
+    }
   }, [viewRef])
 
   // Looking about: one finger (or the mouse) drags the sky along under it, two pinch, the wheel zooms
@@ -193,15 +233,17 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
     if (!el) return
     const box = el.getBoundingClientRect()
     const cam = cameraFor(viewRef.current, box.width, box.height)
+    const { scene: sc, stars: st } = sceneRef.current
+    const sky = turnCamera(cam, horizonMatrix(sc.utc, sc.latitude, sc.longitude))
     const at: [number, number] = [0, 0]
     let best: { key: string; d: number } | null = null
-    const near = (key: string, v: V3) => {
-      if (!projectDir(cam, v, at)) return
+    const near = (key: string, ok: boolean) => {
+      if (!ok) return
       const d = Math.hypot(at[0] - (cx - box.left), at[1] - (cy - box.top))
       if (d < 28 && (!best || d < best.d)) best = { key, d }
     }
-    for (const b of sceneRef.current.scene.bodies) near(b.key, dirOf(b.az, b.alt))
-    for (const s of sceneRef.current.stars) if (STAR_NAMES[s.hip]) near(`hip${s.hip}`, s.v)
+    for (const b of sc.bodies) near(b.key, projectDir(cam, dirOf(b.az, b.alt), at))
+    for (const i of st.named) near(`hip${st.hip[i]}`, projectXYZ(sky, st.v[i * 3], st.v[i * 3 + 1], st.v[i * 3 + 2], at))
     if (best) onPick?.((best as { key: string }).key)
   }
   useEffect(() => {
@@ -230,11 +272,12 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
   )
 }
 
-type Drawn = { scene: DomeScene; stars: { v: V3; hip: number; mag: number; colour: string }[]; figures: ReturnType<typeof figureLines>; cloud: { v: V3[]; light: Float32Array } | null }
+type Drawn = { scene: DomeScene; stars: Stars; figures: Figures; cloud: Cloud | null }
 
-function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cloud }: Drawn) {
-  const dpr = Math.min(2, window.devicePixelRatio || 1)
-  const [w, h] = [el.clientWidth, el.clientHeight]
+/** How long the view must stay still before it is drawn sharp again, ms */
+const SETTLE = 160
+
+function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { scene, stars, figures, cloud }: Drawn, dpr: number, rough: boolean) {
   if (w < 4 || h < 4) return
   if (el.width !== Math.round(w * dpr) || el.height !== Math.round(h * dpr)) {
     el.width = Math.round(w * dpr)
@@ -244,6 +287,8 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
   if (!ctx) return
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   const cam = cameraFor(view, w, h)
+  // The same camera for J2000 directions (the stars, figures and Milky Way)
+  const sky: Camera = turnCamera(cam, horizonMatrix(scene.utc, scene.latitude, scene.longitude))
   const at: [number, number] = [0, 0]
   // How big a degree is in the middle of the view, in pixels: things grow as one zooms in
   const deg = cam.scale * RAD
@@ -265,16 +310,19 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
   ctx.globalCompositeOperation = 'lighter'
 
   // ---- The Milky Way: its points as soft dots, larger as one zooms in ----
+  // It is about half the work of a frame, so while the view moves every other point is drawn, twice
+  // as bright (as the map thins its own while it moves); all of them once it is still
   if (cloud && scene.light !== 'day') {
     // Each point adds only a little light (as on the map, cloudLight), so where they crowd the band
     // glows and where they thin it fades, rather than each point standing out as a blot
-    const strength = scene.light === 'night' ? 1 : 0.35
+    const step = rough ? 2 : 1
+    const strength = (scene.light === 'night' ? 1 : 0.35) * step
     const r = Math.max(1.6, 0.7 * deg)
     ctx.fillStyle = '#9fb0d8'
-    for (let i = 0; i < cloud.v.length; i++) {
-      if (!projectDir(cam, cloud.v[i], at)) continue
+    for (let i = 0; i < cloud.count; i += step) {
+      if (!projectXYZ(sky, cloud.v[i * 3], cloud.v[i * 3 + 1], cloud.v[i * 3 + 2], at)) continue
       if (at[0] < -r || at[1] < -r || at[0] > w + r || at[1] > h + r) continue
-      ctx.globalAlpha = cloudLight(cloud.light[i]) * 1.4 * strength
+      ctx.globalAlpha = cloud.light[i] * 1.4 * strength
       ctx.beginPath()
       ctx.arc(at[0], at[1], r, 0, Math.PI * 2)
       ctx.fill()
@@ -292,8 +340,8 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
     const b: [number, number] = [0, 0]
     for (const f of figures)
       for (const line of f.lines)
-        for (let i = 1; i < line.length; i++) {
-          if (!projectDir(cam, line[i - 1], a) || !projectDir(cam, line[i], b)) continue
+        for (let j = 3; j < line.length; j += 3) {
+          if (!projectXYZ(sky, line[j - 3], line[j - 2], line[j - 1], a) || !projectXYZ(sky, line[j], line[j + 1], line[j + 2], b)) continue
           // A segment flung across the screen is one wrapping round behind: left out
           if (Math.hypot(a[0] - b[0], a[1] - b[1]) > Math.max(w, h)) continue
           ctx.moveTo(a[0], a[1])
@@ -305,17 +353,19 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
 
   // ---- Stars, as bright and as large as their magnitude; the faintest only zoomed in ----
   const limit = Math.min(scene.limit, 4 + 1.5 * Math.log2(Math.max(1, 90 / view.fov)) + 1)
-  for (const s of stars) {
-    if (s.mag > limit) continue
-    if (!projectDir(cam, s.v, at)) continue
+  for (let i = 0; i < stars.mag.length; i++) {
+    const mag = stars.mag[i]
+    if (mag > limit) continue
+    if (!projectXYZ(sky, stars.v[i * 3], stars.v[i * 3 + 1], stars.v[i * 3 + 2], at)) continue
     if (at[0] < -10 || at[1] < -10 || at[0] > w + 10 || at[1] > h + 10) continue
-    const r = Math.max(0.6, (3.4 - 0.55 * s.mag) * 0.85 * zoom)
-    const alpha = Math.min(1, Math.max(0.25, 1.15 - 0.15 * s.mag)) * starsShow
-    if (s.mag < 2) {
+    const colour = stars.colour[i]
+    const r = Math.max(0.6, (3.4 - 0.55 * mag) * 0.85 * zoom)
+    const alpha = Math.min(1, Math.max(0.25, 1.15 - 0.15 * mag)) * starsShow
+    if (mag < 2) {
       const g = ctx.createRadialGradient(at[0], at[1], 0, at[0], at[1], r * 3.2)
-      g.addColorStop(0, s.colour)
-      g.addColorStop(0.25, s.colour + '88')
-      g.addColorStop(1, s.colour + '00')
+      g.addColorStop(0, colour)
+      g.addColorStop(0.25, colour + '88')
+      g.addColorStop(1, colour + '00')
       ctx.globalAlpha = alpha * 0.7
       ctx.fillStyle = g
       ctx.beginPath()
@@ -323,7 +373,7 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
       ctx.fill()
     }
     ctx.globalAlpha = alpha
-    ctx.fillStyle = s.colour
+    ctx.fillStyle = colour
     ctx.beginPath()
     ctx.arc(at[0], at[1], r, 0, Math.PI * 2)
     ctx.fill()
@@ -376,16 +426,16 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
   if (figures.length) {
     ctx.textAlign = 'center'
     for (const f of figures) {
-      if (f.c.rank > 2 || !projectDir(cam, f.label, at)) continue
+      if (f.c.rank > 2 || !projectDir(sky, f.label, at)) continue
       const label = scene.figures === 'west' && scene.en ? f.c.en : f.c.name
       ctx.fillText(label, at[0], at[1])
     }
   }
   ctx.textAlign = 'left'
   ctx.fillStyle = 'rgba(235,238,250,0.8)'
-  for (const s of stars) {
-    const zh = STAR_NAMES[s.hip]
-    if (!zh || s.mag > limit || !projectDir(cam, s.v, at)) continue
+  for (const i of stars.named) {
+    const zh = STAR_NAMES[stars.hip[i]]
+    if (stars.mag[i] > limit || !projectXYZ(sky, stars.v[i * 3], stars.v[i * 3 + 1], stars.v[i * 3 + 2], at)) continue
     ctx.fillText(scene.name(zh), at[0] + 7, at[1] - 7)
   }
   ctx.font = '600 13px system-ui, sans-serif'
