@@ -286,6 +286,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const windowRef = useRef<HTMLDivElement>(null)
   // 对准天空: the phone shows the part of the sky it points at, over the whole screen
   const [pointingOn, setPointingOn] = useState(false)
+  // The dome view (穹顶, and 对准天空 always) draws its own sky. While it shows, what only the flat map
+  // draws (its figures, grid, paths, labels, globes, Milky Way and faint stars) stays at the moment
+  // it was left, rather than being worked out again each step of the time running on, and is
+  // brought up to date when the map comes back
+  const domeOn = dome || pointingOn
+  const flatUtcRef = useRef(utc)
+  if (!domeOn) flatUtcRef.current = utc
+  const flatUtc = flatUtcRef.current
   const [measuredFrame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
   const frame = pointingOn ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight } : measuredFrame
   const frameRef = useRef(frame)
@@ -688,17 +696,17 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         ? []
         : constellationsAt(
             figures === 'west' ? WESTERN : figures === 'mansions' ? MANSION_FIGURES : XINGGUAN,
-            utc,
+            flatUtc,
             place.latitude,
             place.longitude,
             below,
           ),
-    [figures, utc, place.latitude, place.longitude, below],
+    [figures, flatUtc, place.latitude, place.longitude, below],
   )
   // 二十八宿: the mansions' boundaries along the equator, with their names (lib/sky.ts mansionsAt)
   const mansionView = useMemo(
-    () => (figures === 'mansions' ? mansionsAt(utc, place.latitude, place.longitude) : null),
-    [figures, utc, place.latitude, place.longitude],
+    () => (figures === 'mansions' ? mansionsAt(flatUtc, place.latitude, place.longitude) : null),
+    [figures, flatUtc, place.latitude, place.longitude],
   )
   const mansionName = (name: string) => (script === 'trad' ? (MANSION_TRAD.get(name) ?? name) : name)
   // 星官 names stay Chinese in English, as proper nouns; both sets follow the 繁體 / 简体 setting
@@ -790,7 +798,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
   // While the sky is dragged through time the usual paths wait, so the moments are only needed then
   // for a chosen or hovered one's path
-  const wantPathTimes = showPaths && (!dragging || chosen !== null || focus !== null)
+  const wantPathTimes = showPaths && !domeOn && (!dragging || chosen !== null || focus !== null)
   const pathTimes = useMemo(() => {
     if (!wantPathTimes) return null
     const now = utc.getTime()
@@ -914,8 +922,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   lastDsoDetails.current = dsoDetails
   // The equatorial grid and the ecliptic, when either is on
   const grid = useMemo(
-    () => (eqGrid || showEcliptic ? gridAt(utc, place.latitude, place.longitude) : null),
-    [eqGrid, showEcliptic, utc, place.latitude, place.longitude],
+    () => (eqGrid || showEcliptic ? gridAt(flatUtc, place.latitude, place.longitude) : null),
+    [eqGrid, showEcliptic, flatUtc, place.latitude, place.longitude],
   )
   /** A rise or set: its local time, marked if it falls on the day before or after */
   const clock = (d: Date | null) => {
@@ -1002,7 +1010,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const shade = event && eclipseShade(event, utc.getTime())
   const radiant = event?.kind === 'meteors' && !below ? horizonOf(utc, place.latitude, place.longitude)(event.ra, event.dec) : null
   // Each body's face: phase, which way its north is, Saturn's rings, Jupiter's moons (lib/sky.ts)
-  const faces = useMemo(() => bodyFaces(utc, place.latitude, place.longitude), [utc, place.latitude, place.longitude])
+  const faces = useMemo(() => bodyFaces(flatUtc, place.latitude, place.longitude), [flatUtc, place.latitude, place.longitude])
   /** Which way (degrees, on the map) a point lies from a body */
   const turnTo = (b: SkyBody, p: { az: number; alt: number }) => {
     const [x0, y0] = at(b.az, b.alt)
@@ -1017,7 +1025,6 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
   }
   const light = below ? 'below' : sky.light
-  const domeOn = dome || pointingOn
   // The deep-sky objects drawn: more of the fainter ones as the map zooms in; none by day but the chosen one
   const dsoLimit = 5 + 2.2 * (view.z - 1)
   const shownDsos =
@@ -1038,12 +1045,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       dsoNamed.add(d.m.n)
     }
   }
-  // The flat map's backdrop (the Milky Way's points, the faint stars) turned to the moment: the dome
-  // view draws its own, so while it is up this stays at the moment it was left, rather than turning
-  // thousands of points again each step of the time running on
-  const backdropUtc = useRef(utc)
-  if (!domeOn) backdropUtc.current = utc
-  const { milkyWay, deepSky } = useSkyBackdrop(backdropUtc.current, place.latitude, place.longitude, below, view.z, smooth, dragging || moving)
+  const { milkyWay, deepSky } = useSkyBackdrop(flatUtc, place.latitude, place.longitude, below, view.z, smooth, dragging || moving)
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
   // place in the list, which shifts as figures rise and set: a remount would draw the chosen one in again
@@ -1095,7 +1097,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const moonGlow = !below && moon.alt > 0 && sky.light !== 'day' ? { at: at(moon.az, moon.alt), strength: 0.22 * moon.lit } : null
   // The brightest stars twinkle: drawn over the map (screen pixels), where the compositor animates them
   const twinkles =
-    below || sky.light === 'day' || !frame || smooth
+    domeOn || below || sky.light === 'day' || !frame || smooth
       ? []
       : sky.stars
           .filter((st) => st.mag < 1.6 && st.alt > 6)
@@ -1104,10 +1106,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             return { hip: st.hip, x: centre[0] + (x - C) * scale, y: centre[1] + (y - C) * scale, size: 14 + (1.6 - st.mag) * 7, colour: starColour(st.bv) }
           })
   // The stars without a name, which are only looked at, go to the canvas (skyPaint) with the faint ones
-  const plainStars = useMemo(() => sky.stars.filter((st) => !st.name), [sky])
+  const plainStars = useMemo(() => (domeOn ? [] : sky.stars.filter((st) => !st.name)), [sky, domeOn])
   const labels = useMemo(
     () =>
-      placeLabels([
+      domeOn ? [] : placeLabels([
         ...sky.bodies
           .filter((b) => shown(b.alt))
           .sort((a, b) => a.mag - b.mag)
@@ -1130,7 +1132,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           }),
       ], k),
     // t is new each render but changes only with the settings
-    [sky, figureViews, language, script, below, k, dot, pickFigure?.id],
+    [sky, figureViews, language, script, below, k, dot, pickFigure?.id, domeOn],
   )
 
 

@@ -130,9 +130,21 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
   // Drawn on the next frame whenever anything changed (the view by a drag or the sensors, the scene).
   // A shift of under a quarter pixel (a phone's sensors trembling) is not drawn at all; while the view
   // keeps moving, or the time keeps running, it is drawn at one pixel to the CSS pixel (a quarter of
-  // the work on a phone), and sharp again once it has been still for a moment
+  // the work on a phone), and sharp again once it has been still for a moment. Its size comes from a
+  // ResizeObserver: reading it off the canvas each frame would make the page lay itself out again
+  // straight after every change React makes to it
   useEffect(() => {
     let frame = 0
+    const el0 = canvasRef.current
+    let [width, height] = el0 ? [el0.clientWidth, el0.clientHeight] : [0, 0]
+    const watch =
+      el0 && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(([entry]) => {
+            width = entry.contentRect.width
+            height = entry.contentRect.height
+          })
+        : null
+    if (el0) watch?.observe(el0)
     let last: DomeView | null = null
     let size = ''
     let drawnAt = -Infinity
@@ -142,8 +154,9 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
       const el = canvasRef.current
       if (!el) return
       const v = viewRef.current
-      const box = `${el.clientWidth} ${el.clientHeight}`
-      const shift = last && box === size ? viewShift(last, v, Math.min(el.clientWidth, el.clientHeight)) : Infinity
+      if (!watch) [width, height] = [el.clientWidth, el.clientHeight]
+      const box = `${width} ${height}`
+      const shift = last && box === size ? viewShift(last, v, Math.min(width, height)) : Infinity
       const settled = now - drawnAt > SETTLE
       if (!dirty.current && shift < 0.25 && !(rough && settled)) return
       // Moving: a real shift since the last frame, or the scene changing again straight after the last
@@ -153,10 +166,13 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
       size = box
       drawnAt = now
       const sharp = Math.min(2, window.devicePixelRatio || 1)
-      draw(el, v, sceneRef.current, rough ? Math.min(sharp, 1) : sharp)
+      draw(el, width, height, v, sceneRef.current, rough ? Math.min(sharp, 1) : sharp, rough)
     }
     frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      watch?.disconnect()
+    }
   }, [viewRef])
 
   // Looking about: one finger (or the mouse) drags the sky along under it, two pinch, the wheel zooms
@@ -261,8 +277,7 @@ type Drawn = { scene: DomeScene; stars: Stars; figures: Figures; cloud: Cloud | 
 /** How long the view must stay still before it is drawn sharp again, ms */
 const SETTLE = 160
 
-function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cloud }: Drawn, dpr: number) {
-  const [w, h] = [el.clientWidth, el.clientHeight]
+function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { scene, stars, figures, cloud }: Drawn, dpr: number, rough: boolean) {
   if (w < 4 || h < 4) return
   if (el.width !== Math.round(w * dpr) || el.height !== Math.round(h * dpr)) {
     el.width = Math.round(w * dpr)
@@ -295,13 +310,16 @@ function draw(el: HTMLCanvasElement, view: DomeView, { scene, stars, figures, cl
   ctx.globalCompositeOperation = 'lighter'
 
   // ---- The Milky Way: its points as soft dots, larger as one zooms in ----
+  // It is about half the work of a frame, so while the view moves every other point is drawn, twice
+  // as bright (as the map thins its own while it moves); all of them once it is still
   if (cloud && scene.light !== 'day') {
     // Each point adds only a little light (as on the map, cloudLight), so where they crowd the band
     // glows and where they thin it fades, rather than each point standing out as a blot
-    const strength = scene.light === 'night' ? 1 : 0.35
+    const step = rough ? 2 : 1
+    const strength = (scene.light === 'night' ? 1 : 0.35) * step
     const r = Math.max(1.6, 0.7 * deg)
     ctx.fillStyle = '#9fb0d8'
-    for (let i = 0; i < cloud.count; i++) {
+    for (let i = 0; i < cloud.count; i += step) {
       if (!projectXYZ(sky, cloud.v[i * 3], cloud.v[i * 3 + 1], cloud.v[i * 3 + 2], at)) continue
       if (at[0] < -r || at[1] < -r || at[0] > w + r || at[1] > h + r) continue
       ctx.globalAlpha = cloud.light[i] * 1.4 * strength
