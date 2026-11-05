@@ -510,6 +510,15 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
             </div>
           </div>
         </div>
+        {active && (
+          <PalaceDetail
+            chart={chart}
+            branch={active}
+            layers={layers}
+            colour={ziweiColor}
+            onClose={palacePick.clear}
+          />
+        )}
         <div className="zw-legends">
           {layers.length > 0 && (
             <div className="zc-legend">
@@ -698,6 +707,98 @@ function flyInto(flies: ZiweiFly[], branch: string) {
 
 /** A palace redraws only when its own props change, not whenever another one is hovered */
 const Palace = memo(PalaceView)
+
+/**
+ * The palace picked out, written large under the board: on a phone, where the board's stars are a
+ * character a line at 9–12px, a tap on a palace reads it here (CSS shows it only on narrow screens).
+ * Marked data-pick, so a tap inside it keeps the palace picked.
+ */
+function PalaceDetail({
+  chart,
+  branch,
+  layers,
+  colour,
+  onClose,
+}: {
+  chart: ReturnType<typeof buildZiwei>
+  branch: string
+  layers: ZiweiLayer[]
+  colour: string
+  onClose: () => void
+}) {
+  const t = useT()
+  const term = useTerm()
+  const p = chart.palaces[branch]
+  const { opposite, trines } = sanFangSiZheng(branch)
+  const name = (b: string) => term(chart.palaces[b].name)
+  const flowStars = layers.flatMap((l) => l.stars[branch].map((s) => ({ kind: l.kind, star: s })))
+  return (
+    <section className={`zw-palace-detail color-${colour}`} data-pick="" aria-label={term(p.name)}>
+      <div className="zpd-head">
+        <strong>{term(p.name)}</strong>
+        {p.isBody && <span className="body-tag">{term('身')}</span>}
+        <span className="zpd-gz">
+          {p.stem}
+          {p.branch}
+        </span>
+        <span className="muted">
+          {t('大限 {from}–{to} 岁', { from: p.decadal[0], to: p.decadal[1] })} · {term(p.changsheng)}
+        </span>
+        <button type="button" className="ghost zpd-close" aria-label={t('关闭')} onClick={onClose}>
+          ✕
+        </button>
+      </div>
+      <dl className="zpd-list">
+        <dt>{term('主星')}</dt>
+        <dd className="stars-major">
+          {p.major.length
+            ? p.major.map((s) => <StarItem key={s.name} star={s} layers={layers} />)
+            : t('无主星，借对宫{palace}的星曜', { palace: name(opposite) })}
+        </dd>
+        {p.minor.length > 0 && (
+          <>
+            <dt>{term('辅星')}</dt>
+            <dd className="stars-minor">
+              {p.minor.map((s) => (
+                <StarItem key={s.name} star={s} layers={layers} />
+              ))}
+            </dd>
+          </>
+        )}
+        {p.adjective.length > 0 && (
+          <>
+            <dt>{term('杂曜')}</dt>
+            <dd className="zpd-adj">{p.adjective.map((s) => term(s.name)).join(' ')}</dd>
+          </>
+        )}
+        {flowStars.length > 0 && (
+          <>
+            <dt>{t('流耀')}</dt>
+            <dd>
+              {flowStars.map(({ kind, star: s }) => (
+                <span key={kind + s.name} className={`flow-star fl-${kind}`}>
+                  {term(s.name)}
+                </span>
+              ))}
+            </dd>
+          </>
+        )}
+        <dt>{term('宫干四化')}</dt>
+        <dd>
+          {p.flies
+            .map((f) =>
+              t('{star}化{mutagen}入{palace}', { star: term(f.star), mutagen: term(f.mutagen), palace: f.to === branch ? t('本宫') : name(f.to) }),
+            )
+            .join('，')}
+        </dd>
+        <dt>{term('三方四正')}</dt>
+        <dd>
+          {t('对宫{a}，三合{b}、{c}', { a: name(opposite), b: name(trines[0]), c: name(trines[1]) })}
+        </dd>
+      </dl>
+    </section>
+  )
+}
 
 function PalaceView({
   palace: p,

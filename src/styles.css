@@ -2807,6 +2807,11 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 /* ---------- 手机 ---------- */
 /* The birth form's one-line summary: only on a phone (below) */
 .bazi-form-summary { display: none; }
+/* 紫微: the palace tapped, written large under the board; only on a phone (below), where the board's
+   stars are a character a line at 9–12px */
+.zw-palace-detail { display: none; }
+/* 天象: the time bar's one-line summary, only on a phone (below) */
+.sky-time-fold { display: none; }
 /* Narrow screens: the tabs on the edges (命盘 and the page's own on the left, AI 解读 on the right) fit in
    the page's 16px margin as slim strips, so they no longer lie over the cards; the section links down the
    left edge go (the page scrolls under a thumb, and they had no room to be tapped) */
@@ -2828,6 +2833,31 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   .bazi-form-summary > span:first-child { flex: 1; min-width: 0; }
   .bazi-form-edit { flex: none; color: var(--accent); font-size: 13px; }
   .bazi-form.folded > :not(.bazi-form-summary) { display: none; }
+  .zw-palace-detail {
+    display: grid; gap: 8px; margin-top: 10px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 10px; background: var(--surface); animation: sky-info-in 0.2s ease;
+  }
+  .zpd-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  .zpd-head strong { font-family: var(--font-title); font-size: 18px; }
+  .zpd-gz { font-weight: 700; }
+  .zpd-head .muted { font-size: 13px; }
+  .zpd-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border-radius: 50%; }
+  .zpd-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 14px; line-height: 1.6; }
+  .zpd-list dt { color: var(--muted); }
+  .zpd-list dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .zpd-list .star-bright { font-size: 12px; }
+  .zpd-list .mutagen { font-size: 11px; }
+  .zpd-adj { color: var(--muted); }
+  /* 天象: the time bar folds to one line (the moment and place, and play) until tapped */
+  .sky-toolbar { gap: 8px 10px; }
+  .sky-toolbar .sky-search { flex: 1; min-width: 0; }
+  .sky-toolbar .sky-search input { width: 100%; }
+  .sky-time-fold { display: flex; flex: 1 0 100%; gap: 6px; }
+  .sky-time-summary { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 34px; margin: 0; justify-content: flex-start; font-variant-numeric: tabular-nums; }
+  .sky-time-summary[aria-expanded='true'] .sky-fold-mark { transform: translateY(2px) rotate(-135deg); }
+  .sky-time-play { width: 40px; height: 34px; margin: 0; padding: 0; }
+  .sky-time-play.on { color: var(--accent); border-color: var(--accent); }
+  .sky-toolbar:not(.time-open) .sky-timebar { display: none; }
 }
 /* Touch screens: text boxes at 16px, below which iPhones zoom the whole page in on tapping one */
 @media (pointer: coarse) and (max-width: 860px) {

@@ -274,4 +274,6 @@ export const SKY: Record<string, string> = {
   '时间栏的 ▶ 让时间流动，◀◀ ▶▶ 调快慢或倒放；搜索框可以找到天体、亮星、深空天体和星座并跟踪它。':
     '▶ in the time bar lets time run, and ◀◀ ▶▶ make it faster, slower or run backwards; the search box finds bodies, bright stars, deep-sky objects and constellations, and follows them.',
   '；梅西耶天体 {d3}': '; Messier objects {d3}',
+  // The time bar folded on a phone
+  '{m}月{d}日': '{m}/{d}',
 }

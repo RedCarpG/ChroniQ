@@ -523,6 +523,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     if (f) glideTo(zoomedAt(current(), f.left + f.width / 2, f.top + f.height / 2, factor))
   }
 
+  // On a phone, the time bar above the sky unfolded (folded to one line at first)
+  const [timeOpen, setTimeOpen] = useState(false)
   // 地点 in the bar above the sky opens the place's details under it; a click elsewhere or Esc shuts them
   const [placeOpen, setPlaceOpen] = useState(false)
   const placeRef = useRef<HTMLDivElement>(null)
@@ -1973,7 +1975,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   return (
     <section id="sky-now" className="sky-stage">
       {/* Above the sky: its title, and the moment and the place (地点 opens the place's details) */}
-      <div className="sky-toolbar">
+      <div className={`sky-toolbar${timeOpen ? ' time-open' : ''}`}>
         <h3 className="section-title">
           <TitleMark />
           {t('此刻天空')}
@@ -1986,6 +1988,31 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         )}
         {pointing.state === 'denied' && <small className="muted">{t('没有得到使用方向传感器的许可。')}</small>}
         {pointing.state === 'nocompass' && <small className="muted">{t('这台设备没有提供指南针数据。')}</small>}
+        {/* On a phone the time bar folds to one line, the moment and place shown, with play beside it;
+            a tap on it unfolds the bar (CSS shows this line only on narrow screens) */}
+        <div className="sky-time-fold">
+          <button
+            type="button"
+            className="ghost sky-time-summary"
+            aria-expanded={timeOpen}
+            data-sound={timeOpen ? 'off' : 'on'}
+            onClick={() => setTimeOpen((o) => !o)}
+          >
+            {t('{m}月{d}日', { m: Number(wall.date.slice(5, 7)), d: Number(wall.date.slice(8, 10)) })} {wall.time} · {t(place.name)}
+            {speed !== 0 && ` · ${rateLabel(speed)}`}
+            <span className="sky-fold-mark" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`ghost sky-time-play${speed ? ' on' : ''}`}
+            data-sound={speed ? 'off' : 'on'}
+            aria-pressed={speed !== 0}
+            aria-label={speed ? t('暂停') : t('让时间流动')}
+            onClick={() => setSpeed((v) => (v ? 0 : 10))}
+          >
+            {speed ? '❚❚' : '▶'}
+          </button>
+        </div>
         <div className="overlay-bar sky-controls sky-timebar">
         <DateParts
           label={t('日期')}
