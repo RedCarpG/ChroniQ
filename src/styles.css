@@ -805,10 +805,18 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   background: linear-gradient(90deg, rgb(9 13 26 / 0.74), rgb(9 13 26 / 0.52) 80%, rgb(9 13 26 / 0.28)); border-right: 0;
   backdrop-filter: blur(3px);
   text-shadow: 0 1px 3px rgb(2 3 8 / 0.9), 0 0 8px rgb(2 3 8 / 0.6);
+  /* Light words on the dark, whatever the page's own theme (its muted grey was lost on the night) */
+  --text: #e6e9f2; --muted: #a9b0c4; color: var(--text);
 }
 .drawer.bare.open .drawer-panel { box-shadow: none; }
 /* Off only: on, the track keeps its gold, or the dark knob is lost against it */
 .drawer.bare .drawer-panel .sky-switch:not(.on) .sky-switch-track { background: rgb(9 13 26 / 0.45); }
+/* Its tab (显示) on the night sky as well: a dark shade, not the page's light surface */
+.drawer.bare .drawer-handle.quiet {
+  background: linear-gradient(180deg, transparent, rgb(9 13 26 / 0.6) 20%, rgb(9 13 26 / 0.6) 80%, transparent);
+  color: rgb(222 226 240 / 0.7); text-shadow: 0 1px 3px rgb(2 3 8 / 0.8);
+}
+.drawer.bare .drawer-handle.quiet::after { background: linear-gradient(180deg, transparent, rgb(255 255 255 / 0.18), transparent); }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; }
 .drawer-head h3 { margin: 0; font-size: 16px; }
 /* The 命盘 tab plus any page tabs below it, a little below the middle of the left edge. */
@@ -1786,16 +1794,16 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-bortle { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .sky-bortle input { width: 100%; accent-color: var(--accent); }
 /* 今晚观星: an hour a bar, as tall and as bright as the hour is good; grey where cloudy */
-.sky-night { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; }
+.sky-night { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 10px; margin-bottom: 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .sky-night-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; font-size: 13px; }
 .sky-night-strip { display: flex; align-items: flex-end; gap: 2px; height: 46px; }
 .sky-night-hour { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .sky-night-bar {
   width: 100%; height: calc(6px + 26px * var(--score)); border-radius: 3px 3px 1px 1px;
-  background: color-mix(in srgb, #8a93a8 calc(var(--cloud) * 100%), color-mix(in srgb, #5a7fd6 calc(var(--score) * 100%), #2a3048));
+  /* Pale gold as the hour is good, like the sky's own lettering; grey as it is cloudy */
+  background: color-mix(in srgb, rgb(150 155 170 / 0.35) calc(var(--cloud) * 100%), color-mix(in srgb, rgb(232 200 140 / 0.75) calc(var(--score) * 100%), rgb(255 255 255 / 0.08)));
   transition: height 0.3s ease, background 0.3s ease;
 }
-.sky-night-hour.good .sky-night-bar { box-shadow: 0 0 6px color-mix(in srgb, #7fa2ff 60%, transparent); }
 .sky-night-hour.on .sky-night-bar { outline: 1.5px solid var(--accent); outline-offset: 1px; }
 .sky-night-hour small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1; }
 .sky-night-weather { align-self: flex-start; height: auto; padding: 4px 10px; font-size: 12px; text-align: left; }
@@ -2858,6 +2866,12 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   .sky-time-play { width: 40px; height: 34px; margin: 0; padding: 0; }
   .sky-time-play.on { color: var(--accent); border-color: var(--accent); }
   .sky-toolbar:not(.time-open) .sky-timebar { display: none; }
+  /* 天象's 显示 drawer: on a phone it covers most of the screen, so it is a dark panel rather than a
+     see-through shade (the sky, the table and the page's words showed through its own) */
+  .drawer.bare .drawer-panel { background: rgb(9 13 26 / 0.97); backdrop-filter: blur(12px); }
+  /* 今晚观星: lighter, thinner bars on a phone, where the strip runs across the whole width */
+  .sky-night-strip { height: 34px; gap: 3px; }
+  .sky-night-bar { height: calc(4px + 18px * var(--score)); opacity: 0.8; }
 }
 /* Touch screens: text boxes at 16px, below which iPhones zoom the whole page in on tapping one */
 @media (pointer: coarse) and (max-width: 860px) {

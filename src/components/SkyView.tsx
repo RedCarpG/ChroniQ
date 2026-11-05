@@ -101,6 +101,7 @@ const QUALITY_KEY = 'chroniq-sky-quality'
 const BORTLE_KEY = 'chroniq-sky-bortle'
 const WEATHER_KEY = 'chroniq-sky-weather'
 const DSO_KEY = 'chroniq-sky-dso'
+const NIGHT_KEY = 'chroniq-sky-night'
 const EQ_GRID_KEY = 'chroniq-sky-eqgrid'
 const ECLIPTIC_KEY = 'chroniq-sky-ecliptic'
 const RED_KEY = 'chroniq-sky-red'
@@ -583,6 +584,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const [eqGrid, toggleEqGrid] = usePref(EQ_GRID_KEY, false)
   const [showEcliptic, toggleEcliptic] = usePref(ECLIPTIC_KEY, false)
   const [red, toggleRed] = usePref(RED_KEY, false)
+  // 今晚观星: the night's hours, over the bodies' table, only when asked for in 显示
+  const [showNight, toggleNight] = usePref(NIGHT_KEY, false)
   // 红光夜视: the whole page in dim red, which keeps the eyes used to the dark (as at a telescope)
   useEffect(() => {
     document.documentElement.classList.toggle('night-red', red)
@@ -2086,6 +2089,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
       {/* On the right, always there: the bodies, or what is chosen, in detail */}
       <aside className="sky-bodies" aria-label={t('天体')}>
+        {showNight && (
         <SkyNight
           utc={utc}
           latitude={place.latitude}
@@ -2097,6 +2101,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           clock={(ms) => wallTime(new Date(ms), place.timeZone).time}
           onPick={(ms) => setPicked(wallTime(new Date(ms), place.timeZone))}
         />
+        )}
         {event && (
           <div className="sky-event">
             <span className="sky-event-kind">{t('天象预告')}</span>
@@ -2377,6 +2382,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           <input type="range" min={1} max={9} step={1} value={bortle} aria-label={t('光污染')} onChange={(e) => pickBortle(Number(e.target.value))} />
           <span>{t('{n} 级 · {name}', { n: bortle, name: t(dark.name) })}</span>
         </label>
+        <span className="sky-option-title">{t('今晚观星')}</span>
+        <SkySwitch on={showNight} label={t('每小时适不适合观星，列在天体表上方')} onChange={toggleNight} />
         <span className="sky-option-title">{t('云量')}</span>
         <SkySwitch on={weatherOn} label={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
         <span className="sky-option-title">{t('夜视')}</span>

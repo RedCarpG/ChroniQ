@@ -276,4 +276,5 @@ export const SKY: Record<string, string> = {
   '；梅西耶天体 {d3}': '; Messier objects {d3}',
   // The time bar folded on a phone
   '{m}月{d}日': '{m}/{d}',
+  '每小时适不适合观星，列在天体表上方': 'How good each hour is for the stars, above the table of bodies',
 }
