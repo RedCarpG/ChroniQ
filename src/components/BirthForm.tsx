@@ -112,6 +112,15 @@ function YearInput({ year, onChange }: { year: number; onChange: (year: number) 
 export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: Props) {
   const t = useT()
   const [showSchools, setShowSchools] = useState(false)
+  // On a phone the form folds to one line (the birth in short, and 修改), so the chart is what the page
+  // opens on; it unfolds on a tap. On a wider screen the line is not shown and the form always is.
+  const [folded, setFolded] = useState(true)
+  const summary = [
+    t('{y}年{m}月{d}日', { y: input.year, m: input.month, d: input.day }) + ` ${pad(input.hour)}:${pad(input.minute)}`,
+    input.gender === 1 ? t('男') : t('女'),
+    t((input.place ?? DEFAULT_PLACE).name),
+    ...(trueSolar && input.trueSolar ? [t('真太阳时')] : []),
+  ].join(' · ')
   const timeValue = `${pad(input.hour)}:${pad(input.minute)}`
   const [timeError, setTimeError] = useState(false)
   const resolution = toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).resolution
@@ -123,7 +132,11 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: P
   }
 
   return (
-    <section className="card bazi-form">
+    <section className={`card bazi-form${folded ? ' folded' : ''}`}>
+      <button type="button" className="bazi-form-summary" aria-expanded={!folded} onClick={() => setFolded((f) => !f)}>
+        <span>{summary}</span>
+        <span className="bazi-form-edit">{folded ? t('修改') : t('收起')}</span>
+      </button>
       <DateParts label={t('出生日期')} value={input} onChange={(d) => change(d)} />
       <label>
         {t('出生时间')}

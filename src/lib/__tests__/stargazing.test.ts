@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest'
 import { BORTLE, darkness, moonGlare, nightPlan } from '../stargazing'
 import { fetchForecast, forecastUrl, parseForecast, weatherAt, type WeatherHour } from '../weather'

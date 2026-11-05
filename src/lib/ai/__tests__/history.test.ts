@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { chatKey, forgetChat, loadChat, saveChat } from '../history'
 
 const turns = [
@@ -29,8 +29,10 @@ describe('AI conversation history', () => {
     expect(loadChat('zh', 'prompt A')).toBeNull()
   })
 
-  it('keeps only the latest twenty', () => {
+  it('keeps only the latest twenty, the order kept when they are saved in the same millisecond', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
     for (let i = 0; i < 25; i++) saveChat('zh', `prompt ${i}`, { turns, asked: '' })
+    now.mockRestore()
     expect(Object.keys(JSON.parse(localStorage.getItem('chroniq-ai-chats')!))).toHaveLength(20)
     expect(loadChat('zh', 'prompt 24')).not.toBeNull()
   })
