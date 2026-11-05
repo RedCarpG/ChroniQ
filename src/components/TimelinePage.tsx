@@ -6,8 +6,8 @@ import type { ZiweiSchoolSettings } from '../lib/ziweiSchools'
 import { useT, useTerm } from '../settingsContext'
 import type { Page } from './PageMenu'
 
-/** The width of a year on the line, in pixels */
-const YEAR_W = 15
+/** A year's width on the line (px): wider on a touch screen, so a finger can pick one */
+const YEAR_W = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches ? 24 : 15
 
 const PLANET_EVENT: Record<PlanetEventKind, string> = {
   saturnReturn: '土星回归',

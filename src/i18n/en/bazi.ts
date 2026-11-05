@@ -138,4 +138,8 @@ export const BAZI: Record<string, string> = {
   变动: 'Mutable',
   '{count} 颗': '{count} planets',
   '差 {orb}°': '{orb}° off exact',
+
+  // The birth form folded to one line on a phone
+  '{y}年{m}月{d}日': '{y}-{m}-{d}',
+  修改: 'Edit',
 }

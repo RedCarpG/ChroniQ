@@ -41,11 +41,17 @@ export function loadChat(lang: string, prompt: string): AiChat | null {
 
 export function saveChat(lang: string, prompt: string, chat: Omit<AiChat, 'at'>): void {
   const all = readAll()
-  all[chatKey(lang, prompt)] = { ...chat, at: Date.now() }
-  // The latest few, the oldest let go
+  const key = chatKey(lang, prompt)
+  // Moved to the end, so of two saved in the same millisecond the later one counts as the newer
+  delete all[key]
+  all[key] = { ...chat, at: Date.now() }
+  // The latest few, the oldest let go (stored in order, oldest first)
   const kept = Object.entries(all)
-    .sort(([, a], [, b]) => b.at - a.at)
+    .map((entry, i) => ({ entry, i }))
+    .sort((x, y) => y.entry[1].at - x.entry[1].at || y.i - x.i)
     .slice(0, KEEP)
+    .reverse()
+    .map(({ entry }) => entry)
   try {
     localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(kept)))
   } catch {

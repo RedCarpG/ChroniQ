@@ -2803,3 +2803,41 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
 }
 .ai-first-question:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- 手机 ---------- */
+/* The birth form's one-line summary: only on a phone (below) */
+.bazi-form-summary { display: none; }
+/* Narrow screens: the tabs on the edges (命盘 and the page's own on the left, AI 解读 on the right) fit in
+   the page's 16px margin as slim strips, so they no longer lie over the cards; the section links down the
+   left edge go (the page scrolls under a thumb, and they had no room to be tapped) */
+@media (max-width: 600px) {
+  .drawer-handle, .drawer-handle.quiet, .right-drawer-handle {
+    box-sizing: border-box; width: 16px; padding: 12px 0; gap: 4px; font-size: 12px; line-height: 1.1;
+  }
+  .drawer-handle:hover, .drawer-handle[aria-expanded='true'], .drawer-handle.quiet:hover, .drawer-handle.quiet[aria-expanded='true'] { padding-left: 0; }
+  .right-drawer-handle:hover, .right-drawer.open .right-drawer-handle { padding-right: 0; }
+  .drawer-handle:not(.quiet) { border-radius: 0 8px 8px 0; }
+  .right-drawer-handle { border-radius: 8px 0 0 8px; }
+  .drawer-count { min-width: 14px; height: 14px; padding: 0 2px; font-size: 9px; line-height: 14px; }
+  .drawer-rail .section-nav { display: none; }
+  /* The birth form (八字, 紫微, 星盘) folds to one line, tapped to change it */
+  .bazi-form-summary {
+    display: flex; flex: 1 0 100%; align-items: center; gap: 10px; margin: -4px 0; padding: 4px 0; border: 0; background: none;
+    color: var(--text); font-size: 14px; text-align: left;
+  }
+  .bazi-form-summary > span:first-child { flex: 1; min-width: 0; }
+  .bazi-form-edit { flex: none; color: var(--accent); font-size: 13px; }
+  .bazi-form.folded > :not(.bazi-form-summary) { display: none; }
+}
+/* Touch screens: text boxes at 16px, below which iPhones zoom the whole page in on tapping one */
+@media (pointer: coarse) and (max-width: 860px) {
+  input:not([type='checkbox'], [type='radio'], [type='range']), select, textarea { font-size: 16px; }
+}
+/* 人生时间轴: each year as wide as TimelinePage's YEAR_W makes it on a touch screen */
+@media (pointer: coarse) { .tl-year { width: 24px; } }
+/* The tab that brings the footer up: a finger-sized place to tap, not 18px */
+@media (pointer: coarse) {
+  .footer-tab { height: 26px; width: 60px; }
+}
+/* Phones turned sideways: the page kept clear of the notch (viewport-fit=cover in index.html) */
+@media screen { .app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); } }
