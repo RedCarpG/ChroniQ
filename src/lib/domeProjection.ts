@@ -54,6 +54,21 @@ export function cameraFor(view: DomeView, width: number, height: number): Camera
   return { r, u, f, scale, cx: width / 2, cy: height / 2 }
 }
 
+/**
+ * The same camera for directions given in another frame, where m turns that frame's vectors into the
+ * horizon frame (horizon = m · v, as from sky.horizonMatrix). Projecting is only dot products with
+ * the camera's axes, so turning the three axes back (mᵀ) stands in for turning every point forward:
+ * the stars stay as they are in J2000 and only the camera follows the time and place.
+ */
+export function turnCamera(cam: Camera, m: number[][]): Camera {
+  const back = (a: V3): V3 => [
+    m[0][0] * a[0] + m[1][0] * a[1] + m[2][0] * a[2],
+    m[0][1] * a[0] + m[1][1] * a[1] + m[2][1] * a[2],
+    m[0][2] * a[0] + m[1][2] * a[1] + m[2][2] * a[2],
+  ]
+  return { ...cam, r: back(cam.r), u: back(cam.u), f: back(cam.f) }
+}
+
 /** How far forward a direction is: 1 straight ahead, 0 square to the side, −1 straight behind */
 export const ahead = (cam: Camera, v: V3) => v[0] * cam.f[0] + v[1] * cam.f[1] + v[2] * cam.f[2]
 
@@ -65,14 +80,33 @@ export const BEHIND = -0.3
  * a point at angle θ from the middle lands 2·tan(θ/2) out from it.
  */
 export function projectDir(cam: Camera, v: V3, out: [number, number]): boolean {
-  const z = ahead(cam, v)
-  if (z < BEHIND) return false
-  const k = 2 / (1 + z)
-  const x = v[0] * cam.r[0] + v[1] * cam.r[1] + v[2] * cam.r[2]
-  const y = v[0] * cam.u[0] + v[1] * cam.u[1] + v[2] * cam.u[2]
-  out[0] = cam.cx + k * x * cam.scale
-  out[1] = cam.cy - k * y * cam.scale
+  return projectXYZ(cam, v[0], v[1], v[2], out)
+}
+
+/** projectDir for a direction given by its parts (as read straight out of a packed array) */
+export function projectXYZ(cam: Camera, x: number, y: number, z: number, out: [number, number]): boolean {
+  const { r, u, f } = cam
+  const ahead = x * f[0] + y * f[1] + z * f[2]
+  if (ahead < BEHIND) return false
+  const k = (2 / (1 + ahead)) * cam.scale
+  out[0] = cam.cx + k * (x * r[0] + y * r[1] + z * r[2])
+  out[1] = cam.cy - k * (x * u[0] + y * u[1] + z * u[2])
   return true
+}
+
+/**
+ * How far the picture shifts between two views, in pixels at the middle of a screen whose shorter
+ * side is `side`: the middle's move, plus the turn about the middle a change of azimuth makes when
+ * looking up (straight up, turning round only spins the picture), plus the zoom
+ */
+export function viewShift(a: DomeView, b: DomeView, side: number): number {
+  const pa = dirOf(a.az, a.alt)
+  const pb = dirOf(b.az, b.alt)
+  const cos = Math.max(-1, Math.min(1, pa[0] * pb[0] + pa[1] * pb[1] + pa[2] * pb[2]))
+  const perDeg = side / b.fov
+  const turn = Math.abs(((b.az - a.az + 540) % 360) - 180) * Math.abs(Math.sin(b.alt * RAD)) * RAD * (side / 2)
+  const zoom = Math.abs(Math.log(b.fov / a.fov)) * (side / 2)
+  return (Math.acos(cos) / RAD) * perDeg + turn + zoom
 }
 
 /** The direction under a point on the screen (the inverse, for a tap or a drag) */

@@ -1038,7 +1038,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       dsoNamed.add(d.m.n)
     }
   }
-  const { milkyWay, deepSky } = useSkyBackdrop(utc, place.latitude, place.longitude, below, view.z, smooth, dragging || moving)
+  // The flat map's backdrop (the Milky Way's points, the faint stars) turned to the moment: the dome
+  // view draws its own, so while it is up this stays at the moment it was left, rather than turning
+  // thousands of points again each step of the time running on
+  const backdropUtc = useRef(utc)
+  if (!domeOn) backdropUtc.current = utc
+  const { milkyWay, deepSky } = useSkyBackdrop(backdropUtc.current, place.latitude, place.longitude, below, view.z, smooth, dragging || moving)
   // Figure outlines: their path data once per sky; the layer again only when the choice changes.
   // Keyed by the figure (and which part of it: Serpens comes in two with the same id), not by its
   // place in the list, which shifts as figures rise and set: a remount would draw the chosen one in again
@@ -1449,7 +1454,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // layer of its own, under the map: it changes only as the time, place or view does, so choosing,
   // hovering and the fades that follow repaint the map above without blurring the Milky Way again
   // (zoomed in, that took long enough to make the page flicker)
-  const backdrop = (
+  // The flat map's two layers are built only while it shows: under the dome view they would be
+  // thousands of elements made on every step of the time and thrown away
+  const backdrop = !domeOn && (
     <svg className={`sky-map-back ${mapClass}`} style={mapStyle} aria-hidden="true">
       <g transform={mapTransform}>
       <defs>
@@ -1531,7 +1538,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       </g>
     </svg>
   )
-  const map = (
+  const map = !domeOn && (
     <svg
       ref={svgRef}
       className={`sky-map ${mapClass}${spot ? ' has-chosen' : ''}${pickFigure ? ' figure-chosen' : ''}${figuresSwitched ? ' figures-switched' : ''}${view.z > Z_MIN ? ' zoomed' : ''}`}
@@ -2446,7 +2453,6 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 figures,
                 en,
                 name: (zh) => t(zh),
-                cloud: deepSky?.cloud ? { az: deepSky.cloud.az, alt: deepSky.cloud.alt, light: deepSky.cloud.weight } : null,
                 ground: showGround,
               }}
               viewRef={domeView}
