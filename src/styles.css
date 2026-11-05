@@ -1596,6 +1596,11 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-map.zoomed { touch-action: none; cursor: move; }
 .sky-backdrop.dragging .sky-map { cursor: grabbing; }
 .sky-frame { position: absolute; pointer-events: none; }
+/* 穹顶视角 (SkyDome): one canvas over the whole screen, dragged in any direction to look about */
+.sky-dome { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sky-dome.draggable { cursor: grab; }
+.sky-dome.draggable:active { cursor: grabbing; }
+.sky-drag-hint.dome { opacity: 0.8; }
 .sky-zoom-buttons {
   position: absolute; right: 4px; bottom: 34px; display: flex; flex-direction: column; overflow: hidden; pointer-events: auto;
   border: 1px solid rgb(216 191 140 / 0.35); border-radius: 10px; background: rgb(12 16 30 / 0.72);

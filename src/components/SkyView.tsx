@@ -30,7 +30,6 @@ import {
 import { eclipseShade, type SkyEvent } from '../lib/skyEvents'
 import { useSkyEventText } from './SkyForecast'
 import { canPoint, useDevicePointing } from './useDevicePointing'
-import { mapTurn } from '../lib/devicePointing'
 import { MANSIONS, ZONES, mansionOf, mansionWidth, type MansionZone } from '../lib/mansions'
 import { XINGGUAN } from '../lib/xingguan'
 import { FIVE_STARS } from '../lib/fiveStars'
@@ -45,6 +44,8 @@ import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAl
 import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
 import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
 import { SkyNight } from './SkyNight'
+import { SkyDome } from './SkyDome'
+import type { DomeView } from '../lib/domeProjection'
 import { paintClouds } from './skyClouds'
 import { BORTLE } from '../lib/stargazing'
 import { fetchForecast, weatherAt, type WeatherHour } from '../lib/weather'
@@ -74,8 +75,8 @@ const RADIANT_TRAILS = [
   [320, 4.2, 26],
 ] as const
 
-/** How close 对准天空 shows the sky */
-const POINT_ZOOM = 2.4
+/** How wide 对准天空 shows the sky (degrees across the screen's shorter side), about a phone camera's */
+const POINT_FOV = 70
 const Z_MIN = 1
 const Z_MAX = 8
 
@@ -102,6 +103,7 @@ const BORTLE_KEY = 'chroniq-sky-bortle'
 const WEATHER_KEY = 'chroniq-sky-weather'
 const DSO_KEY = 'chroniq-sky-dso'
 const NIGHT_KEY = 'chroniq-sky-night'
+const GROUND_KEY = 'chroniq-sky-ground'
 const EQ_GRID_KEY = 'chroniq-sky-eqgrid'
 const ECLIPTIC_KEY = 'chroniq-sky-ecliptic'
 const RED_KEY = 'chroniq-sky-red'
@@ -268,6 +270,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // 头顶 / 脚下: the half of the sky above the horizon, or the half beneath one's feet, seen as if
   // through the Earth: the nadir in the middle, and east and west swapped (looking down, east is right).
   const [below, setBelow] = useState(false)
+  // 穹顶视角 (SkyDome): the sky as one stands under it, looking one way, the ground see-through; chosen
+  // in 显示, and always while the phone is pointed at the sky (对准天空)
+  const [dome, setDome] = useState(false)
+  const domeView = useRef<DomeView>({ az: 180, alt: 35, fov: 100 })
   const shown = (alt: number) => (below ? alt < 0 : alt >= 0)
   const at = (az: number, alt: number) => projectSky(az, alt, below)
   const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
@@ -584,6 +590,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const [eqGrid, toggleEqGrid] = usePref(EQ_GRID_KEY, false)
   const [showEcliptic, toggleEcliptic] = usePref(ECLIPTIC_KEY, false)
   const [red, toggleRed] = usePref(RED_KEY, false)
+  // 穹顶视角's ground: a see-through shade, or none
+  const [showGround, toggleGround] = usePref(GROUND_KEY, true)
   // 今晚观星: the night's hours, over the bodies' table, only when asked for in 显示
   const [showNight, toggleNight] = usePref(NIGHT_KEY, false)
   // 红光夜视: the whole page in dim red, which keeps the eyes used to the dark (as at a telescope)
@@ -962,16 +970,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // 对准天空: each reading turns the map at once and moves it without drawing it again (preview),
   // keeping the zenith up from what the phone looks at
   const turnerRef = useRef<HTMLDivElement>(null)
+  // Each reading turns the dome view to where the phone points, under the horizon too (drawn on the
+  // next frame, without rendering the page again)
   const pointing = useDevicePointing((az, alt) => {
-    turnerRef.current?.style.setProperty('--turn', `${mapTurn(az).toFixed(1)}deg`)
-    const f = frameRef.current
-    if (!f) return
-    const s = (Math.min(f.width, f.height) / (2 * C)) * POINT_ZOOM
-    const [x, y] = projectSky(az, Math.max(0, alt), false)
-    preview({ z: POINT_ZOOM, x: (C - x) * s, y: (C - y) * s }, 200)
+    domeView.current = { az, alt, fov: domeView.current.fov }
   })
   const startPointing = () => {
     setBelow(false)
+    domeView.current = { ...domeView.current, fov: POINT_FOV }
     setPointingOn(true)
     void pointing.start()
   }
@@ -1011,6 +1017,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     return (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI
   }
   const light = below ? 'below' : sky.light
+  const domeOn = dome || pointingOn
   // The deep-sky objects drawn: more of the fainter ones as the map zooms in; none by day but the chosen one
   const dsoLimit = 5 + 2.2 * (view.z - 1)
   const shownDsos =
@@ -2346,15 +2353,31 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         <div className="seg small" role="group" aria-label={t('视角')}>
           {(
             [
-              [false, t('头顶')],
-              [true, t('脚下')],
+              ['up', t('头顶')],
+              ['down', t('脚下')],
+              ['dome', t('穹顶')],
             ] as const
-          ).map(([v, label]) => (
-            <button key={label} type="button" className={below === v ? 'on' : undefined} aria-pressed={below === v} onClick={() => setBelow(v)}>
-              {label}
-            </button>
-          ))}
+          ).map(([v, label]) => {
+            const on = dome ? v === 'dome' : v === (below ? 'down' : 'up')
+            return (
+              <button
+                key={v}
+                type="button"
+                className={on ? 'on' : undefined}
+                aria-pressed={on}
+                onClick={() => {
+                  setDome(v === 'dome')
+                  setBelow(v === 'down')
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
+        {dome && (
+          <SkySwitch on={showGround} label={t('地面（半透明，看得到脚下的星空）')} onChange={toggleGround} />
+        )}
         <span className="sky-option-title">{t('星座')}</span>
         <div className="seg small" role="group" aria-label={t('星座')}>
           {(
@@ -2411,6 +2434,26 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           className={`sky-backdrop${dragging ? ' dragging' : ''}${frame ? '' : ' unplaced'}`}
           style={{ '--clear': (1 - 0.85 * cover).toFixed(2) } as CSSProperties}
         >
+          {domeOn ? (
+            <SkyDome
+              scene={{
+                utc,
+                latitude: place.latitude,
+                longitude: place.longitude,
+                bodies: sky.bodies,
+                light: sky.light,
+                limit: canvasLight.limit,
+                figures,
+                en,
+                name: (zh) => t(zh),
+                cloud: deepSky?.cloud ? { az: deepSky.cloud.az, alt: deepSky.cloud.alt, light: deepSky.cloud.weight } : null,
+                ground: showGround,
+              }}
+              viewRef={domeView}
+              draggable={!pointingOn}
+              onPick={(key) => setChosen(key)}
+            />
+          ) : (
           <div className="sky-turner" ref={turnerRef}>
           <div className="sky-zoomer" ref={zoomerRef} style={{ '--over': `${over}px` } as CSSProperties}>
           {backdrop}
@@ -2469,6 +2512,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           </div>
           </div>
           </div>
+          )}
           {pointingOn && (
             <div className="sky-point-bar">
               <small>{t('举起手机对准天空。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。')}</small>
@@ -2480,7 +2524,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           <div className="sky-meteor" ref={meteorRef} aria-hidden="true" />
           <div className="sky-tip" ref={tipRef} aria-hidden="true" />
           {/* What sits on the sky's window and does not zoom: the readout or hint, and the zoom buttons */}
-          {frame && (
+          {frame && domeOn && !pointingOn && (
+            <div className="sky-frame" style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}>
+              <div className="sky-drag-hint dome" aria-hidden="true">
+                {t('拖动环顾四周 · 双指或滚轮缩放')}
+              </div>
+            </div>
+          )}
+          {frame && !domeOn && (
             <div className="sky-frame" style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}>
               {dragShift !== null || speed ? (
                 <div className="sky-drag-chip" aria-live="off">

@@ -277,4 +277,8 @@ export const SKY: Record<string, string> = {
   // The time bar folded on a phone
   '{m}月{d}日': '{m}/{d}',
   '每小时适不适合观星，列在天体表上方': 'How good each hour is for the stars, above the table of bodies',
+  // 穹顶视角
+  穹顶: 'Dome',
+  '地面（半透明，看得到脚下的星空）': 'Ground (see-through: the sky below your feet shows)',
+  '拖动环顾四周 · 双指或滚轮缩放': 'Drag to look around · pinch or scroll to zoom',
 }
