@@ -72,4 +72,12 @@ export const ZIWEI: Record<string, string> = {
     'The Life palace, its 三方四正 and the palaces either side of it form none of the common patterns.',
   '按《紫微斗数全书》《骨髓赋》的通行定义，看命宫与它的三方四正、夹宫；「加分」「破格」只列盘上看得到的条件（星曜、庙旺与生年四化）。悬停或点按一个格局，盘上标出它所在的宫位。仅供参考。':
     'By the common definitions of 《紫微斗数全书》 and 《骨髓赋》, from the Life palace, its 三方四正 and the palaces either side of it. What strengthens or breaks a pattern lists only what the board shows (the stars, their brightness and the birth-year 四化). Hover or tap a pattern to see its palaces on the board. For reference only.',
+
+  // The palace tapped, under the board on a phone
+  '大限 {from}–{to} 岁': '大限 ages {from}–{to}',
+  '无主星，借对宫{palace}的星曜': 'No major star: borrows those of the opposite palace, {palace}',
+  流耀: 'Flowing stars',
+  '{star}化{mutagen}入{palace}': '{star} becomes {mutagen} in {palace}',
+  本宫: 'this palace',
+  '对宫{a}，三合{b}、{c}': 'opposite {a}; trine {b} and {c}',
 }

@@ -274,4 +274,11 @@ export const SKY: Record<string, string> = {
   '时间栏的 ▶ 让时间流动，◀◀ ▶▶ 调快慢或倒放；搜索框可以找到天体、亮星、深空天体和星座并跟踪它。':
     '▶ in the time bar lets time run, and ◀◀ ▶▶ make it faster, slower or run backwards; the search box finds bodies, bright stars, deep-sky objects and constellations, and follows them.',
   '；梅西耶天体 {d3}': '; Messier objects {d3}',
+  // The time bar folded on a phone
+  '{m}月{d}日': '{m}/{d}',
+  '每小时适不适合观星，列在天体表上方': 'How good each hour is for the stars, above the table of bodies',
+  // 穹顶视角
+  穹顶: 'Dome',
+  '地面（半透明，看得到脚下的星空）': 'Ground (see-through: the sky below your feet shows)',
+  '拖动环顾四周 · 双指或滚轮缩放': 'Drag to look around · pinch or scroll to zoom',
 }
