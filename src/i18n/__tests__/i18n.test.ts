@@ -1,11 +1,11 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { SETTING_OPTIONS } from '../../lib/settings'
 import { CITIES } from '../../lib/solarTime'
 import { WORLD_CITIES } from '../../lib/worldCities'
 import { EN, EN_PARTS } from '../en'
-import { translate } from '..'
+import { englishReady, loadEnglish, translate } from '..'
 
 const SLOT = /\{(\w+)\}/g
 const slots = (s: string) => [...s.matchAll(SLOT)].map((m) => m[1]).sort()
@@ -67,6 +67,13 @@ describe('English dictionary', () => {
 })
 
 describe('translate', () => {
+  it('waits for the English, which loads apart, and reads Chinese till then', async () => {
+    if (!englishReady()) expect(translate('en', '更新')).toBe('更新')
+    await loadEnglish()
+    expect(englishReady()).toBe(true)
+    expect(translate('en', '更新')).toBe(EN['更新'])
+  })
+  beforeAll(() => loadEnglish())
   it('fills slots and falls back to the Chinese', () => {
     expect(translate('zh', '{n} 颗', { n: 3 })).toBe('3 颗')
     expect(translate('en', '没有这条翻译的文字')).toBe('没有这条翻译的文字')

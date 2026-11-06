@@ -17,6 +17,8 @@ import {
   moonPhaseName,
   riseSet,
   skyAt,
+  starAt,
+  starsAt,
   starPlace,
   towards,
   bodyFaces,
@@ -272,7 +274,6 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const domeView = useRef<DomeView>({ az: 180, alt: 35, fov: 100 })
   const shown = (alt: number) => (below ? alt < 0 : alt >= 0)
   const at = (az: number, alt: number) => projectSky(az, alt, below)
-  const sky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below), [utc, place.latitude, place.longitude, below])
 
   // ---- The sky as the page's backdrop ----
   // The map fills the screen behind the page (in <body>), fitted at first to the empty "window"
@@ -290,6 +291,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const flatUtcRef = useRef(utc)
   if (!domeOn) flatUtcRef.current = utc
   const flatUtc = flatUtcRef.current
+  // The Sun, Moon and planets at the moment; the bright stars too, but under the dome (which places
+  // its own) at the moment the map was left: they are 1,600 stars to place again each step of the
+  // time, only for the map (a chosen one is placed at the moment all the same: pick)
+  const bodySky = useMemo(() => skyAt(utc, place.latitude, place.longitude, below, false), [utc, place.latitude, place.longitude, below])
+  const stars = useMemo(() => starsAt(flatUtc, place.latitude, place.longitude, below), [flatUtc, place.latitude, place.longitude, below])
+  const sky = useMemo(() => ({ ...bodySky, stars }), [bodySky, stars])
   const [measuredFrame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
   const frame = pointingOn ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight } : measuredFrame
   const frameRef = useRef(frame)
@@ -854,7 +861,11 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   )
   const paths = useMemo(() => (pathTracks && !domeOn ? PATH_BODIES.map((key) => pathOf(key, pathTracks[key])) : null), [pathTracks, domeOn])
   const clipId = useId()
-  const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
+  const pick = chosen?.startsWith('hip')
+    ? domeOn
+      ? (starAt(Number(chosen.slice(3)), utc, place.latitude, place.longitude) ?? undefined)
+      : sky.stars.find((s) => `hip${s.hip}` === chosen)
+    : sky.bodies.find((b) => b.key === chosen)
   // A constellation or 星官 can be chosen too (its key is fig + its id)
   const pickFigure = chosen?.startsWith('fig') ? figureViews.find((c) => `fig${c.id}` === chosen) : undefined
   // The Messier objects on this half of the sky (all of them, for the search and a chosen one, even
