@@ -1659,6 +1659,17 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .imm-toolbar .date-parts legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .imm-toolbar .ghost { height: 28px; margin: 0; padding: 0 10px; font-size: 13px; }
 .imm-steps { display: inline-flex; gap: 2px; }
+/* The toolbar on one line: the moment as a short button, its pickers dropping under it */
+.imm-toolbar > .imm-bar { flex-wrap: nowrap; white-space: nowrap; }
+.imm-when { position: relative; }
+.imm-toolbar .imm-when-button { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.imm-when-button[aria-expanded='true'] .sky-fold-mark { transform: translateY(2px) rotate(-135deg); }
+.imm-when-pop {
+  position: absolute; top: calc(100% + 10px); left: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  width: max-content; max-width: calc(100vw / var(--ui-zoom) - 32px); padding: 10px 12px; white-space: normal;
+  background: rgb(9 13 26 / 0.94); border: 1px solid rgb(38 49 80 / 0.85); border-radius: 12px; animation: sky-info-in 0.2s ease;
+}
+.imm-when-pop[hidden] { display: none; }
 .imm-toolbar .imm-steps .ghost { min-width: 30px; padding: 0 6px; font-size: 11px; letter-spacing: -1px; }
 .imm-panel {
   grid-column: 2; grid-row: 1 / span 3; align-self: start; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
@@ -1696,6 +1707,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   }
   .imm-toolbar { justify-self: stretch; }
   .imm-toolbar > .imm-glass { width: 100%; box-sizing: border-box; }
+  /* The page's name is in the bar at the foot: the toolbar keeps to the moment */
+  .imm-toolbar .imm-bar > .section-title { display: none; }
+  .imm-toolbar > .imm-bar { justify-content: space-between; gap: 6px; }
+  .imm-when-pop { left: -8px; }
   .imm-hint { display: none; }
   /* The sheet: from the edge of the screen, standing on the page bar */
   .imm-sheet {
@@ -2299,7 +2314,6 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .solar-sky { position: absolute; inset: 0; }
 .solar-sky .orrery { position: absolute; max-width: none; margin: 0; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; overflow: visible; }
 .solar-sky .orrery-bg { fill: url(#orrery-space); }
-.solar-bar .solar-clock { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .solar-play { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .solar-play-button {
   height: 32px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--accent); color: var(--on-accent);

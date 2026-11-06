@@ -11,7 +11,7 @@ import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 import { MoonGlyph } from './MoonGlyph'
 import { PlacePicker } from './PlacePicker'
-import { Immersive, useNarrow } from './Immersive'
+import { Immersive, useNarrow, WhenButton } from './Immersive'
 import { fovFor, MOON_FOV_MAX, moonFovMin, MoonSky } from './MoonSky'
 
 const DAY = 86_400_000
@@ -111,22 +111,33 @@ export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
   const where = `${formatAzimuth(moon.az, language)} · ${up ? t('高 {altitude}°', { altitude: moon.alt.toFixed(1) }) : t('地平线下')}`
   const step = (ms: number) => pick(time + ms)
 
+  // One line: the moment (its pickers under it), 现在, and an hour back or on
   const toolbar = (
-    <div className="imm-glass moon-bar">
+    <div className="imm-glass imm-bar moon-bar">
       <h3 className="section-title">
         <TitleMark />
         {t('观月')}
       </h3>
-      <DateParts label={t('日期')} value={wall} onChange={(d) => pick(atWall({ ...wall, ...d }))} />
-      <input
-        type="time"
-        aria-label={t('时间')}
-        value={`${pad(wall.hour)}:${pad(wall.minute)}`}
-        onChange={(e) => {
-          const [hour, minute] = e.target.value.split(':').map(Number)
-          if (!Number.isNaN(hour)) pick(atWall({ ...wall, hour, minute }))
-        }}
-      />
+      <WhenButton label={`${t('{m}月{d}日', { m: wall.month, d: wall.day })} ${pad(wall.hour)}:${pad(wall.minute)}`}>
+        <DateParts label={t('日期')} value={wall} onChange={(d) => pick(atWall({ ...wall, ...d }))} />
+        <input
+          type="time"
+          aria-label={t('时间')}
+          value={`${pad(wall.hour)}:${pad(wall.minute)}`}
+          onChange={(e) => {
+            const [hour, minute] = e.target.value.split(':').map(Number)
+            if (!Number.isNaN(hour)) pick(atWall({ ...wall, hour, minute }))
+          }}
+        />
+        <span className="imm-steps">
+          <button type="button" className="ghost" onClick={() => step(-DAY)}>
+            {t('前一天')}
+          </button>
+          <button type="button" className="ghost" onClick={() => step(DAY)}>
+            {t('后一天')}
+          </button>
+        </span>
+      </WhenButton>
       <button
         type="button"
         className={`ghost toggle${live ? ' on' : ''}`}
@@ -139,17 +150,11 @@ export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
         {t('现在')}
       </button>
       <span className="imm-steps">
-        <button type="button" className="ghost" onClick={() => step(-DAY)} aria-label={t('前一天')} title={t('前一天')}>
-          ◀◀
-        </button>
         <button type="button" className="ghost" onClick={() => step(-HOUR)} aria-label={t('前一小时')} title={t('前一小时')}>
           ◀
         </button>
         <button type="button" className="ghost" onClick={() => step(HOUR)} aria-label={t('后一小时')} title={t('后一小时')}>
           ▶
-        </button>
-        <button type="button" className="ghost" onClick={() => step(DAY)} aria-label={t('后一天')} title={t('后一天')}>
-          ▶▶
         </button>
       </span>
     </div>
