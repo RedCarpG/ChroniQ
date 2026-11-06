@@ -10,10 +10,12 @@ import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'rea
 import { BRIGHT_STARS, STAR_FIELDS } from '../lib/brightStars'
 import { WESTERN } from '../lib/constellations'
 import { XINGGUAN } from '../lib/xingguan'
-import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, markPlace, projectDir, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
+import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, markPlace, projectDir, unproject, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
 import { cloudLight, horizonMatrix, milkyWayCloud, STAR_NAMES, vectorsOfStars, type SkyBody } from '../lib/sky'
 import type { Constellation } from '../lib/sky'
-import { BODY_COLOUR } from './bodyColours'
+import { BODY_COLOUR, DSO_COLOUR } from './bodyColours'
+import { MESSIER, messierName, type Messier } from '../lib/messier'
+import { DOME_CLOUD_STEP, domeClouds, type CloudSky } from './skyClouds'
 import { starColour } from './skyPaint'
 
 const RAD = Math.PI / 180
@@ -34,8 +36,29 @@ export interface DomeScene {
   name: (zh: string) => string
   /** The ground: a see-through shade (the sky below shows through it), or none at all */
   ground: boolean
+  /** The Messier objects (as the map's 深空天体 switch), the equatorial grid and the ecliptic */
+  deepSky: boolean
+  eqGrid: boolean
+  ecliptic: boolean
+  /** The forecast's clouds at this moment, drawn over the sky above the horizon; null for a clear sky */
+  clouds: CloudSky | null
+  /** The day's paths (12 hours either side of now), the chosen one's picked out with its hours named */
+  paths: DomePath[] | null
+  /** A body's way among the stars over past days (历史轨迹), drawn on this moment's sky, with dates */
+  history: { colour: string; line: AzAlt[]; ticks: (AzAlt & { label: string })[] } | null
   /** What is chosen, to be ringed where it is, or pointed to from the screen's edge when out of view */
   mark: { az: number; alt: number; label: string; colour: string } | null
+}
+
+type AzAlt = { az: number; alt: number }
+export interface DomePath {
+  key: string
+  colour: string
+  /** Where it is at each step through the day; `now` is the step that is now */
+  line: AzAlt[]
+  now: number
+  hours: (AzAlt & { label: string })[]
+  lit: boolean
 }
 
 interface Props {
@@ -130,6 +153,75 @@ type Stars = ReturnType<typeof brightStars>
 
 /** The Milky Way's brighter points (as the full view of the map draws them), each with its light */
 type Cloud = { v: Float64Array; light: Float32Array; count: number }
+
+/** The Messier objects as J2000 directions, each with a point a little along its long axis (made once) */
+let messierList: { m: Messier; v: V3; axis: V3 | null }[] | null = null
+function messierDirs() {
+  if (!messierList)
+    messierList = MESSIER.map((m) => {
+      const v: V3 = [0, 0, 0]
+      unitOf(m.ra, m.dec, v)
+      if (m.pa === null) return { m, v, axis: null }
+      // The sky's east and north at it, and the long axis between them by its position angle
+      const e = Math.hypot(v[0], v[1]) || 1
+      const east: V3 = [-v[1] / e, v[0] / e, 0]
+      const north: V3 = [v[1] * east[2] - v[2] * east[1], v[2] * east[0] - v[0] * east[2], v[0] * east[1] - v[1] * east[0]]
+      const [c, s] = [Math.cos(m.pa * RAD), Math.sin(m.pa * RAD)]
+      const d = 0.004
+      const axis: V3 = [v[0] + d * (c * north[0] + s * east[0]), v[1] + d * (c * north[1] + s * east[1]), v[2] + d * (c * north[2] + s * east[2])]
+      return { m, v, axis }
+    })
+  return messierList
+}
+/** How faint a Messier object is still drawn at a field of view: more as one zooms in, as on the map */
+const messierLimit = (fov: number) => 5 + 2.2 * (Math.max(1, 120 / fov) - 1)
+
+/** The equatorial grid (declination every 30°, right ascension every 2 hours) and the ecliptic, as
+ *  J2000 lines (made once) */
+const OBLIQUITY = 23.4393
+let gridList: { decs: { dec: number; v: Float64Array }[]; hours: { hour: number; v: Float64Array; label: V3 }[]; ecliptic: Float64Array; signs: V3[] } | null = null
+function gridLines() {
+  if (!gridList) {
+    const line = (points: [number, number][]) => {
+      const v = new Float64Array(points.length * 3)
+      points.forEach(([ra, dec], i) => unitOf(ra, dec, v, i * 3))
+      return v
+    }
+    const steps = (from: number, to: number, by: number) => Array.from({ length: Math.floor((to - from) / by) + 1 }, (_, i) => from + i * by)
+    const e = OBLIQUITY * RAD
+    const onEcliptic = (lon: number): [number, number] => {
+      const l = lon * RAD
+      return [((Math.atan2(Math.sin(l) * Math.cos(e), Math.cos(l)) / RAD) + 360) % 360, Math.asin(Math.sin(e) * Math.sin(l)) / RAD]
+    }
+    gridList = {
+      decs: [-60, -30, 0, 30, 60].map((dec) => ({ dec, v: line(steps(0, 360, 3).map((ra) => [ra, dec])) })),
+      hours: steps(0, 330, 30).map((ra) => {
+        const label: V3 = [0, 0, 0]
+        unitOf(ra, 0, label)
+        return { hour: ra / 15, v: line(steps(-84, 84, 3).map((dec) => [ra, dec])), label }
+      }),
+      ecliptic: line(steps(0, 360, 3).map(onEcliptic)),
+      signs: steps(0, 330, 30).map((lon) => {
+        const v: V3 = [0, 0, 0]
+        unitOf(...onEcliptic(lon), v)
+        return v
+      }),
+    }
+  }
+  return gridList
+}
+
+/** A packed J2000 line added to the current path, leaving out what is behind or flung across the screen */
+function traceLine(ctx: CanvasRenderingContext2D, cam: Camera, line: Float64Array, w: number, h: number) {
+  const a: [number, number] = [0, 0]
+  const b: [number, number] = [0, 0]
+  for (let j = 3; j < line.length; j += 3) {
+    if (!projectXYZ(cam, line[j - 3], line[j - 2], line[j - 1], a) || !projectXYZ(cam, line[j], line[j + 1], line[j + 2], b)) continue
+    if (Math.hypot(a[0] - b[0], a[1] - b[1]) > Math.max(w, h)) continue
+    ctx.moveTo(a[0], a[1])
+    ctx.lineTo(b[0], b[1])
+  }
+}
 
 const COMPASS: [string, string, number][] = [
   ['北', 'N', 0],
@@ -293,6 +385,8 @@ export function SkyDome({ scene, viewRef, draggable, onPick, onLook }: Props) {
     }
     for (const b of sc.bodies) near(b.key, projectDir(cam, dirOf(b.az, b.alt), at))
     for (const i of st.named) near(`hip${st.hip[i]}`, projectXYZ(sky, st.v[i * 3], st.v[i * 3 + 1], st.v[i * 3 + 2], at))
+    if (sc.deepSky && sc.light !== 'day')
+      for (const d of messierDirs()) if (d.m.mag <= messierLimit(viewRef.current.fov)) near(`dso${d.m.n}`, projectDir(sky, d.v, at))
     if (best) onPick?.((best as { key: string }).key)
   }
   useEffect(() => {
@@ -379,23 +473,54 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
     ctx.globalAlpha = 1
   }
 
+  // ---- The equatorial grid and the ecliptic, under the figures (as on the map) ----
+  if (scene.eqGrid || scene.ecliptic) {
+    ctx.globalCompositeOperation = 'source-over'
+    const grid = gridLines()
+    if (scene.eqGrid) {
+      ctx.lineWidth = 0.9
+      ctx.strokeStyle = 'rgba(110,165,255,0.34)'
+      ctx.beginPath()
+      for (const d of grid.decs) if (d.dec !== 0) traceLine(ctx, sky, d.v, w, h)
+      for (const hr of grid.hours) traceLine(ctx, sky, hr.v, w, h)
+      ctx.stroke()
+      ctx.lineWidth = 1.3
+      ctx.strokeStyle = 'rgba(120,175,255,0.65)'
+      ctx.beginPath()
+      traceLine(ctx, sky, grid.decs.find((d) => d.dec === 0)!.v, w, h)
+      ctx.stroke()
+      ctx.font = '10px system-ui, sans-serif'
+      ctx.fillStyle = 'rgba(150,190,255,0.8)'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      for (const hr of grid.hours) if (projectDir(sky, hr.label, at)) ctx.fillText(`${hr.hour}h`, at[0] + 3, at[1] - 6)
+    }
+    if (scene.ecliptic) {
+      ctx.lineWidth = 1.4
+      ctx.strokeStyle = 'rgba(255,190,90,0.75)'
+      ctx.setLineDash([10, 4])
+      ctx.beginPath()
+      traceLine(ctx, sky, grid.ecliptic, w, h)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = 'rgba(255,190,90,0.9)'
+      for (const v of grid.signs) {
+        if (!projectDir(sky, v, at)) continue
+        ctx.beginPath()
+        ctx.arc(at[0], at[1], 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    ctx.globalCompositeOperation = 'lighter'
+  }
+
   // ---- Constellation figures ----
   if (figures.length) {
     ctx.globalCompositeOperation = 'source-over'
     ctx.strokeStyle = scene.figures === 'west' ? 'rgba(130,160,230,0.42)' : 'rgba(220,170,110,0.45)'
     ctx.lineWidth = 1
     ctx.beginPath()
-    const a: [number, number] = [0, 0]
-    const b: [number, number] = [0, 0]
-    for (const f of figures)
-      for (const line of f.lines)
-        for (let j = 3; j < line.length; j += 3) {
-          if (!projectXYZ(sky, line[j - 3], line[j - 2], line[j - 1], a) || !projectXYZ(sky, line[j], line[j + 1], line[j + 2], b)) continue
-          // A segment flung across the screen is one wrapping round behind: left out
-          if (Math.hypot(a[0] - b[0], a[1] - b[1]) > Math.max(w, h)) continue
-          ctx.moveTo(a[0], a[1])
-          ctx.lineTo(b[0], b[1])
-        }
+    for (const f of figures) for (const line of f.lines) traceLine(ctx, sky, line, w, h)
     ctx.stroke()
     ctx.globalCompositeOperation = 'lighter'
   }
@@ -428,6 +553,30 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
     ctx.fill()
   }
   ctx.globalAlpha = 1
+
+  // ---- The Messier objects, marked as on the map: by kind, at their true size, galaxies turned ----
+  const dsos = scene.deepSky && scene.light !== 'day' ? messierDirs().filter((d) => d.m.mag <= messierLimit(view.fov)) : []
+  if (dsos.length) {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.lineWidth = 1.1
+    for (const { m, v, axis } of dsos) {
+      if (!projectDir(sky, v, at)) continue
+      const r = Math.max(4, (m.size[0] / 60 / 2) * deg)
+      if (at[0] < -r || at[1] < -r || at[0] > w + r || at[1] > h + r) continue
+      const colour = DSO_COLOUR[m.kind]
+      let turn = 0
+      if (axis) {
+        const b: [number, number] = [0, 0]
+        if (projectDir(sky, axis, b)) turn = Math.atan2(b[1] - at[1], b[0] - at[0])
+      }
+      drawMessier(ctx, m, at[0], at[1], r, turn, colour)
+    }
+    ctx.globalCompositeOperation = 'lighter'
+  }
+
+  // ---- The day's paths and the history track, in the horizon's own frame (they are where things
+  // stand at other moments, not fixed among the stars) ----
+  if (scene.paths?.length || scene.history) drawPaths(ctx, cam, scene, w, h)
 
   // ---- The Sun, the Moon (lit towards the Sun) and the planets ----
   const sun = scene.bodies.find((b) => b.key === 'sun')
@@ -468,6 +617,17 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
   }
   ctx.globalCompositeOperation = 'source-over'
 
+  // ---- The clouds, over the sky and under the names (a small canvas laid over smoothed) ----
+  if (scene.clouds) {
+    const step = rough ? DOME_CLOUD_STEP.moving : DOME_CLOUD_STEP.still
+    const layer = domeClouds(w, h, (x, y) => unproject(cam, x, y), scene.clouds, step)
+    if (layer) {
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(layer, 0, 0, layer.width * step, layer.height * step)
+    }
+  }
+
   // ---- Names: the bodies, the named stars, the best-known figures ----
   ctx.textBaseline = 'middle'
   ctx.font = '12px system-ui, sans-serif'
@@ -486,6 +646,21 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
     const zh = STAR_NAMES[stars.hip[i]]
     if (stars.mag[i] > limit || !projectXYZ(sky, stars.v[i * 3], stars.v[i * 3 + 1], stars.v[i * 3 + 2], at)) continue
     ctx.fillText(scene.name(zh), at[0] + 7, at[1] - 7)
+  }
+  // The Messier objects' numbers (with their names zoomed in), the brighter first, none over another
+  if (dsos.length) {
+    ctx.font = '11px system-ui, sans-serif'
+    const placed: [number, number][] = []
+    for (const { m, v } of [...dsos].sort((a, b) => a.m.mag - b.m.mag)) {
+      if (!(view.fov <= 67 || m.mag <= 4.6) || !projectDir(sky, v, at)) continue
+      if (placed.some(([x, y]) => Math.abs(x - at[0]) < 44 && Math.abs(y - at[1]) < 12)) continue
+      placed.push([at[0], at[1]])
+      const name = view.fov <= 45 && (scene.en ? m.en : m.zh)
+      ctx.fillStyle = DSO_COLOUR[m.kind]
+      ctx.globalAlpha = 0.85
+      ctx.fillText(name ? `M${m.n} ${messierName(m, scene.en)}` : `M${m.n}`, at[0] + Math.max(4, (m.size[0] / 60 / 2) * deg) + 4, at[1])
+    }
+    ctx.globalAlpha = 1
   }
   ctx.font = '600 13px system-ui, sans-serif'
   for (const b of scene.bodies) {
@@ -545,6 +720,154 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
   ctx.stroke()
 
   if (scene.mark) drawMark(ctx, cam, scene.mark, w, h)
+}
+
+/** A line of azimuths and altitudes added to the current path, as traceLine */
+function traceAzAlt(ctx: CanvasRenderingContext2D, cam: Camera, points: AzAlt[], w: number, h: number) {
+  const a: [number, number] = [0, 0]
+  const b: [number, number] = [0, 0]
+  let ok = false
+  for (let i = 0; i < points.length; i++) {
+    const was = ok
+    ;[a[0], a[1]] = [b[0], b[1]]
+    ok = projectDir(cam, dirOf(points[i].az, points[i].alt), b)
+    if (!ok || !was || Math.hypot(a[0] - b[0], a[1] - b[1]) > Math.max(w, h)) continue
+    ctx.moveTo(a[0], a[1])
+    ctx.lineTo(b[0], b[1])
+  }
+}
+
+/** The day's paths, as the map draws them: the way gone dashed and faint, the way to come solid, a
+ *  dot at each whole hour; the chosen one's bolder with its hours named, the others faded by it.
+ *  And the history track: the line, a dot on each date mark (named), a ring where it began. */
+function drawPaths(ctx: CanvasRenderingContext2D, cam: Camera, scene: DomeScene, w: number, h: number) {
+  const at: [number, number] = [0, 0]
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  const paths = scene.paths ?? []
+  const anyLit = paths.some((p) => p.lit)
+  // The chosen one last, over the others
+  for (const p of [...paths].sort((x, y) => Number(x.lit) - Number(y.lit))) {
+    const fade = anyLit && !p.lit ? 0.25 : 1
+    ctx.strokeStyle = p.colour
+    ctx.fillStyle = p.colour
+    ctx.lineWidth = p.lit ? 3 : 2
+    ctx.setLineDash([3, 5])
+    ctx.globalAlpha = (p.lit ? 0.6 : 0.35) * fade
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, p.line.slice(0, p.now + 1), w, h)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = (p.lit ? 0.95 : 0.6) * fade
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, p.line.slice(p.now), w, h)
+    ctx.stroke()
+    ctx.globalAlpha = 0.75 * fade
+    for (const hr of p.hours) {
+      if (!projectDir(cam, dirOf(hr.az, hr.alt), at)) continue
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], p.lit ? 2.4 : 1.8, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (p.lit) {
+      ctx.font = '11px system-ui, sans-serif'
+      ctx.globalAlpha = 0.9
+      const here = p.line[p.now]
+      const now: [number, number] = [0, 0]
+      const hereOk = here && projectDir(cam, dirOf(here.az, here.alt), now)
+      for (const hr of p.hours) {
+        if (!projectDir(cam, dirOf(hr.az, hr.alt), at)) continue
+        // None right on the body, where its name is
+        if (hereOk && Math.hypot(at[0] - now[0], at[1] - now[1]) < 24) continue
+        ctx.fillText(hr.label, at[0] + 5, at[1] - 6)
+      }
+    }
+  }
+  const hist = scene.history
+  if (hist) {
+    ctx.strokeStyle = hist.colour
+    ctx.fillStyle = hist.colour
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.8
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, hist.line, w, h)
+    ctx.stroke()
+    ctx.font = '11px system-ui, sans-serif'
+    for (const tick of hist.ticks) {
+      if (!projectDir(cam, dirOf(tick.az, tick.alt), at)) continue
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], 2.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 0.8
+      ctx.fillText(tick.label, at[0] + 5, at[1] + 5)
+    }
+    const start = hist.line[0]
+    if (start && projectDir(cam, dirOf(start.az, start.alt), at)) {
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], 3.5, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+}
+
+/** A Messier object's mark, as the map draws it: a galaxy an ellipse along its long axis, a globular
+ *  cluster a crossed circle, an open cluster a dashed one, a planetary nebula a small circle with
+ *  ticks, other nebulae a rounded square; galaxies and nebulae on a faint glow */
+function drawMessier(ctx: CanvasRenderingContext2D, m: Messier, x: number, y: number, r: number, turn: number, colour: string) {
+  const flat = Math.max(0.45, m.size[1] / m.size[0])
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.strokeStyle = colour
+  ctx.fillStyle = colour
+  if (m.kind !== 'oc' && m.kind !== 'asterism') {
+    ctx.save()
+    ctx.rotate(turn)
+    ctx.scale(1, flat)
+    ctx.globalAlpha = Math.min(0.22, Math.max(0.06, (11 - m.mag) / 40))
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 1.1, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+  ctx.globalAlpha = 0.9
+  ctx.beginPath()
+  switch (m.kind) {
+    case 'galaxy':
+      ctx.rotate(turn)
+      ctx.ellipse(0, 0, r, r * flat, 0, 0, Math.PI * 2)
+      break
+    case 'gc':
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+      ctx.moveTo(-r, 0)
+      ctx.lineTo(r, 0)
+      ctx.moveTo(0, -r)
+      ctx.lineTo(0, r)
+      break
+    case 'oc':
+    case 'asterism':
+      ctx.setLineDash([3, 2.5])
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+      break
+    case 'pn':
+      ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        ctx.moveTo(dx * r, dy * r)
+        ctx.lineTo(dx * r * 0.6, dy * r * 0.6)
+      }
+      break
+    default:
+      if (ctx.roundRect) ctx.roundRect(-r, -r, 2 * r, 2 * r, r * 0.2)
+      else ctx.rect(-r, -r, 2 * r, 2 * r)
+  }
+  ctx.stroke()
+  ctx.restore()
 }
 
 /** The chosen one: a ring round it with its name, or an arrow at the edge pointing the way to it */

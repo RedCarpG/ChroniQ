@@ -60,14 +60,8 @@ function sample(n: Float32Array, x: number, y: number) {
   return top + (bottom - top) * fy
 }
 
-export interface CloudScene {
-  width: number
-  height: number
-  /** Map to screen, as skyPaint's */
-  ox: number
-  oy: number
-  scale: number
-  below: boolean
+/** The clouds at a moment: how much, how low, the wind that carries them, and the light on them */
+export interface CloudSky {
   /** Cover, 0–1, and how much of it is low cloud (denser, darker) */
   cover: number
   low: number
@@ -81,10 +75,64 @@ export interface CloudScene {
   town: number
 }
 
+export interface CloudScene extends CloudSky {
+  width: number
+  height: number
+  /** Map to screen, as skyPaint's */
+  ox: number
+  oy: number
+  scale: number
+  below: boolean
+}
+
 /** Quarter size: soft enough for clouds */
 const Q = 4
 /** How far the deck reaches, in the texture's units per unit of its height above us */
 const SPREAD = 22
+
+/** What stays the same for every line of sight at a moment: the deck's drift, how much is filled, its colour */
+function deckOf(s: CloudSky) {
+  // The deck drifts downwind: km travelled, in texture units (a deck about 2 km up)
+  const hours = s.time / 3600_000
+  const drift = ((s.wind * hours) / 2 / SPREAD) * 6
+  const toward = ((s.windFrom + 180) * Math.PI) / 180
+  return {
+    n: cloudNoise(),
+    dx: Math.sin(toward) * drift,
+    dy: Math.cos(toward) * drift,
+    // Filled where the noise is above this: more cover, lower threshold
+    edge: 1 - s.cover,
+    base:
+      s.light === 'day'
+        ? [236, 240, 246]
+        : s.light === 'twilight'
+          ? [120, 116, 140]
+          : [26 + 70 * s.moon, 30 + 72 * s.moon, 42 + 70 * s.moon],
+    glow: s.light === 'night' ? s.town : 0,
+  }
+}
+
+/** The cloud along one line of sight (azimuth in radians from north through east, altitude in degrees),
+ *  written into px at i as RGBA; nothing written where it is clear */
+function cloudPixel(deck: ReturnType<typeof deckOf>, s: CloudSky, az: number, altitude: number, px: Uint8ClampedArray, i: number) {
+  const alt = Math.max(2, altitude)
+  // Where that line of sight meets the deck
+  const d = (SPREAD / Math.tan((alt * Math.PI) / 180)) * 1.2
+  const u = d * Math.sin(az) + deck.dx
+  const v = d * Math.cos(az) + deck.dy
+  const val = sample(deck.n, u * 2.4, v * 2.4) * 0.75 + sample(deck.n, u * 9, v * 9) * 0.25
+  // Low in the sky, one looks through more of the deck
+  const thick = Math.min(1, (val - deck.edge + 0.18) / 0.32 + (1 - alt / 90) * 0.35 * s.cover)
+  if (thick <= 0) return
+  const a = Math.min(0.94, thick * (0.7 + 0.3 * s.low))
+  const lowGlow = deck.glow * (0.4 + 0.6 * (1 - alt / 90))
+  // Thicker parts darker underneath (lighter by day), so even an overcast sky has its shapes
+  const shade = s.light === 'day' ? 1.05 - 0.25 * (val - 0.5) : 1.15 - 0.9 * (val - 0.35)
+  px[i] = (deck.base[0] + 120 * lowGlow) * shade
+  px[i + 1] = (deck.base[1] + 70 * lowGlow) * shade
+  px[i + 2] = (deck.base[2] + 30 * lowGlow) * shade
+  px[i + 3] = a * 255
+}
 
 export function paintClouds(canvas: HTMLCanvasElement, s: CloudScene | null) {
   const ctx = canvas.getContext('2d')
@@ -97,25 +145,11 @@ export function paintClouds(canvas: HTMLCanvasElement, s: CloudScene | null) {
   if (!s || s.cover <= 0.02) return
   canvas.style.width = `${w * Q}px`
   canvas.style.height = `${h * Q}px`
-  const n = cloudNoise()
+  const deck = deckOf(s)
   const image = ctx.createImageData(w, h)
   const px = image.data
   const [cx, cy] = [s.ox + C * s.scale, s.oy + C * s.scale]
   const rPix = R * s.scale
-  // The deck drifts downwind: km travelled, in texture units (a deck about 2 km up)
-  const hours = s.time / 3600_000
-  const drift = ((s.wind * hours) / 2 / SPREAD) * 6
-  const toward = ((s.windFrom + 180) * Math.PI) / 180
-  const [dx, dy] = [Math.sin(toward) * drift, Math.cos(toward) * drift]
-  // Filled where the noise is above this: more cover, lower threshold
-  const edge = 1 - s.cover
-  const base =
-    s.light === 'day'
-      ? [236, 240, 246]
-      : s.light === 'twilight'
-        ? [120, 116, 140]
-        : [26 + 70 * s.moon, 30 + 72 * s.moon, 42 + 70 * s.moon]
-  const glow = s.light === 'night' ? s.town : 0
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const mx = (x + 0.5) * Q - cx
@@ -123,26 +157,39 @@ export function paintClouds(canvas: HTMLCanvasElement, s: CloudScene | null) {
       const r = Math.hypot(mx, my) / rPix
       if (r > 1) continue
       // Back to the sky: altitude from the distance from the middle, azimuth from the direction
-      const alt = Math.max(2, 90 * (1 - r))
-      const az = Math.atan2(s.below ? mx : -mx, -my)
-      // Where that line of sight meets the deck
-      const d = (SPREAD / Math.tan((alt * Math.PI) / 180)) * 1.2
-      const u = d * Math.sin(az) + dx
-      const v = d * Math.cos(az) + dy
-      const val = sample(n, u * 2.4, v * 2.4) * 0.75 + sample(n, u * 9, v * 9) * 0.25
-      // Low in the sky, one looks through more of the deck
-      const thick = Math.min(1, (val - edge + 0.18) / 0.32 + (1 - alt / 90) * 0.35 * s.cover)
-      if (thick <= 0) continue
-      const a = Math.min(0.94, thick * (0.7 + 0.3 * s.low))
-      const lowGlow = glow * (0.4 + 0.6 * (1 - alt / 90))
-      // Thicker parts darker underneath (lighter by day), so even an overcast sky has its shapes
-      const shade = s.light === 'day' ? 1.05 - 0.25 * (val - 0.5) : 1.15 - 0.9 * (val - 0.35)
-      const i = (y * w + x) * 4
-      px[i] = (base[0] + 120 * lowGlow) * shade
-      px[i + 1] = (base[1] + 70 * lowGlow) * shade
-      px[i + 2] = (base[2] + 30 * lowGlow) * shade
-      px[i + 3] = a * 255
+      cloudPixel(deck, s, Math.atan2(s.below ? mx : -mx, -my), 90 * (1 - r), px, (y * w + x) * 4)
     }
   }
   ctx.putImageData(image, 0, 0)
+}
+
+/** How many screen pixels a cloud texel covers under the dome view, where it is redrawn as it turns:
+ *  coarser while it moves (a third of the work), finer once it is still */
+export const DOME_CLOUD_STEP = { still: 5, moving: 9 }
+let domeLayer: HTMLCanvasElement | null = null
+
+/**
+ * The clouds as the dome view sees them: for each texel of a small canvas (`step` screen pixels
+ * across), the line of sight through it (`lookAlong`, the view's own inverse projection) carried
+ * up to the deck. Below the horizon there are none. The canvas is returned to be laid over the sky
+ * smoothed; null when clear.
+ */
+export function domeClouds(width: number, height: number, lookAlong: (x: number, y: number) => [number, number, number], s: CloudSky, step: number): HTMLCanvasElement | null {
+  if (s.cover <= 0.02 || typeof document === 'undefined') return null
+  const [w, h] = [Math.ceil(width / step), Math.ceil(height / step)]
+  domeLayer ??= document.createElement('canvas')
+  if (domeLayer.width !== w || domeLayer.height !== h) [domeLayer.width, domeLayer.height] = [w, h]
+  const ctx = domeLayer.getContext('2d')
+  if (!ctx) return null
+  const deck = deckOf(s)
+  const image = ctx.createImageData(w, h)
+  const px = image.data
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const v = lookAlong((x + 0.5) * step, (y + 0.5) * step)
+      if (v[2] <= 0.005) continue
+      cloudPixel(deck, s, Math.atan2(v[0], v[1]), (Math.asin(Math.min(1, v[2])) * 180) / Math.PI, px, (y * w + x) * 4)
+    }
+  ctx.putImageData(image, 0, 0)
+  return domeLayer
 }
