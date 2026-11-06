@@ -39,8 +39,23 @@ export interface DomeScene {
   deepSky: boolean
   eqGrid: boolean
   ecliptic: boolean
+  /** The day's paths (12 hours either side of now), the chosen one's picked out with its hours named */
+  paths: DomePath[] | null
+  /** A body's way among the stars over past days (历史轨迹), drawn on this moment's sky, with dates */
+  history: { colour: string; line: AzAlt[]; ticks: (AzAlt & { label: string })[] } | null
   /** What is chosen, to be ringed where it is, or pointed to from the screen's edge when out of view */
   mark: { az: number; alt: number; label: string; colour: string } | null
+}
+
+type AzAlt = { az: number; alt: number }
+export interface DomePath {
+  key: string
+  colour: string
+  /** Where it is at each step through the day; `now` is the step that is now */
+  line: AzAlt[]
+  now: number
+  hours: (AzAlt & { label: string })[]
+  lit: boolean
 }
 
 interface Props {
@@ -556,6 +571,10 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
     ctx.globalCompositeOperation = 'lighter'
   }
 
+  // ---- The day's paths and the history track, in the horizon's own frame (they are where things
+  // stand at other moments, not fixed among the stars) ----
+  if (scene.paths?.length || scene.history) drawPaths(ctx, cam, scene, w, h)
+
   // ---- The Sun, the Moon (lit towards the Sun) and the planets ----
   const sun = scene.bodies.find((b) => b.key === 'sun')
   for (const b of [...scene.bodies].sort((x, y) => (x.key === 'moon' ? 1 : y.key === 'moon' ? -1 : 0))) {
@@ -687,6 +706,101 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
   ctx.stroke()
 
   if (scene.mark) drawMark(ctx, cam, scene.mark, w, h)
+}
+
+/** A line of azimuths and altitudes added to the current path, as traceLine */
+function traceAzAlt(ctx: CanvasRenderingContext2D, cam: Camera, points: AzAlt[], w: number, h: number) {
+  const a: [number, number] = [0, 0]
+  const b: [number, number] = [0, 0]
+  let ok = false
+  for (let i = 0; i < points.length; i++) {
+    const was = ok
+    ;[a[0], a[1]] = [b[0], b[1]]
+    ok = projectDir(cam, dirOf(points[i].az, points[i].alt), b)
+    if (!ok || !was || Math.hypot(a[0] - b[0], a[1] - b[1]) > Math.max(w, h)) continue
+    ctx.moveTo(a[0], a[1])
+    ctx.lineTo(b[0], b[1])
+  }
+}
+
+/** The day's paths, as the map draws them: the way gone dashed and faint, the way to come solid, a
+ *  dot at each whole hour; the chosen one's bolder with its hours named, the others faded by it.
+ *  And the history track: the line, a dot on each date mark (named), a ring where it began. */
+function drawPaths(ctx: CanvasRenderingContext2D, cam: Camera, scene: DomeScene, w: number, h: number) {
+  const at: [number, number] = [0, 0]
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  const paths = scene.paths ?? []
+  const anyLit = paths.some((p) => p.lit)
+  // The chosen one last, over the others
+  for (const p of [...paths].sort((x, y) => Number(x.lit) - Number(y.lit))) {
+    const fade = anyLit && !p.lit ? 0.25 : 1
+    ctx.strokeStyle = p.colour
+    ctx.fillStyle = p.colour
+    ctx.lineWidth = p.lit ? 3 : 2
+    ctx.setLineDash([3, 5])
+    ctx.globalAlpha = (p.lit ? 0.6 : 0.35) * fade
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, p.line.slice(0, p.now + 1), w, h)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = (p.lit ? 0.95 : 0.6) * fade
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, p.line.slice(p.now), w, h)
+    ctx.stroke()
+    ctx.globalAlpha = 0.75 * fade
+    for (const hr of p.hours) {
+      if (!projectDir(cam, dirOf(hr.az, hr.alt), at)) continue
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], p.lit ? 2.4 : 1.8, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (p.lit) {
+      ctx.font = '11px system-ui, sans-serif'
+      ctx.globalAlpha = 0.9
+      const here = p.line[p.now]
+      const now: [number, number] = [0, 0]
+      const hereOk = here && projectDir(cam, dirOf(here.az, here.alt), now)
+      for (const hr of p.hours) {
+        if (!projectDir(cam, dirOf(hr.az, hr.alt), at)) continue
+        // None right on the body, where its name is
+        if (hereOk && Math.hypot(at[0] - now[0], at[1] - now[1]) < 24) continue
+        ctx.fillText(hr.label, at[0] + 5, at[1] - 6)
+      }
+    }
+  }
+  const hist = scene.history
+  if (hist) {
+    ctx.strokeStyle = hist.colour
+    ctx.fillStyle = hist.colour
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.8
+    ctx.beginPath()
+    traceAzAlt(ctx, cam, hist.line, w, h)
+    ctx.stroke()
+    ctx.font = '11px system-ui, sans-serif'
+    for (const tick of hist.ticks) {
+      if (!projectDir(cam, dirOf(tick.az, tick.alt), at)) continue
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], 2.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 0.8
+      ctx.fillText(tick.label, at[0] + 5, at[1] + 5)
+    }
+    const start = hist.line[0]
+    if (start && projectDir(cam, dirOf(start.az, start.alt), at)) {
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.arc(at[0], at[1], 3.5, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
 }
 
 /** A Messier object's mark, as the map draws it: a galaxy an ellipse along its long axis, a globular

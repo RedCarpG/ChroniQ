@@ -785,10 +785,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // every step) wait until it is let go
   const [dragShift, setDragShift] = useState<number | null>(null)
   const dragging = dragShift !== null || flowing
-  const historyLine = useMemo(() => {
-    if (!historyBody || dragging) return null
-    const points = historyTrack(historyBody, utc, place.latitude, place.longitude, history.days)
-    // A date mark every week (1 month), half month (3 months) or month (1 year), counted back from now
+  const historyPoints = useMemo(
+    () => (historyBody && !dragging ? historyTrack(historyBody, utc, place.latitude, place.longitude, history.days) : null),
+    [historyBody, history.days, dragging, utc, place.latitude, place.longitude],
+  )
+  // A date mark every week (1 month), half month (3 months) or month (1 year), counted back from now
+  const historyTicks = (points: { utc: Date; az: number; alt: number }[]) => {
     const tickDays = history.days <= 31 ? 7 : history.days <= 92 ? 15 : 30
     const stride = Math.round(((points.length - 1) * tickDays) / history.days)
     const ticks = []
@@ -796,8 +798,13 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       const [, m, d] = wallTime(points[i].utc, place.timeZone).date.split('-').map(Number)
       ticks.push({ ...points[i], m, d })
     }
-    return { key: historyBody, d: pathData(points, at), start: points[0], ticks }
-  }, [historyBody, history.days, dragging, utc, place.latitude, place.longitude, place.timeZone])
+    return ticks
+  }
+  const historyLine = useMemo(() => {
+    if (!historyBody || !historyPoints || domeOn) return null
+    const points = historyPoints
+    return { key: historyBody, d: pathData(points, at), start: points[0], ticks: historyTicks(points) }
+  }, [historyPoints, domeOn, place.timeZone])
   const dateLabel = (m: number, d: number) =>
     en ? new Date(Date.UTC(2000, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : `${m}/${d}`
 
@@ -805,7 +812,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
   // While the sky is dragged through time the usual paths wait, so the moments are only needed then
   // for a chosen or hovered one's path
-  const wantPathTimes = showPaths && !domeOn && (!dragging || chosen !== null || focus !== null)
+  const wantPathTimes = showPaths && (!dragging || chosen !== null || focus !== null)
   const pathTimes = useMemo(() => {
     if (!wantPathTimes) return null
     const now = utc.getTime()
@@ -834,13 +841,14 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         .filter((p) => shown(p.alt)),
     }
   }
-  const paths = useMemo(() => {
-    // Left out while the sky is dragged through time (the chosen one's path stays: extraPath)
-    if (!pathTimes || dragging) return null
-    const tracks = tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
-    return PATH_BODIES.map((key) => pathOf(key, tracks[key]))
+  // The usual bodies' tracks through pathTimes' moments, for the map's paths or the dome's. Left out
+  // while the sky is dragged through time (the chosen one's path stays: extraTrack)
+  const pathTracks = useMemo(
+    () => (pathTimes && !dragging ? tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude) : null),
     // dragging too: letting go must bring them back, though the time has not moved since the last step
-  }, [pathTimes, dragging, place.latitude, place.longitude])
+    [pathTimes, dragging, place.latitude, place.longitude],
+  )
+  const paths = useMemo(() => (pathTracks && !domeOn ? PATH_BODIES.map((key) => pathOf(key, pathTracks[key])) : null), [pathTracks, domeOn])
   const clipId = useId()
   const pick = chosen?.startsWith('hip') ? sky.stars.find((s) => `hip${s.hip}` === chosen) : sky.bodies.find((b) => b.key === chosen)
   // A constellation or 星官 can be chosen too (its key is fig + its id)
@@ -969,7 +977,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // through time the usual paths wait, but the chosen one's is still drawn, whichever it is.
   // Tracks already worked out for these moments and this place, so hovering the same star again is free
   const trackCache = useMemo(() => new Map<string, { az: number; alt: number }[]>(), [pathTimes, place.latitude, place.longitude])
-  const extraPath = (key: string | null) => {
+  /** The track of a chosen or hovered one that the usual paths leave out: a star, Uranus or Neptune,
+   *  or any body while the sky is dragged through time */
+  const extraTrack = (key: string | null) => {
     if (!pathTimes || !key || key.startsWith('fig') || key.startsWith('dso') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
     let track = trackCache.get(key)
     if (!track) {
@@ -977,12 +987,16 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       track = trackOf(what, [...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude)
       trackCache.set(key, track)
     }
-    return track.length ? pathOf(key, track) : null
+    return track.length ? track : null
   }
-  const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, dragging, chosen, place.latitude, place.longitude])
+  const extraPath = (key: string | null) => {
+    const track = domeOn ? null : extraTrack(key)
+    return track && key ? pathOf(key, track) : null
+  }
+  const chosenPath = useMemo(() => extraPath(chosen), [pathTimes, dragging, chosen, domeOn, place.latitude, place.longitude])
   const hoverPath = useMemo(
     () => (focus === chosen || dragging ? null : extraPath(focus)),
-    [pathTimes, dragging, focus, chosen, place.latitude, place.longitude],
+    [pathTimes, dragging, focus, chosen, domeOn, place.latitude, place.longitude],
   )
   const allPaths = pathTimes && [...(paths ?? []), ...(chosenPath ? [chosenPath] : []), ...(hoverPath ? [hoverPath] : [])]
   // The paths picked out: the chosen one's, and the hovered one's
@@ -991,6 +1005,32 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const st = key.startsWith('hip') ? sky.stars.find((x) => `hip${x.hip}` === key) : undefined
     return st ? starColour(st.bv) : BODY_COLOUR[key]
   }
+  // The same paths under the dome, as directions: the line through the day (12 hours either side,
+  // `now` where it is now), its whole hours named, the chosen one's picked out
+  const domePaths = (() => {
+    if (!domeOn || !pathTimes) return null
+    const n = pathTimes.times.length
+    const make = (key: string, track: { az: number; alt: number }[]) => ({
+      key,
+      colour: BODY_COLOUR[key] ?? colourOf(key),
+      line: track.slice(0, n),
+      now: PATH_SPAN / PATH_STEP,
+      hours: track.slice(n).map((p, i) => ({ ...p, label: t('{h}时', { h: pathTimes.hourOf[i] }) })),
+      lit: key === chosen,
+    })
+    const out = pathTracks ? PATH_BODIES.map((key) => make(key, pathTracks[key])) : []
+    const extra = extraTrack(chosen)
+    if (extra && chosen) out.push(make(chosen, extra))
+    return out
+  })()
+  const domeHistory =
+    domeOn && historyBody && historyPoints
+      ? {
+          colour: BODY_COLOUR[historyBody],
+          line: historyPoints,
+          ticks: historyTicks(historyPoints).map((p) => ({ az: p.az, alt: p.alt, label: dateLabel(p.m, p.d) })),
+        }
+      : null
   /** Where on the map the thing a path belongs to is now */
   const whereNow = (key: string) => {
     const o = key.startsWith('hip') ? sky.stars.find((st) => `hip${st.hip}` === key) : sky.bodies.find((b) => b.key === key)
@@ -2506,6 +2546,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 name: (zh) => t(zh),
                 ground: showGround,
                 deepSky: showDso,
+                paths: domePaths,
+                history: domeHistory,
                 eqGrid,
                 ecliptic: showEcliptic,
                 mark: domeMark,
