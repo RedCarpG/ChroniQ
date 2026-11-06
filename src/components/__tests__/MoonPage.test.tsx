@@ -97,4 +97,19 @@ describe('观月', () => {
     fireEvent.click(reset)
     expect(reset.disabled).toBe(true)
   })
+
+  it('pinches without moving the time', () => {
+    const { container, time } = setUp()
+    const sky = document.querySelector<HTMLCanvasElement>('.moon-sky-canvas')!
+    const touch = (id: number, x: number) => ({ pointerId: id, pointerType: 'touch', clientX: x, clientY: 300 })
+    const reset = [...container.querySelectorAll<HTMLButtonElement>('.imm-zoom button')][2]
+    fireEvent.pointerDown(sky, touch(1, 200))
+    fireEvent.pointerDown(sky, touch(2, 260))
+    fireEvent.pointerMove(sky, touch(2, 330))
+    expect(reset.disabled).toBe(false)
+    fireEvent.pointerUp(sky, touch(2, 330))
+    fireEvent.pointerMove(sky, touch(1, 120))
+    fireEvent.pointerUp(sky, touch(1, 120))
+    expect(time()).toBe('19:38')
+  })
 })

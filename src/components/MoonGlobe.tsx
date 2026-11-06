@@ -13,15 +13,19 @@ import { litPart } from '../lib/sky'
 
 const VERTEX = `
 attribute vec2 p;
-varying vec2 v;
+varying vec2 q;
 void main() {
-  v = p * 1.02;
+  q = p;
   gl_Position = vec4(p, 0.0, 1.0);
 }`
 
 const FRAGMENT = `
 precision highp float;
-varying vec2 v;
+varying vec2 q;
+// The canvas's size, and the disc's centre (from the top left) and radius on it, in pixels
+uniform vec2 uRes;
+uniform vec2 uCentre;
+uniform float uRadius;
 uniform sampler2D uColour;
 uniform sampler2D uHeight;
 uniform mat3 uBody;
@@ -34,6 +38,9 @@ uniform float uEarthshine;
 uniform float uAa;
 const float PI = 3.14159265;
 void main() {
+  // This pixel on the disc: 1 at its edge, y up
+  vec2 px = (q * 0.5 + 0.5) * uRes;
+  vec2 v = vec2(px.x - uCentre.x, px.y - (uRes.y - uCentre.y)) / uRadius;
   float r = length(v);
   float edge = 1.0 - smoothstep(1.0 - uAa, 1.0 + uAa, r);
   if (edge <= 0.0) discard;
@@ -127,8 +134,18 @@ const loadImage = (url: string) =>
     image.src = url
   })
 
-/** The Moon, drawn as seen (`frame`, lib/moonView), filling a square */
-export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number; label: string }) {
+/** Which part of the disc the element shows, in its own CSS pixels: the disc's centre and radius */
+export interface GlobeCrop {
+  cx: number
+  cy: number
+  r: number
+}
+
+/**
+ * The Moon, drawn as seen (`frame`, lib/moonView), filling a square; or, with `crop`, the part of a
+ * larger disc that falls in the element (zoomed in past the screen, only what is seen is drawn)
+ */
+export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: number; label: string; crop?: GlobeCrop }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gl = useRef<Gl | null>(null)
   const [flat, setFlat] = useState(false)
@@ -137,19 +154,28 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
   // The larger colour map, fetched once the Moon is drawn large (asked for at most once)
   const large = useRef<'no' | 'asked'>('no')
   const askLarge = useRef(() => {})
+  const cropRef = useRef(crop)
+  cropRef.current = crop
   const draw = useRef(() => {})
   draw.current = () => {
     const g = gl.current
     const canvas = canvasRef.current
     if (!g || !canvas) return
     const { gl: c, loc } = g
-    const size = Math.max(1, Math.round(canvas.clientWidth * Math.min(DPR_MAX, window.devicePixelRatio || 1)))
-    if (canvas.width !== size || canvas.height !== size) {
-      canvas.width = size
-      canvas.height = size
+    const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1)
+    const w = Math.max(1, Math.round(canvas.clientWidth * dpr))
+    const h = Math.max(1, Math.round(canvas.clientHeight * dpr))
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w
+      canvas.height = h
     }
-    if (size > 640 && mapped.current && large.current === 'no') askLarge.current()
-    c.viewport(0, 0, size, size)
+    const disc = cropRef.current ?? { cx: canvas.clientWidth / 2, cy: canvas.clientHeight / 2, r: canvas.clientWidth / 2 / 1.02 }
+    const radius = Math.max(0.5, disc.r * dpr)
+    if (radius > 320 && mapped.current && large.current === 'no') askLarge.current()
+    c.viewport(0, 0, w, h)
+    c.uniform2f(loc('uRes'), w, h)
+    c.uniform2f(loc('uCentre'), disc.cx * dpr, disc.cy * dpr)
+    c.uniform1f(loc('uRadius'), radius)
     const [x, y, z] = frame.body
     // Rows of the matrix: the Moon's axes in screen coordinates (WebGL takes it column by column)
     c.uniformMatrix3fv(loc('uBody'), false, [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]])
@@ -160,7 +186,7 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
     c.uniform1f(loc('uRelief'), 2.4)
     // Earthshine: the Earth seen from the Moon is nearly full when the Moon is new
     c.uniform1f(loc('uEarthshine'), 0.07 * (1 - lit) ** 2)
-    c.uniform1f(loc('uAa'), (2.04 / size) * 1.2)
+    c.uniform1f(loc('uAa'), 1.2 / radius)
     c.clear(c.COLOR_BUFFER_BIT)
     c.drawArrays(c.TRIANGLE_STRIP, 0, 4)
   }
@@ -204,7 +230,7 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
       ro.disconnect()
     }
   }, [])
-  useEffect(() => draw.current(), [frame, lit])
+  useEffect(() => draw.current(), [frame, lit, crop?.cx, crop?.cy, crop?.r])
 
   // Without WebGL: the lit part, turned towards the Sun (screen y is up, the SVG's is down)
   const turn = (Math.atan2(-frame.sun[1], frame.sun[0]) * 180) / Math.PI

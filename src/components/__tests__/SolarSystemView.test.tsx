@@ -57,4 +57,21 @@ describe('太阳系', () => {
     expect(month()).not.toBe('11')
     expect(container.querySelector('.solar-card strong')!.textContent).toBe('金星')
   })
+
+  it('zooms with two fingers without moving the date, also when one finger lifts first', () => {
+    const { map, grid, month } = setUp()
+    const touch = (id: number, x: number) => ({ pointerId: id, pointerType: 'touch', clientX: x, clientY: 300 })
+    fireEvent.pointerDown(map(), touch(1, 200))
+    fireEvent.pointerMove(map(), touch(1, 196))
+    fireEvent.pointerDown(map(), touch(2, 260))
+    // Pinching in: the fingers closer, the map reaching further out
+    fireEvent.pointerMove(map(), touch(2, 215))
+    expect(grid()).toContain('5 AU')
+    fireEvent.pointerUp(map(), touch(2, 215))
+    // The finger left behind moves on: still not a drag through time
+    fireEvent.pointerMove(map(), touch(1, 120))
+    fireEvent.pointerMove(map(), touch(1, 40))
+    fireEvent.pointerUp(map(), touch(1, 40))
+    expect(month()).toBe('11')
+  })
 })

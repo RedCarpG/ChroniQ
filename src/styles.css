@@ -2262,7 +2262,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .moon-sky { position: absolute; inset: 0; }
 .moon-sky-canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
 .moon-sky-globe { position: absolute; pointer-events: none; }
-.moon-sky-globe .moon-globe { width: 100%; height: 100%; animation: none; }
+.moon-sky-globe .moon-globe { width: 100%; height: 100%; aspect-ratio: auto; animation: none; }
 .moon-feature {
   position: absolute; display: flex; align-items: center; gap: 5px; transform: translate(-3px, -50%); pointer-events: none; white-space: nowrap;
   font-family: var(--font-title); font-size: 12px; letter-spacing: 0.06em; color: #f3ead2;

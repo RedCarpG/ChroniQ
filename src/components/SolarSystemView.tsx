@@ -205,29 +205,33 @@ export function SolarSystemView() {
   }, [])
 
   // Taking the map in hand: a drag across moves the date (more days a pixel the further out it
-  // reaches), two fingers pinch, the wheel zooms. A drag is not a click: it neither picks nor lets go
+  // reaches), two fingers pinch, the wheel zooms. Once a second finger has come down, the gesture only
+  // zooms until every finger is lifted, and a touch only starts moving the date after a little way or
+  // a moment, so a pinch never begins as a drag. A drag is not a click: it neither picks nor lets go
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const gesture = useRef<{ x: number; reach: number; dist?: number; moved: boolean } | null>(null)
+  const gesture = useRef<{ x: number; reach: number; dist?: number; moved: boolean; pinched: boolean; at: number } | null>(null)
   const perPx = Math.max(1, Math.min(30, reach / 1.2)) * DAY
   const gestures = {
     onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => {
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const pts = [...pointers.current.values()]
-      gesture.current = { x: e.clientX, reach, moved: false, dist: pts.length === 2 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : undefined }
+      if (pts.length === 1) gesture.current = { x: e.clientX, reach, moved: false, pinched: false, at: e.timeStamp }
+      else if (pts.length === 2)
+        gesture.current = { x: e.clientX, reach, moved: true, pinched: true, at: e.timeStamp, dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) }
     },
     onPointerMove: (e: React.PointerEvent<SVGSVGElement>) => {
       const g = gesture.current
       if (!g || !pointers.current.has(e.pointerId)) return
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const pts = [...pointers.current.values()]
-      if (pts.length === 2 && g.dist) {
-        g.moved = true
-        zoomTo((g.reach * g.dist) / Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)))
+      if (g.pinched) {
+        if (pts.length === 2 && g.dist) zoomTo((g.reach * g.dist) / Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)))
         return
       }
       const dx = e.clientX - g.x
-      if (!g.moved && Math.abs(dx) < 5) return
       if (!g.moved) {
+        const touch = e.pointerType === 'touch'
+        if (Math.abs(dx) < (touch ? 10 : 5) || (touch && e.timeStamp - g.at < 120)) return
         g.moved = true
         try {
           e.currentTarget.setPointerCapture(e.pointerId)
