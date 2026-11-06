@@ -1442,7 +1442,16 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 @media (max-width: 900px) {
   .fortune-combo { grid-template-columns: minmax(0, 1fr); }
-  .fortune-side { width: 100%; border-right: 0; border-radius: var(--radius); box-shadow: none; }
+  /* On phones the panel is part of the page instead of a scroll box laid over the
+     岁运盘: a full-card scroll box would catch every swipe, so once the page was
+     scrolled to the bottom it could not be swiped back up. The 岁运盘 it used to
+     cover is hidden while it is open. */
+  .fortune-side {
+    position: relative; inset: auto; overflow: visible; overscroll-behavior: auto; padding: 0;
+    width: 100%; border: 0; border-radius: 0; background: none; box-shadow: none;
+  }
+  .fortune-side .fortunes-head { top: 0; margin: 0 0 8px; padding: 8px 0; background: var(--card); }
+  .fortune-combo.side-open .fortune-main { display: none; }
   .side-handle { flex-direction: row; justify-content: center; padding: 8px 12px; margin-bottom: 16px; }
   .side-handle-title, .side-handle-sub { width: auto; }
   .side-close { font-size: 0 !important; }
@@ -2806,7 +2815,11 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 }
 
 /* 今日星象: the day by the Western reckoning */
-.today-western .kv dd { line-height: 1.6; }
+.western-day dd { line-height: 1.6; }
+.detail-section {
+  margin: 6px 0 -4px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--font-title); font-size: 15px; font-weight: 600; letter-spacing: 0.06em; color: var(--accent);
+}
 .today-aspect { display: block; }
 .today-aspect-glyph { color: var(--accent); }
 

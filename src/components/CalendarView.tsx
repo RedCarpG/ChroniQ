@@ -41,8 +41,10 @@ import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { SkyDayEvents, SkyForecast, useSkyEventText, useSkyEvents } from './SkyForecast'
 import type { SkyMoment } from './SkyView'
-import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
+import { loadSkyPlace, loadStarSettings, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useSettings, useT, useTerm } from '../settingsContext'
+import { westernToday } from '../lib/westernToday'
+import { WesternDayList } from './WesternDay'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
 const MIN_YEAR = 1900
@@ -224,6 +226,13 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
   const moonText = (m: MoonDay) =>
     `${t(m.name)}${m.time ? ` ${m.time}${notBeijing ? ' (UTC+8)' : ''}` : ''} · ${t('照亮 {pct}%', { pct: Math.round(m.lit * 100) })}`
   const selectedMoon = moonOf(selected)
+  // 今日星象 for the selected day: as it is now for today, at noon for any other day
+  const isToday = sameDay(selected, todaySolar())
+  const starSettings = useMemo(loadStarSettings, [])
+  const western = useMemo(() => {
+    const at = isToday ? new Date() : new Date(selected.getYear(), selected.getMonth() - 1, selected.getDay(), 12)
+    return westernToday(at, starSettings)
+  }, [selected, isToday, starSettings])
   // 斗柄指月: for the month shown, or the day picked when it is in that month (and in week and year views)
   const anchor =
     mode !== 'month' || (selected.getYear() === view.year && selected.getMonth() === view.month)
@@ -722,15 +731,10 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
               </ul>
             </div>
           )}
-          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
+          <h4 className="detail-section">{t('黄历')}</h4>
           <dl className="kv">
             <dt>{term('节气')}</dt>
             <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
-            <dt>{t('月相')}</dt>
-            <dd className="moon-line">
-              <MoonGlyph moon={selectedMoon} />
-              {moonText(selectedMoon)}
-            </dd>
             <dt>{term('建除')}</dt>
             <dd>{term(detail.duty)}日</dd>
             <dt>{term('值神')}</dt>
@@ -742,6 +746,15 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
           <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
           <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
+          <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
+          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
+          <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')}>
+            <dt>{t('月相')}</dt>
+            <dd className="moon-line">
+              <MoonGlyph moon={selectedMoon} />
+              {moonText(selectedMoon)}
+            </dd>
+          </WesternDayList>
           <button className="primary block" data-sound="gong" onClick={() => onPickBazi(selected)}>
             {t('以此日排八字 →')}
           </button>
