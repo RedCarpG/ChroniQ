@@ -2816,8 +2816,10 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 
 /* 今日星象: the day by the Western reckoning */
 .western-day dd { line-height: 1.6; }
-.day-western { margin-top: 12px; }
-.day-western .western-day { margin-top: 6px; }
+.detail-section {
+  margin: 6px 0 -4px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--font-title); font-size: 15px; font-weight: 600; letter-spacing: 0.06em; color: var(--accent);
+}
 .today-aspect { display: block; }
 .today-aspect-glyph { color: var(--accent); }
 

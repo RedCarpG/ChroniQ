@@ -1,6 +1,7 @@
 // 今日星象 / 当日星象: the day by the Western reckoning (lib/westernToday), as 今日 and the 日历's
 // day panel show it. Where the Sun and Moon are, when the Moon next changes sign, which planets are
 // retrograde and the tightest aspects among them.
+import type { ReactNode } from 'react'
 import { ASPECT_INFO, SIGN_INFO } from '../lib/astroInfo'
 import { SIGNS, SIGN_GLYPHS, type Aspect } from '../lib/astrology'
 import type { WesternToday } from '../lib/westernToday'
@@ -22,8 +23,8 @@ export function AspectLine({ aspect: a, transit }: { aspect: Aspect; transit: bo
   )
 }
 
-/** The day's stars as a list; `noRetro` is what to say when no planet is retrograde */
-export function WesternDayList({ western, noRetro }: { western: WesternToday; noRetro: string }) {
+/** The day's stars as a list; `noRetro` is what to say when no planet is retrograde, `children` rows to go first */
+export function WesternDayList({ western, noRetro, children }: { western: WesternToday; noRetro: string; children?: ReactNode }) {
   const t = useT()
   const en = useSettings().language === 'en'
   const signName = (sign: number) => t('{sign}座', { sign: t(SIGNS[sign]) })
@@ -32,6 +33,7 @@ export function WesternDayList({ western, noRetro }: { western: WesternToday; no
     new Date(ms).toLocaleString(en ? 'en-GB' : 'zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
   return (
     <dl className="kv western-day">
+      {children}
       <dt>{t('太阳')}</dt>
       <dd>
         <InfoTip label={`${SIGN_GLYPHS[western.sun.sign]} ${signName(western.sun.sign)} ${degrees(western.sun.lon)}`} title={signName(western.sun.sign)}>

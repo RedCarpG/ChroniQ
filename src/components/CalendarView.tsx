@@ -731,15 +731,10 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
               </ul>
             </div>
           )}
-          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
+          <h4 className="detail-section">{t('黄历')}</h4>
           <dl className="kv">
             <dt>{term('节气')}</dt>
             <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
-            <dt>{t('月相')}</dt>
-            <dd className="moon-line">
-              <MoonGlyph moon={selectedMoon} />
-              {moonText(selectedMoon)}
-            </dd>
             <dt>{term('建除')}</dt>
             <dd>{term(detail.duty)}日</dd>
             <dt>{term('值神')}</dt>
@@ -747,14 +742,19 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
             <dt>{term('星宿')}</dt>
             <dd>{term(detail.twentyEightStar)}宿</dd>
           </dl>
-          <div className="day-western">
-            <span className="tag-title neutral">{isToday ? t('今日星象') : t('当日星象')}</span>
-            <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')} />
-          </div>
           <TagBlock title={term('宜')} kind="good" items={detail.recommends.map(term)} />
           <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
           <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
+          <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
+          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
+          <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')}>
+            <dt>{t('月相')}</dt>
+            <dd className="moon-line">
+              <MoonGlyph moon={selectedMoon} />
+              {moonText(selectedMoon)}
+            </dd>
+          </WesternDayList>
           <button className="primary block" data-sound="gong" onClick={() => onPickBazi(selected)}>
             {t('以此日排八字 →')}
           </button>
