@@ -95,7 +95,7 @@
   }
 }
 :root[data-theme='dark'],
-.app.page-sky {
+.app.immersive {
   --bg: #0a0e1b;
   --surface: #121829;
   --surface-2: #1a2137;
@@ -241,11 +241,11 @@ main { view-transition-name: page; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding-bottom: 10px;
   background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat;
 }
-/* On the 天象 page the top bar folds up (App), and lies over the page rather than in it: it comes
+/* On the full-screen pages (天象, 观月, 太阳系) the top bar folds up (App), and lies over the page rather than in it: it comes
    down over the top without moving the sky; only the bar above the sky and the bodies beside it make
    room for it. The mouse at the very top (the hot zone) brings it down; on a touch screen, a small tab
    at the top pulls it down and one under it folds it up again */
-.app.page-sky .topbar {
+.app.immersive .topbar {
   position: absolute; top: 8px; left: 8px; right: 8px; z-index: 25; margin: 0; padding: 8px 10px 10px; border-radius: 12px;
   /* A light shade under it over the sky, solid in the middle and lighter at the sides, and its gold edge */
   background:
@@ -254,7 +254,7 @@ main { view-transition-name: page; }
   backdrop-filter: blur(4px);
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
-.app.page-sky.bar-folded .topbar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+.app.immersive.bar-folded .topbar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
 /* Tall enough to reach without aiming: the top edge's 24 px (over the room left above the page) */
 .topbar-hotzone { position: fixed; top: 0; left: 0; right: 0; z-index: 29; height: 24px; }
 .app.page-sky .sky-toolbar { transition: transform 0.25s ease; }
@@ -268,7 +268,7 @@ main { view-transition-name: page; }
 .topbar-fold:hover { color: var(--accent); }
 .topbar-fold.down { position: fixed; top: 0; left: 50%; z-index: 30; transform: translateX(-50%); }
 .topbar-fold.up { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); }
-@media (prefers-reduced-motion: reduce) { .app.page-sky :is(.topbar, .sky-toolbar, .sky-bodies) { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .app.immersive :is(.topbar, .sky-toolbar, .sky-bodies, .imm-toolbar) { transition: none; } }
 .topbar h1 { margin: 0; font-size: 22px; letter-spacing: 3px; display: flex; align-items: center; gap: 8px; }
 .topbar h1 .logo { flex: none; }
 .brand-en { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; color: var(--muted); }
@@ -341,7 +341,7 @@ footer .about-badges { margin-left: 0; }
   .app.page-calendar .topbar { position: sticky; top: 16px; z-index: 5; }
   .app.page-calendar main { position: sticky; top: calc(32px + var(--topbar-h, 52px)); z-index: 1; }
   /* On the 天象 page the top bar lies over the page (above), so the page holds still at the top */
-  .app.page-sky main { position: sticky; top: 16px; z-index: 1; }
+  .app.immersive main { position: sticky; top: 16px; z-index: 1; }
   .app.page-calendar .calendar-layout {
     height: calc(100dvh / var(--ui-zoom) - var(--topbar-h, 52px) - 48px); min-height: 520px; align-items: stretch;
   }
@@ -450,7 +450,7 @@ footer .about-badges { margin-left: 0; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) { --moon-lit: #f2e8cc; --moon-shade: color-mix(in srgb, var(--muted) 26%, transparent); }
 }
-:root[data-theme='dark'], .app.page-sky { --moon-lit: #f2e8cc; --moon-shade: color-mix(in srgb, var(--muted) 26%, transparent); }
+:root[data-theme='dark'], .app.immersive { --moon-lit: #f2e8cc; --moon-shade: color-mix(in srgb, var(--muted) 26%, transparent); }
 .moon { display: inline-block; flex: none; width: 12px; height: 12px; overflow: visible; }
 .moon .moon-shade { fill: var(--moon-shade); }
 .moon .moon-lit { fill: var(--moon-lit); }
@@ -1465,7 +1465,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
    over the empty .sky-window at the top of the page. The toolbar and the panel float beside it;
    the page lets the pointer through to the sky wherever nothing of its own is in the way, and
    scrolling down slides the 太阳系 card up over the sky. */
-.app.page-sky { position: relative; z-index: 1; pointer-events: none; color: var(--text); }
+.app.immersive { position: relative; z-index: 1; pointer-events: none; color: var(--text); }
 .app.page-sky > :not(main), .app.page-sky main > :not(.sky-page), .app.page-sky .sky-page > :not(.sky-stage),
 .app.page-sky .sky-stage > :not(.sky-window) { pointer-events: auto; }
 /* The bodies' column runs the height of the sky's right side and the toolbar its width: only what
@@ -1625,6 +1625,104 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .sky-bodies { overflow: visible; }
 }
 @media print { .sky-backdrop { display: none; } }
+
+/* ---------- 全屏页 (Immersive): 观月 and 太阳系 drawn over the whole screen ----------
+   The backdrop is fixed behind the page (put into <body>); the page lets the pointer through to it
+   wherever nothing of its own is in the way. The toolbar sits at the top left, the panel on the
+   right, a strip along the bottom; on a phone the panel is a sheet at the bottom instead. */
+.imm-backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #04060d; animation: cal-fade 0.5s ease both; }
+.app.immersive:not(.page-sky) > :not(main) { pointer-events: auto; }
+.imm-page, .imm-stage, .imm-window, .imm-toolbar, .imm-bottom, .imm-overlay, .imm-overlay * { pointer-events: none; }
+.imm-toolbar > *, .imm-bottom > *, .imm-overlay :is(button, a, input, select, label), .imm-panel, .imm-sheet { pointer-events: auto; }
+.imm-stage {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px 18px; height: calc(100dvh / var(--ui-zoom) - 66px); min-height: 460px; margin-top: 18px;
+}
+.imm-toolbar {
+  grid-column: 1; grid-row: 1; justify-self: start; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; max-width: 100%;
+  transition: transform 0.25s ease;
+}
+.app.immersive:not(.bar-folded) .imm-toolbar { transform: translateY(calc(var(--topbar-h, 46px) + 6px)); }
+.imm-window { grid-column: 1; grid-row: 2; position: relative; min-height: 0; }
+.imm-overlay { position: absolute; inset: 0; }
+.imm-bottom { grid-column: 1; grid-row: 3; min-width: 0; }
+/* Glass: what lies over the backdrop, dark enough to read on the brightest of it */
+.imm-glass, .imm-panel:not(.closed), .imm-sheet {
+  background: rgb(9 13 26 / 0.66); border: 1px solid rgb(38 49 80 / 0.85); border-radius: 14px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.imm-toolbar > .imm-glass { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 12px; }
+.imm-toolbar .section-title { margin: 0; font-size: 15px; }
+.imm-toolbar :is(input, select) { height: 28px; padding: 0 6px; font-size: 13px; }
+.imm-toolbar .date-parts select { padding-right: 18px; }
+.imm-toolbar .date-parts .year-input { width: 62px; }
+.imm-toolbar .date-parts legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.imm-toolbar .ghost { height: 28px; margin: 0; padding: 0 10px; font-size: 13px; }
+.imm-steps { display: inline-flex; gap: 2px; }
+.imm-toolbar .imm-steps .ghost { min-width: 30px; padding: 0 6px; font-size: 11px; letter-spacing: -1px; }
+.imm-panel {
+  grid-column: 2; grid-row: 1 / span 3; align-self: start; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
+  width: clamp(270px, 24vw, 330px); max-height: 100%; padding: 12px 14px 14px; overflow-y: auto; scrollbar-width: thin;
+  transition: margin-top 0.25s ease, max-height 0.25s ease;
+}
+.app.immersive:not(.bar-folded) .imm-panel { margin-top: calc(var(--topbar-h, 46px) + 6px); max-height: calc(100% - var(--topbar-h, 46px) - 6px); }
+.imm-panel.closed { width: auto; padding: 0; overflow: visible; }
+.imm-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.imm-panel-head h3 { margin: 0; font-family: var(--font-title); font-size: 15px; font-weight: 600; letter-spacing: 0.08em; color: var(--accent); }
+.imm-panel-head .ghost { height: 28px; margin: 0; padding: 0 6px; font-size: 12px; }
+.imm-panel-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.imm-panel-body[hidden], .imm-sheet-body[hidden] { display: none; }
+.imm-panel-tab {
+  height: 34px; padding: 0 12px; border: 1px solid rgb(38 49 80 / 0.85); border-radius: 10px; background: rgb(9 13 26 / 0.7);
+  color: var(--text); font-family: var(--font-title); font-size: 13px; letter-spacing: 0.06em; backdrop-filter: blur(8px);
+}
+.imm-panel-tab:hover { color: var(--accent); }
+/* The strip along the bottom */
+.imm-bottom > .imm-glass { padding: 8px 14px 10px; }
+/* Zoom buttons, at the free room's bottom right */
+.imm-zoom {
+  position: absolute; right: 0; bottom: 6px; display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid rgb(216 191 140 / 0.35); border-radius: 10px; background: rgb(12 16 30 / 0.72);
+}
+.imm-zoom button { width: 34px; height: 32px; padding: 0; border: 0; background: none; color: #f1ead9; font-size: 17px; line-height: 1; }
+.imm-zoom button + button { border-top: 1px solid rgb(216 191 140 / 0.2); }
+.imm-zoom button:hover:not(:disabled) { background: rgb(216 191 140 / 0.18); }
+.imm-zoom button:disabled { opacity: 0.35; cursor: default; }
+.imm-hint { position: absolute; left: 0; bottom: 6px; font-size: 11px; color: var(--muted); text-shadow: 0 1px 3px rgb(0 0 0 / 0.9); }
+@media (max-width: 860px) {
+  .imm-stage {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) max(0px, calc(var(--imm-peek, 96px) - 26px));
+    gap: 8px; height: calc(100dvh / var(--ui-zoom) - 42px - var(--foot-nav-h, 0px)); min-height: 0; margin-top: 10px;
+  }
+  .imm-toolbar { justify-self: stretch; }
+  .imm-toolbar > .imm-glass { width: 100%; box-sizing: border-box; }
+  .imm-hint { display: none; }
+  /* The sheet: from the edge of the screen, standing on the page bar */
+  .imm-sheet {
+    position: absolute; left: -16px; right: -16px; bottom: -16px; z-index: 3; display: flex; flex-direction: column;
+    max-height: calc(100% + 16px); border-width: 1px 0 0; border-radius: 18px 18px 0 0; background: rgb(12 17 32 / 0.92);
+    transition: height 0.25s ease;
+  }
+  .imm-sheet.half { height: 58%; }
+  .imm-sheet.full { height: calc(100% + 16px); }
+  .imm-sheet-top { flex: none; display: flex; flex-direction: column; gap: 4px; padding: 0 16px 8px; }
+  .imm-sheet-handle {
+    position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 0 0; border: 0; background: none;
+    color: var(--text); font-size: 13px; text-align: left; touch-action: none; cursor: pointer;
+  }
+  .imm-grip { position: absolute; top: 5px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: #3a4566; }
+  .imm-sheet-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .imm-sheet-mark { color: var(--muted); }
+  .imm-sheet-body {
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 16px;
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  }
+  .imm-zoom { bottom: 4px; }
+  /* The footer's tab would lie on the sheet; the footer is on the other pages */
+  .app.immersive:not(.page-sky) .footer-tab { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .imm-panel, .imm-sheet, .imm-backdrop { transition: none; animation: none; } }
+@media print { .imm-backdrop { display: none; } }
 
 /* ---------- 生辰星空 (BirthSky): the sky at the moment of birth behind the 八字 page ----------
    Dark: the night sky, stars in their own colours. Light: an ink star map on paper, as old Chinese
@@ -2158,6 +2256,43 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .moon-day small { color: var(--muted); font-size: 10px; }
 .moon-day:hover { background: var(--surface-2); }
 .moon-day.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* 观月 over the whole screen (MoonSky, Immersive) */
+.moon-sky { position: absolute; inset: 0; }
+.moon-sky-canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+.moon-sky-globe { position: absolute; pointer-events: none; }
+.moon-sky-globe .moon-globe { width: 100%; height: 100%; animation: none; }
+.moon-sky-globe.down { opacity: 0.32; filter: saturate(0.5); }
+.moon-feature {
+  position: absolute; display: flex; align-items: center; gap: 5px; transform: translate(-3px, -50%); pointer-events: none; white-space: nowrap;
+  font-family: var(--font-title); font-size: 12px; letter-spacing: 0.06em; color: #f3ead2;
+  text-shadow: 0 1px 3px #000, 0 0 8px rgb(0 0 0 / 0.85);
+}
+.moon-feature::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1.5px rgb(10 14 27 / 0.6); }
+.moon-feature:not(.sea) { font-size: 11px; color: #d9d2bf; }
+.moon-title { position: absolute; left: 0; bottom: 34px; display: flex; flex-direction: column; gap: 4px; text-shadow: 0 2px 14px rgb(0 0 0 / 0.8), 0 1px 3px rgb(0 0 0 / 0.9); }
+.moon-title .moon-name { margin: 0; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.moon-title .moon-name strong { font-family: var(--font-title); font-size: clamp(34px, 4.6vw, 56px); font-weight: 700; letter-spacing: 0.1em; line-height: 1.05; color: #f3ead2; }
+.moon-title .moon-name span { font-family: var(--font-title); font-size: 17px; letter-spacing: 0.08em; color: var(--accent); }
+.moon-title-sub { font-size: 13px; color: #b6bccc; }
+.moon-page .imm-panel .moon-month-title { margin: 0 0 6px; }
+.moon-page .moon-place { margin-top: 0; }
+.moon-page .moon-place .ghost { height: 28px; margin: 0; padding: 0 8px; font-size: 13px; }
+.moon-page .moon-quarters { margin: 0; }
+/* The strip along the bottom: the lunation's days, and the Moon's height through the day */
+.moon-strip { display: flex; flex-direction: column; gap: 4px; }
+.moon-strip .moon-days { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(19px, 1fr); grid-template-columns: none; gap: 1px; overflow-x: auto; scrollbar-width: none; }
+.moon-strip .moon-day { padding: 3px 0; gap: 1px; font-size: 10px; border-radius: 6px; }
+.moon-strip .moon-day .moon { width: 15px; height: 15px; }
+.moon-strip .moon-day small { font-size: 8.5px; }
+.moon-heights.wide svg, .moon-heights.small svg { border-radius: 6px; }
+.moon-heights:is(.wide, .small) .mh-label { font-size: 9px; }
+@media (max-width: 860px) {
+  .moon-title { bottom: 8px; }
+  .moon-title .moon-name strong { font-size: 32px; }
+  .moon-title .moon-name span { font-size: 15px; }
+  .moon-page .moon-days { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); }
+}
 
 /* ---------- 静: quiet controls, the footer's way, wherever they fit ----------
    Words rather than boxes and pills: spaced letters, muted until hovered. A fine gold line, fading at

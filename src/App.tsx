@@ -191,17 +191,19 @@ export function App() {
     if (settings.sound === 'on' && soundWas.current === 'off') play('on')
     soundWas.current = settings.sound
   }, [settings.sound])
-  // The decorative stars (starfield.ts) step aside on the 天象 page, whose backdrop is the real sky,
+  // 天象, 观月 and 太阳系 are drawn over the whole screen, their controls laid over it (Immersive)
+  const immersive = tab === 'sky' || tab === 'moon' || tab === 'solar'
+  // The decorative stars (starfield.ts) step aside on those pages, which draw a sky of their own,
   // and on the 八字 and 星盘 pages for the sky of the moment of birth (BirthSky)
-  const realSky = tab === 'sky' || ((tab === 'bazi' || tab === 'star') && settings.birthSky === 'show')
+  const realSky = immersive || ((tab === 'bazi' || tab === 'star') && settings.birthSky === 'show')
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])
-  // The top bar, folded up on the 天象 page (each visit starts folded): the mouse at the top of the
+  // The top bar, folded up on the full-screen pages (each visit starts folded): the mouse at the top of the
   // screen brings it down, and it goes again a moment after the mouse leaves it, unless one of its
   // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up
   const [barShown, setBarShown] = useState(false)
-  const barFolded = tab === 'sky' && !barShown
+  const barFolded = immersive && !barShown
   const barTimer = useRef(0)
   const showBar = () => {
     clearTimeout(barTimer.current)
@@ -272,10 +274,10 @@ export function App() {
         </div>
       )}
       {loadError && <div role="alert">{t('页面加载失败，请重试或刷新页面。')} <button onClick={() => location.reload()}>{t('刷新页面')}</button></div>}
-      <div className={`app page-${tab}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
-        {/* On the 天象 page the top bar folds up out of the sky's way (folded at first): the mouse at the
-            very top brings it down; a small tab pulls it down, and one under it folds it up again */}
-        {tab === 'sky' && (
+      <div className={`app page-${tab}${immersive ? ' immersive' : ''}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
+        {/* On the full-screen pages the top bar folds up out of the way (folded at first): the mouse at
+            the very top brings it down; a small tab pulls it down, and one under it folds it up again */}
+        {immersive && (
           <div
             className="topbar-hotzone"
             aria-hidden="true"
@@ -300,9 +302,9 @@ export function App() {
           className="topbar"
           ref={topbarRef}
           inert={barFolded}
-          onPointerEnter={() => tab === 'sky' && clearTimeout(barTimer.current)}
-          onPointerLeave={(e) => tab === 'sky' && e.pointerType === 'mouse' && hideBarSoon()}
-          onBlur={(e) => tab === 'sky' && !e.currentTarget.contains(e.relatedTarget as Node | null) && hideBarSoon()}
+          onPointerEnter={() => immersive && clearTimeout(barTimer.current)}
+          onPointerLeave={(e) => immersive && e.pointerType === 'mouse' && hideBarSoon()}
+          onBlur={(e) => immersive && !e.currentTarget.contains(e.relatedTarget as Node | null) && hideBarSoon()}
         >
           <h1>
             <Logo />
@@ -320,7 +322,7 @@ export function App() {
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
-          {tab === 'sky' && (
+          {immersive && (
             <button type="button" className="topbar-fold up" aria-label={t('收起标题栏')} title={t('收起标题栏')} onClick={() => setBarShown(false)}>
               <span aria-hidden="true">⌃</span>
             </button>

@@ -36,7 +36,8 @@ describe('观月', () => {
     expect(fact('月出')).toMatch(/^1[78]:\d\d$/)
     expect(fact('宿')).toMatch(/^月离.宿$/)
     // Flat, without WebGL: the lit part turned towards the Sun
-    expect(container.querySelector('.moon-globe svg .moon-globe-lit')).not.toBeNull()
+    // (the Moon is drawn behind the page, put into <body>)
+    expect(document.querySelector('.moon-globe svg .moon-globe-lit')).not.toBeNull()
   })
 
   it('moves the time along the heights with the arrow keys', () => {

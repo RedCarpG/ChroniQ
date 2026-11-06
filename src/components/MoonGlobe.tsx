@@ -134,6 +134,9 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
   const [flat, setFlat] = useState(false)
   // Whether the maps are in (0: a grey Moon, in its phase, until they come)
   const mapped = useRef(0)
+  // The larger colour map, fetched once the Moon is drawn large (asked for at most once)
+  const large = useRef<'no' | 'asked'>('no')
+  const askLarge = useRef(() => {})
   const draw = useRef(() => {})
   draw.current = () => {
     const g = gl.current
@@ -145,6 +148,7 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
       canvas.width = size
       canvas.height = size
     }
+    if (size > 640 && mapped.current && large.current === 'no') askLarge.current()
     c.viewport(0, 0, size, size)
     const [x, y, z] = frame.body
     // Rows of the matrix: the Moon's axes in screen coordinates (WebGL takes it column by column)
@@ -168,19 +172,26 @@ export function MoonGlobe({ frame, lit, label }: { frame: MoonFrame; lit: number
     if (!gl.current) return setFlat(true)
     const g = gl.current
     let gone = false
-    // The maps: the heights and the smaller colour map first, the larger one too for a large Moon
+    // The maps: the heights and the smaller colour map first, the larger one too once the Moon is
+    // drawn large (now, or later when zoomed in)
+    askLarge.current = () => {
+      large.current = 'asked'
+      loadImage(colourLargeUrl)
+        .then((image) => {
+          if (gone) return
+          upload(g, 0, g.colour, image, g.gl.RGB)
+          draw.current()
+        })
+        .catch(() => {
+          // Offline before it was kept: the smaller map does
+        })
+    }
     Promise.all([loadImage(colourSmallUrl), loadImage(heightsUrl)])
       .then(([colour, heights]) => {
         if (gone) return
         upload(g, 0, g.colour, colour, g.gl.RGB)
         upload(g, 1, g.height, heights, g.gl.LUMINANCE)
         mapped.current = 1
-        draw.current()
-        if (canvas.width > 640) return loadImage(colourLargeUrl)
-      })
-      .then((large) => {
-        if (gone || !large) return
-        upload(g, 0, g.colour, large, g.gl.RGB)
         draw.current()
       })
       .catch(() => {
