@@ -163,8 +163,35 @@ function toHorizonOf({ time, rot: r }: { time: A.AstroTime; rot: number[][] }) {
   }
 }
 
-/** below: list the stars under the horizon instead (the half of the sky beneath one's feet) */
-export function skyAt(utc: Date, latitude: number, longitude: number, below = false): Sky {
+/** The bright stars where they are, refraction included: those above the horizon, or with `below`
+ *  those under it (the half of the sky beneath one's feet) */
+export function starsAt(utc: Date, latitude: number, longitude: number, below = false): SkyStar[] {
+  const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
+  const vectors = brightStarVectors()
+  const stars: SkyStar[] = []
+  for (let i = 0, s = 0; i < BRIGHT_STARS.length; i += STAR_FIELDS, s += 3) {
+    const { az, alt } = toHorizon(vectors[s], vectors[s + 1], vectors[s + 2])
+    if (alt < 0 !== below) continue
+    const hip = BRIGHT_STARS[i]
+    stars.push({ hip, name: STAR_NAMES[hip], az, alt, mag: BRIGHT_STARS[i + 3], bv: BRIGHT_STARS[i + 4] })
+  }
+  return stars
+}
+
+/** One bright star where it is, above the horizon or not; null if it is not in the catalogue */
+export function starAt(hip: number, utc: Date, latitude: number, longitude: number): SkyStar | null {
+  const vectors = brightStarVectors()
+  for (let i = 0, s = 0; i < BRIGHT_STARS.length; i += STAR_FIELDS, s += 3) {
+    if (BRIGHT_STARS[i] !== hip) continue
+    const { az, alt } = toHorizonOf(rotationFor(utc, latitude, longitude))(vectors[s], vectors[s + 1], vectors[s + 2])
+    return { hip, name: STAR_NAMES[hip], az, alt, mag: BRIGHT_STARS[i + 3], bv: BRIGHT_STARS[i + 4] }
+  }
+  return null
+}
+
+/** below: list the stars under the horizon instead (the half of the sky beneath one's feet); without
+ *  `withStars` the stars are left out (for a view that places them itself) */
+export function skyAt(utc: Date, latitude: number, longitude: number, below = false, withStars = true): Sky {
   const time = A.MakeTime(utc)
   const observer = new A.Observer(latitude, longitude, 0)
 
@@ -184,15 +211,7 @@ export function skyAt(utc: Date, latitude: number, longitude: number, below = fa
     }
   })
 
-  const toHorizon = toHorizonOf(rotationFor(utc, latitude, longitude))
-  const vectors = brightStarVectors()
-  const stars: SkyStar[] = []
-  for (let i = 0, s = 0; i < BRIGHT_STARS.length; i += STAR_FIELDS, s += 3) {
-    const { az, alt } = toHorizon(vectors[s], vectors[s + 1], vectors[s + 2])
-    if (alt < 0 !== below) continue
-    const hip = BRIGHT_STARS[i]
-    stars.push({ hip, name: STAR_NAMES[hip], az, alt, mag: BRIGHT_STARS[i + 3], bv: BRIGHT_STARS[i + 4] })
-  }
+  const stars = withStars ? starsAt(utc, latitude, longitude, below) : []
 
   const sunAlt = bodies[0].alt
   return { bodies, stars, sunAlt, light: sunAlt > -0.833 ? 'day' : sunAlt > -12 ? 'twilight' : 'night' }
