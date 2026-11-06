@@ -6,7 +6,7 @@ This document describes the current implementation and its acceptance requiremen
 
 ## 1. Product scope
 
-ChroniQ is a static web app for mobile and desktop browsers, combining calendar information, astronomical visualization and several charting traditions. It opens on the calendar by default and includes seven pages: Calendar, Sky, Moon, Solar System, Bazi, Ziwei Doushu and Western Astrology.
+ChroniQ is a static web app for mobile and desktop browsers, combining calendar information, astronomical visualization and several charting traditions. It opens on the calendar by default and includes nine pages: Today, Calendar, Sky, Moon, Solar System, Bazi, Ziwei Doushu, Western Astrology and Life Timeline.
 
 - No registration, application backend, database or external calculation API is required.
 - Birth information, charts and preferences are used locally in the browser; there is no cloud synchronization.
@@ -17,8 +17,8 @@ ChroniQ is a static web app for mobile and desktop browsers, combining calendar 
 
 | ID | Module | Current scope |
 | --- | --- | --- |
-| F-13 | Today | The day's almanac and Moon; tonight's sunset and sunrise, Moon and visible planets from the observing place, with upcoming sky events; the chosen chart's day 十神, current 大运, and today's and coming dates; links into the sky page |
-| F-01 | Calendar | Month, week and year views; Gregorian/lunar dates, solar terms, moon phases, stems and branches, almanac details; Chinese/French holiday selection; configurable week start and display options |
+| F-13 | Today | The day's almanac and Moon; the day in the stars (Sun and Moon signs, the Moon's next sign change, retrogrades, planetary aspects); tonight's sunset and sunrise, Moon and visible planets from the observing place, with upcoming sky events; the chosen chart's day 十神, current 大运, and today's and coming dates; links into the sky page |
+| F-01 | Calendar | Month, week and year views; Gregorian/lunar dates, solar terms, moon phases, stems and branches; the selected day's details in two parts, almanac and stars (sky events, moon phase, Sun and Moon signs, retrogrades and aspects); Chinese/French holiday selection; configurable week start and display options |
 | F-02 | Chart dates | Select one saved chart to show birthdays, pillar relationships, fortune transitions and annual Tai Sui information; optional solar returns and exact aspects of slow planets to the natal Sun, Moon and Ascendant |
 | F-12 | Sky forecast | Eclipses, planetary oppositions and elongations, planetary conjunctions, major meteor showers and supermoons, filtered to what is visible from the observing place, with the best moment, direction and altitude; shown on the calendar and able to open the sky page at that moment; a coming-year `.ics` export (sky events, solar terms, the chosen chart's dates) |
 | F-03 | Sky | Bodies at a chosen time and coordinates; azimuth, altitude, magnitude and rise/set times; Western constellations, Chinese asterisms and 28 mansions; overhead/below-ground views, zoom, pan, time dragging and selection |

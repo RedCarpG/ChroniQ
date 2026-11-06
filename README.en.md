@@ -12,13 +12,15 @@ A calendar, a view of the real sky, and several charting traditions in one web a
 
 | Page | Capabilities |
 | --- | --- |
-| Calendar | Month, week and year views; Chinese lunar dates, solar terms, moon phases, stems and branches, almanac entries, Chinese/French holidays and dates associated with saved charts |
+| Today | The day's almanac, the day in the stars (Sun and Moon signs, retrogrades, aspects), tonight's visible planets and upcoming sky events, and how the day meets your chart |
+| Calendar | Month, week and year views; Chinese lunar dates, solar terms, moon phases, stems and branches, almanac entries, the selected day in the stars, Chinese/French holidays and dates associated with saved charts |
 | Sky | Sky at a chosen time and location; Western constellations, Chinese asterisms and the 28 mansions; daily tracks, rise/set times and historical tracks |
 | Moon | Lunar globe, phase, libration and local moonrise/moonset |
 | Solar system | Planetary orbits and positions, distances, light travel times, direct/retrograde motion and time playback |
 | Bazi | Four pillars, ten gods, symbolic stars and fortune periods; optional apparent solar time and school-specific rules |
 | Ziwei Doushu | Twelve palaces, stars, four transformations and multiple fortune layers, with configurable schools |
 | Western astrology | Natal charts, transits, progressions, synastry and composite charts, with configurable house systems and other methods |
+| Life timeline | A chart's turning points from birth to 90 years on: 大运, 大限, Saturn and Jupiter returns and more, with the years where they meet |
 
 Save charts, share links, export images or print. Choose Chinese or English interface text, traditional or simplified Chinese terminology, light/dark themes, interface scale and sound settings.
 
