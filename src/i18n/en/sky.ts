@@ -229,6 +229,7 @@ export const SKY: Record<string, string> = {
   '{n} 级 · {name}': 'Class {n} · {name}',
   云量: 'Clouds',
   '联网取云量预报，画在星图上': 'Get the cloud forecast online and draw it on the map',
+  '把云画在天上（关掉只看预报）': 'Draw the clouds on the sky (off: the forecast only)',
   极暗夜空: 'excellent dark site',
   典型暗夜: 'typical dark site',
   乡村: 'rural sky',

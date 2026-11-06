@@ -46,7 +46,7 @@ import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
 import { SkyNight } from './SkyNight'
 import { gliding, lookAt, SkyDome, stopGlide } from './SkyDome'
 import { degreesApart, type DomeView } from '../lib/domeProjection'
-import { paintClouds } from './skyClouds'
+import { paintClouds, type CloudSky } from './skyClouds'
 import { BORTLE } from '../lib/stargazing'
 import { fetchForecast, weatherAt, type WeatherHour } from '../lib/weather'
 import { BODY_INTRO, CHINA_INTRO, STAR_INTRO, WESTERN_INTRO } from '../lib/skyIntros'
@@ -109,6 +109,7 @@ const WEATHER_KEY = 'chroniq-sky-weather'
 const DSO_KEY = 'chroniq-sky-dso'
 const NIGHT_KEY = 'chroniq-sky-night'
 const GROUND_KEY = 'chroniq-sky-ground'
+const CLOUD_DRAW_KEY = 'chroniq-sky-cloud-draw'
 const EQ_GRID_KEY = 'chroniq-sky-eqgrid'
 const ECLIPTIC_KEY = 'chroniq-sky-ecliptic'
 const RED_KEY = 'chroniq-sky-red'
@@ -595,6 +596,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const [red, toggleRed] = usePref(RED_KEY, false)
   // 穹顶视角's ground: a see-through shade, or none
   const [showGround, toggleGround] = usePref(GROUND_KEY, true)
+  // With the cloud forecast on, whether its clouds are drawn over the sky (the 今晚观星 bars use it either way)
+  const [drawClouds, toggleDrawClouds] = usePref(CLOUD_DRAW_KEY, true)
   // 今晚观星: the night's hours, over the bodies' table, only when asked for in 显示
   const [showNight, toggleNight] = usePref(NIGHT_KEY, false)
   // 红光夜视: the whole page in dim red, which keeps the eyes used to the dark (as at a telescope)
@@ -812,7 +815,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // the whole local hours in that window (from the wall-clock minute, so odd offsets like +5:45 work)
   // While the sky is dragged through time the usual paths wait, so the moments are only needed then
   // for a chosen or hovered one's path
-  const wantPathTimes = showPaths && (!dragging || chosen !== null || focus !== null)
+  // (under the dome only the chosen one's path is drawn)
+  const wantPathTimes = showPaths && (domeOn ? chosen !== null : !dragging || chosen !== null || focus !== null)
   const pathTimes = useMemo(() => {
     if (!wantPathTimes) return null
     const now = utc.getTime()
@@ -844,9 +848,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // The usual bodies' tracks through pathTimes' moments, for the map's paths or the dome's. Left out
   // while the sky is dragged through time (the chosen one's path stays: extraTrack)
   const pathTracks = useMemo(
-    () => (pathTimes && !dragging ? tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude) : null),
+    () => (pathTimes && !dragging && !domeOn ? tracksAt([...pathTimes.times, ...pathTimes.hours], place.latitude, place.longitude) : null),
     // dragging too: letting go must bring them back, though the time has not moved since the last step
-    [pathTimes, dragging, place.latitude, place.longitude],
+    [pathTimes, dragging, domeOn, place.latitude, place.longitude],
   )
   const paths = useMemo(() => (pathTracks && !domeOn ? PATH_BODIES.map((key) => pathOf(key, pathTracks[key])) : null), [pathTracks, domeOn])
   const clipId = useId()
@@ -978,9 +982,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // Tracks already worked out for these moments and this place, so hovering the same star again is free
   const trackCache = useMemo(() => new Map<string, { az: number; alt: number }[]>(), [pathTimes, place.latitude, place.longitude])
   /** The track of a chosen or hovered one that the usual paths leave out: a star, Uranus or Neptune,
-   *  or any body while the sky is dragged through time */
-  const extraTrack = (key: string | null) => {
-    if (!pathTimes || !key || key.startsWith('fig') || key.startsWith('dso') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging)) return null
+   *  or any body while the sky is dragged through time (or any at all, `alone`: the dome draws only one) */
+  const extraTrack = (key: string | null, alone = false) => {
+    if (!pathTimes || !key || key.startsWith('fig') || key.startsWith('dso') || (PATH_BODIES.includes(key as SkyBody['key']) && !dragging && !alone)) return null
     let track = trackCache.get(key)
     if (!track) {
       const what = key.startsWith('hip') ? { hip: Number(key.slice(3)) } : { body: key as SkyBody['key'] }
@@ -1005,10 +1009,10 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     const st = key.startsWith('hip') ? sky.stars.find((x) => `hip${x.hip}` === key) : undefined
     return st ? starColour(st.bv) : BODY_COLOUR[key]
   }
-  // The same paths under the dome, as directions: the line through the day (12 hours either side,
-  // `now` where it is now), its whole hours named, the chosen one's picked out
+  // Under the dome only the chosen one's path, as directions: the line through the day (12 hours
+  // either side, `now` where it is now), its whole hours named
   const domePaths = (() => {
-    if (!domeOn || !pathTimes) return null
+    if (!domeOn || !pathTimes || !chosen) return null
     const n = pathTimes.times.length
     const make = (key: string, track: { az: number; alt: number }[]) => ({
       key,
@@ -1018,10 +1022,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       hours: track.slice(n).map((p, i) => ({ ...p, label: t('{h}时', { h: pathTimes.hourOf[i] }) })),
       lit: key === chosen,
     })
-    const out = pathTracks ? PATH_BODIES.map((key) => make(key, pathTracks[key])) : []
-    const extra = extraTrack(chosen)
-    if (extra && chosen) out.push(make(chosen, extra))
-    return out
+    const track = extraTrack(chosen, true)
+    return track ? [make(chosen, track)] : null
   })()
   const domeHistory =
     domeOn && historyBody && historyPoints
@@ -1461,8 +1463,22 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   /** How dark the place is (光污染) */
   const dark = BORTLE[bortle - 1]
   // The clouds at the moment shown, if the forecast is on and reaches it; they hide what is behind them
-  const cloudNow = weatherOn && !below ? weatherAt(weather.hours, utc.getTime()) : null
+  // (the dome view looks under the horizon too, but its clouds are only ever above it)
+  const cloudNow = weatherOn && drawClouds && (domeOn || !below) ? weatherAt(weather.hours, utc.getTime()) : null
   const cover = cloudNow ? cloudNow.cloud / 100 : 0
+  const cloudSky: CloudSky | null =
+    cloudNow && cover > 0.02
+      ? {
+          cover,
+          low: cloudNow.low / Math.max(1, cloudNow.cloud),
+          wind: cloudNow.wind,
+          windFrom: cloudNow.windFrom,
+          time: utc.getTime(),
+          light: light === 'day' ? 'day' : light === 'twilight' ? 'twilight' : 'night',
+          moon: moonLight,
+          town: Math.max(0, (bortle - 3) / 6),
+        }
+      : null
   // The glow low round the sky: at night, more and more orange the brighter the towns about (光污染)
   const townGlow = light === 'night' ? Math.max(0, (bortle - 2) / 7) : 0
   const glowColour = townGlow > 0.3 ? '#8d7867' : HORIZON_GLOW[light][0]
@@ -1507,24 +1523,15 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     if (cloudsRef.current)
       paintClouds(
         cloudsRef.current,
-        cloudNow && cover > 0.02
-          ? {
-              width: el.clientWidth,
-              height: el.clientHeight,
-              ox: centre[0] + over - C * scale,
-              oy: centre[1] + over - C * scale,
-              scale,
-              below,
-              cover,
-              low: cloudNow.low / Math.max(1, cloudNow.cloud),
-              wind: cloudNow.wind,
-              windFrom: cloudNow.windFrom,
-              time: utc.getTime(),
-              light: light === 'day' ? 'day' : light === 'twilight' ? 'twilight' : 'night',
-              moon: moonLight,
-              town: Math.max(0, (bortle - 3) / 6),
-            }
-          : null,
+        cloudSky && {
+          ...cloudSky,
+          width: el.clientWidth,
+          height: el.clientHeight,
+          ox: centre[0] + over - C * scale,
+          oy: centre[1] + over - C * scale,
+          scale,
+          below,
+        },
       )
   }
   // centre, scale and fit follow frame and view; canvasLight follows light and the Moon
@@ -2507,6 +2514,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
         <SkySwitch on={showNight} label={t('每小时适不适合观星，列在天体表上方')} onChange={toggleNight} />
         <span className="sky-option-title">{t('云量')}</span>
         <SkySwitch on={weatherOn} label={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
+        {weatherOn && <SkySwitch on={drawClouds} label={t('把云画在天上（关掉只看预报）')} onChange={toggleDrawClouds} />}
         <span className="sky-option-title">{t('夜视')}</span>
         <SkySwitch on={red} label={t('红光模式：整页变暗红，不破坏暗适应')} onChange={toggleRed} />
         <span className="sky-option-title">{t('画质')}</span>
@@ -2546,6 +2554,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 name: (zh) => t(zh),
                 ground: showGround,
                 deepSky: showDso,
+                clouds: cloudSky,
                 paths: domePaths,
                 history: domeHistory,
                 eqGrid,

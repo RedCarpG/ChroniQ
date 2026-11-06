@@ -10,11 +10,12 @@ import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'rea
 import { BRIGHT_STARS, STAR_FIELDS } from '../lib/brightStars'
 import { WESTERN } from '../lib/constellations'
 import { XINGGUAN } from '../lib/xingguan'
-import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, markPlace, projectDir, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
+import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, markPlace, projectDir, unproject, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
 import { cloudLight, horizonMatrix, milkyWayCloud, STAR_NAMES, vectorsOfStars, type SkyBody } from '../lib/sky'
 import type { Constellation } from '../lib/sky'
 import { BODY_COLOUR, DSO_COLOUR } from './bodyColours'
 import { MESSIER, messierName, type Messier } from '../lib/messier'
+import { DOME_CLOUD_STEP, domeClouds, type CloudSky } from './skyClouds'
 import { starColour } from './skyPaint'
 
 const RAD = Math.PI / 180
@@ -39,6 +40,8 @@ export interface DomeScene {
   deepSky: boolean
   eqGrid: boolean
   ecliptic: boolean
+  /** The forecast's clouds at this moment, drawn over the sky above the horizon; null for a clear sky */
+  clouds: CloudSky | null
   /** The day's paths (12 hours either side of now), the chosen one's picked out with its hours named */
   paths: DomePath[] | null
   /** A body's way among the stars over past days (历史轨迹), drawn on this moment's sky, with dates */
@@ -613,6 +616,17 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
     }
   }
   ctx.globalCompositeOperation = 'source-over'
+
+  // ---- The clouds, over the sky and under the names (a small canvas laid over smoothed) ----
+  if (scene.clouds) {
+    const step = rough ? DOME_CLOUD_STEP.moving : DOME_CLOUD_STEP.still
+    const layer = domeClouds(w, h, (x, y) => unproject(cam, x, y), scene.clouds, step)
+    if (layer) {
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(layer, 0, 0, layer.width * step, layer.height * step)
+    }
+  }
 
   // ---- Names: the bodies, the named stars, the best-known figures ----
   ctx.textBaseline = 'middle'
