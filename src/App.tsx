@@ -21,7 +21,7 @@ import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } fro
 import { SettingsContext } from './settingsContext'
 import { hantReady, loadHant } from './lib/hant'
 import { startHantDom } from './hantDom'
-import { translate, type Vars } from './i18n'
+import { englishReady, loadEnglish, translate, type Vars } from './i18n'
 import { play, setSoundEnabled, startClickSounds } from './sound'
 
 type Tab = Page
@@ -162,8 +162,26 @@ export function App() {
       stop?.()
     }
   }, [settings.language])
-  // In Chinese the proper nouns follow the language; the 专有名词 choice is for English
-  const shown: Settings = settings.language === 'en' ? settings : { ...settings, script: settings.language === 'zh-Hant' ? 'trad' : 'simp' }
+  // English: its dictionaries come in apart (the loading screen up till then), and the page is drawn
+  // again in English once they are
+  const [englishIn, setEnglishIn] = useState(englishReady)
+  useLayoutEffect(() => {
+    if (settings.language !== 'en' || englishIn) return
+    let cancelled = false
+    const release = holdSplash()
+    loadEnglish()
+      .then(() => {
+        if (!cancelled) setEnglishIn(true)
+      })
+      .catch(() => {})
+      .finally(() => release())
+    return () => {
+      cancelled = true
+    }
+  }, [settings.language, englishIn])
+  // In Chinese the proper nouns follow the language; the 专有名词 choice is for English (a new value
+  // once the English is in, so every part of the page reads it again)
+  const shown: Settings = settings.language === 'en' ? { ...settings } : { ...settings, script: settings.language === 'zh-Hant' ? 'trad' : 'simp' }
   useEffect(() => applyScale(settings.uiScale), [settings.uiScale])
   // The interface sounds: one listener for the page's clicks, and a chime to say they are back on
   useEffect(() => startClickSounds(), [])

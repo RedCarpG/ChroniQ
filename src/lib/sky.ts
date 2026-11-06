@@ -797,13 +797,7 @@ export function towards(from: { az: number; alt: number }, to: { az: number; alt
   return { az: ((Math.atan2(p[1], p[0]) / RAD) + 360) % 360, alt: Math.asin(Math.max(-1, Math.min(1, p[2]))) / RAD }
 }
 
-const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北']
-const COMPASS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-
-/** 方位 in words and degrees, e.g. 东南 135° (or SE 135° in English) */
-export function formatAzimuth(az: number, lang: string = 'zh'): string {
-  return `${(lang === 'en' ? COMPASS_EN : COMPASS)[Math.round(az / 45) % 8]} ${Math.round(az)}°`
-}
+export { formatAzimuth } from './azimuth'
 
 /* ---------- How the bodies look: their faces, for drawing them close up ---------- */
 

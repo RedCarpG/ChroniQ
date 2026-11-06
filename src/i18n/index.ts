@@ -9,12 +9,25 @@
 //   with the language instead of being glued together in JSX.
 // - Text with no entry yet falls back to the Chinese.
 // - 繁體中文 is the 简体 text, converted on the page as it is shown (src/hantDom.ts).
-import { EN } from './en'
+// - The English dictionaries load only when English is chosen (loadEnglish; the app holds its
+//   loading screen till then), so a Chinese reader's first page does not carry them.
 
 export type Lang = 'zh' | 'zh-Hant' | 'en'
 export type Vars = Record<string, string | number>
 
+let EN: Record<string, string> | null = null
+let loading: Promise<void> | null = null
+/** Whether the English dictionaries are in */
+export const englishReady = () => EN !== null
+/** Loads the English dictionaries once; resolves when translate() has them */
+export function loadEnglish(): Promise<void> {
+  loading ??= import('./en').then((m) => {
+    EN = m.EN
+  })
+  return loading
+}
+
 export function translate(lang: Lang, text: string, vars?: Vars): string {
-  const s = lang === 'en' ? (EN[text] ?? text) : text
+  const s = lang === 'en' ? (EN?.[text] ?? text) : text
   return vars ? s.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : s
 }
