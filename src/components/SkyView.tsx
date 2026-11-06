@@ -44,8 +44,8 @@ import { C, PSF, PALETTE, R, colourIndex, glowRadius, mixWhite, paintSky, starAl
 import { BodyFaceView, SkyFaceDefs } from './SkyBodyFace'
 import { SkyGlobe, canDrawGlobes, globeExtent } from './SkyGlobe'
 import { SkyNight } from './SkyNight'
-import { SkyDome } from './SkyDome'
-import type { DomeView } from '../lib/domeProjection'
+import { gliding, lookAt, SkyDome, stopGlide } from './SkyDome'
+import { degreesApart, type DomeView } from '../lib/domeProjection'
 import { paintClouds } from './skyClouds'
 import { BORTLE } from '../lib/stargazing'
 import { fetchForecast, weatherAt, type WeatherHour } from '../lib/weather'
@@ -77,6 +77,11 @@ const RADIANT_TRAILS = [
 
 /** How wide 对准天空 shows the sky (degrees across the screen's shorter side), about a phone camera's */
 const POINT_FOV = 70
+/** 对准天空: once the sky is dragged aside, how far (degrees) the phone must turn from where it
+ *  pointed then, as when it is shaken or turned, before the view goes back to following it */
+const SHAKE = 8
+/** How wide the dome view looks on something found by searching: a figure whole, a deep-sky object close */
+const FIND_FOV = { fig: 90, dso: 40, other: 60 }
 const Z_MIN = 1
 const Z_MAX = 8
 
@@ -745,7 +750,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     ]
     // t and term change only with the settings
   }, [figureSet, language, script])
-  const goTo = (key: string) => {
+  /** Where something that can be chosen is now: a body, a named star, a Messier object or a figure's label */
+  const whereIs = (key: string): { az: number; alt: number } | null => {
+    if (!/^(hip|dso|fig)/.test(key)) return sky.bodies.find((b) => b.key === key) ?? null
     const toHorizon = horizonOf(utc, place.latitude, place.longitude)
     let p: { az: number; alt: number } | null = null
     if (key.startsWith('hip')) {
@@ -758,13 +765,23 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
       const set = figureSet === 'west' ? WESTERN : figureSet === 'mansions' ? MANSION_FIGURES : XINGGUAN
       const c = set.find((x) => `fig${x.id}` === key)
       if (c) p = toHorizon(...c.label)
-      if (figures === 'none') pickFigures('west')
-    } else p = sky.bodies.find((b) => b.key === key) ?? null
+    }
+    return p
+  }
+  const goTo = (key: string) => {
+    if (key.startsWith('fig') && figures === 'none') pickFigures('west')
+    const p = whereIs(key)
     if (!p) return
     const under = p.alt < 0
     if (under !== below) setBelow(under)
     setChosen(key)
     setTracking(!key.startsWith('fig'))
+    // Under the dome: turn round to it (with the phone pointing, the arrow at the edge shows the way)
+    if (domeOn) {
+      const kind = key.startsWith('fig') ? 'fig' : key.startsWith('dso') ? 'dso' : 'other'
+      if (!pointingOn) lookAt(domeView, { az: p.az, alt: p.alt, fov: Math.min(domeView.current.fov, FIND_FOV[kind]) })
+      return
+    }
     const [x, y] = projectSky(p.az, p.alt, under)
     const z = Math.max(current().z, key.startsWith('fig') ? 1.8 : key.startsWith('dso') ? 3.2 : 2.4)
     glideTo(clampView({ z, x: (C - x) * fit * z, y: (C - y) * fit * z }))
@@ -866,13 +883,28 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   }
   // 跟踪: as the time moves, the map moves with the chosen one, before the frame is painted
   useLayoutEffect(() => {
-    if (!tracking || !spot || !frameRef.current || live.current) return
+    if (domeOn || !tracking || !spot || !frameRef.current || live.current) return
     const v = viewRef.current
     const s = fit * v.z
     const next = clampView({ z: v.z, x: (C - spot[0]) * s, y: (C - spot[1]) * s })
     if (Math.abs(next.x - v.x) > 0.5 || Math.abs(next.y - v.y) > 0.5) setView(next)
     // spot follows the time
   }, [utc, tracking])
+  // 跟踪 under the dome: the view keeps looking at the chosen one as the time moves (not while it
+  // glides there, nor while the phone is pointing it)
+  useLayoutEffect(() => {
+    if (!domeOn || pointingOn || !tracking || !chosen || gliding(domeView)) return
+    const p = whereIs(chosen)
+    if (p) domeView.current = { ...domeView.current, az: p.az, alt: p.alt }
+    // whereIs follows the time and the place; a tap choosing something else does not turn the view
+  }, [utc, tracking, domeOn, pointingOn])
+  // What the dome view rings (or points to from its edge): the chosen one, named as the search names it
+  const domeMark = (() => {
+    if (!domeOn || !chosen) return null
+    const p = whereIs(chosen)
+    const item = searchItems.find((i) => i.key === chosen)
+    return p ? { az: p.az, alt: p.alt, label: item?.label ?? chosen, colour: item?.colour ?? '#f4ce80' } : null
+  })()
   // What the panel tells of the chosen body or star: what it is, when it rises and sets, which 宿 it
   // is in and how far off it is. Not worked out again at each step of a drag through time.
   const five = pick && 'key' in pick ? FIVE_STARS.find((f) => f.key === pick.key) : undefined
@@ -980,9 +1012,34 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const turnerRef = useRef<HTMLDivElement>(null)
   // Each reading turns the dome view to where the phone points, under the horizon too (drawn on the
   // next frame, without rendering the page again)
+  // The sky can be dragged aside to look about while the phone is held still: the view stays where
+  // it was dragged until the phone turns SHAKE degrees from where it pointed when the drag began (a
+  // shake, or turning to look elsewhere), and then follows the phone again
+  const sensed = useRef<{ az: number; alt: number } | null>(null)
+  const held = useRef<{ az: number; alt: number } | null>(null)
+  const [heldOn, setHeldOn] = useState(false)
+  const letGo = () => {
+    held.current = null
+    setHeldOn(false)
+    stopGlide(domeView)
+    if (sensed.current) domeView.current = { ...sensed.current, fov: domeView.current.fov }
+  }
   const pointing = useDevicePointing((az, alt) => {
+    sensed.current = { az, alt }
+    const h = held.current
+    if (h) {
+      if (degreesApart(h, { az, alt }) < SHAKE) return
+      return letGo()
+    }
     domeView.current = { az, alt, fov: domeView.current.fov }
   })
+  /** The dome view taken in hand: following stops; with the phone pointing, the view is held where dragged */
+  const onLook = () => {
+    setTracking(false)
+    if (!pointingOn) return
+    held.current = sensed.current ?? { az: domeView.current.az, alt: domeView.current.alt }
+    setHeldOn(true)
+  }
   const startPointing = () => {
     setBelow(false)
     domeView.current = { ...domeView.current, fov: POINT_FOV }
@@ -990,6 +1047,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     void pointing.start()
   }
   const stopPointing = () => {
+    held.current = null
+    setHeldOn(false)
     pointing.stop()
     setPointingOn(false)
     live.current = null
@@ -2456,10 +2515,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 en,
                 name: (zh) => t(zh),
                 ground: showGround,
+                mark: domeMark,
               }}
               viewRef={domeView}
-              draggable={!pointingOn}
+              draggable
               onPick={(key) => setChosen(key)}
+              onLook={onLook}
             />
           ) : (
           <div className="sky-turner" ref={turnerRef}>
@@ -2523,7 +2584,16 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           )}
           {pointingOn && (
             <div className="sky-point-bar">
-              <small>{t('举起手机对准天空。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。')}</small>
+              {heldOn ? (
+                <>
+                  <small>{t('正在看别处 · 晃一下手机回到对准')}</small>
+                  <button type="button" className="ghost" onClick={letGo}>
+                    {t('回到对准')}
+                  </button>
+                </>
+              ) : (
+                <small>{t('举起手机对准天空，也可以划动看看别处。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。')}</small>
+              )}
               <button type="button" className="ghost" onClick={stopPointing}>
                 {t('退出')}
               </button>

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'rea
 import { BRIGHT_STARS, STAR_FIELDS } from '../lib/brightStars'
 import { WESTERN } from '../lib/constellations'
 import { XINGGUAN } from '../lib/xingguan'
-import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, projectDir, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
+import { cameraFor, dirOf, FOV_MAX, FOV_MIN, groundOf, markPlace, projectDir, projectXYZ, turnCamera, viewShift, type Camera, type DomeView, type V3 } from '../lib/domeProjection'
 import { cloudLight, horizonMatrix, milkyWayCloud, STAR_NAMES, vectorsOfStars, type SkyBody } from '../lib/sky'
 import type { Constellation } from '../lib/sky'
 import { BODY_COLOUR } from './bodyColours'
@@ -34,6 +34,8 @@ export interface DomeScene {
   name: (zh: string) => string
   /** The ground: a see-through shade (the sky below shows through it), or none at all */
   ground: boolean
+  /** What is chosen, to be ringed where it is, or pointed to from the screen's edge when out of view */
+  mark: { az: number; alt: number; label: string; colour: string } | null
 }
 
 interface Props {
@@ -44,7 +46,44 @@ interface Props {
   draggable: boolean
   /** A tap on a body or named star: its key (a body's, or hip + number) */
   onPick?: (key: string) => void
+  /** The sky taken in hand: a one-finger drag has begun moving the view (not a pinch) */
+  onLook?: () => void
 }
+
+// ---- Gliding the view round to something (a search), eased; a drag or another glide stops it ----
+const glides = new WeakMap<object, number>()
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** Turn the view to look at a direction (and to a field of view), over ms, the short way round */
+export function lookAt(viewRef: MutableRefObject<DomeView>, to: { az: number; alt: number; fov?: number }, ms = 650) {
+  stopGlide(viewRef)
+  const from = { ...viewRef.current }
+  const turn = ((to.az - from.az + 540) % 360) - 180
+  const fov = to.fov ?? from.fov
+  const at = (e: number): DomeView => ({
+    az: (((from.az + turn * e) % 360) + 360) % 360,
+    alt: from.alt + (to.alt - from.alt) * e,
+    fov: from.fov + (fov - from.fov) * e,
+  })
+  if (ms <= 0 || reducedMotion()) {
+    viewRef.current = at(1)
+    return
+  }
+  const start = performance.now()
+  const step = (now: number) => {
+    const k = Math.min(1, (now - start) / ms)
+    viewRef.current = at(k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2)
+    if (k < 1) glides.set(viewRef, requestAnimationFrame(step))
+    else glides.delete(viewRef)
+  }
+  glides.set(viewRef, requestAnimationFrame(step))
+}
+export function stopGlide(viewRef: MutableRefObject<DomeView>) {
+  const frame = glides.get(viewRef)
+  if (frame !== undefined) cancelAnimationFrame(frame)
+  glides.delete(viewRef)
+}
+export const gliding = (viewRef: MutableRefObject<DomeView>) => glides.has(viewRef)
 
 /** A direction from right ascension and declination (degrees), J2000 */
 function unitOf(ra: number, dec: number, out: Float64Array | V3, at = 0) {
@@ -103,7 +142,7 @@ const COMPASS: [string, string, number][] = [
   ['西北', 'NW', 315],
 ]
 
-export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
+export function SkyDome({ scene, viewRef, draggable, onPick, onLook }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const stars = useMemo(brightStars, [])
@@ -199,6 +238,7 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
     const pts = [...pointers.current.values()]
     if (pts.length === 2 && g.dist) {
       const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      stopGlide(viewRef)
       viewRef.current = { ...viewRef.current, fov: Math.min(FOV_MAX, Math.max(FOV_MIN, (g.view.fov * g.dist) / Math.max(1, d))) }
       g.moved = true
       return
@@ -206,7 +246,16 @@ export function SkyDome({ scene, viewRef, draggable, onPick }: Props) {
     const dx = e.clientX - g.x
     const dy = e.clientY - g.y
     if (!g.moved && Math.hypot(dx, dy) < 5) return
-    g.moved = true
+    if (!g.moved) {
+      // The drag starts from the view as it is now (a glide, or the phone's sensors, may have moved it)
+      g.moved = true
+      stopGlide(viewRef)
+      onLook?.()
+      g.view = { ...viewRef.current }
+      g.x = e.clientX
+      g.y = e.clientY
+      return
+    }
     // Degrees per pixel at the middle of the view
     const per = g.view.fov / Math.min(el.clientWidth, el.clientHeight)
     viewRef.current = {
@@ -494,6 +543,59 @@ function draw(el: HTMLCanvasElement, w: number, h: number, view: DomeView, { sce
   ctx.moveTo(cam.cx, cam.cy - 8)
   ctx.lineTo(cam.cx, cam.cy + 8)
   ctx.stroke()
+
+  if (scene.mark) drawMark(ctx, cam, scene.mark, w, h)
+}
+
+/** The chosen one: a ring round it with its name, or an arrow at the edge pointing the way to it */
+function drawMark(ctx: CanvasRenderingContext2D, cam: Camera, mark: NonNullable<DomeScene['mark']>, w: number, h: number) {
+  const m = markPlace(cam, dirOf(mark.az, mark.alt), w, h)
+  ctx.save()
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 1.6
+  ctx.strokeStyle = 'rgba(244,206,128,0.95)'
+  ctx.fillStyle = 'rgba(244,206,128,0.95)'
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.textBaseline = 'middle'
+  if (m.inView) {
+    ctx.beginPath()
+    ctx.arc(m.x, m.y, 15, 0, Math.PI * 2)
+    ctx.stroke()
+    // Four short ticks, as a sight
+    for (const a of [0, 0.5, 1, 1.5]) {
+      const [c, s] = [Math.cos(a * Math.PI), Math.sin(a * Math.PI)]
+      ctx.beginPath()
+      ctx.moveTo(m.x + c * 15, m.y + s * 15)
+      ctx.lineTo(m.x + c * 21, m.y + s * 21)
+      ctx.stroke()
+    }
+  } else {
+    // An arrowhead pointing out towards it, its name on the inner side
+    ctx.save()
+    ctx.translate(m.x, m.y)
+    ctx.rotate(m.angle)
+    ctx.beginPath()
+    ctx.moveTo(14, 0)
+    ctx.lineTo(-6, -9)
+    ctx.lineTo(-2, 0)
+    ctx.lineTo(-6, 9)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
+  // The name: beside the ring, or inside the arrow, kept on the screen
+  const text = mark.label
+  const width = ctx.measureText(text).width
+  // Above the ring (a star's or body's own name sits to its right), or inside the arrow
+  let [tx, ty] = m.inView ? [m.x, m.y - 32] : [m.x - Math.cos(m.angle) * 26, m.y - Math.sin(m.angle) * 22]
+  ctx.textAlign = 'left'
+  tx -= width / 2
+  tx = Math.max(6, Math.min(w - 6 - width, tx))
+  ty = Math.max(10, Math.min(h - 10, ty))
+  ctx.shadowColor = 'rgba(0,0,0,0.8)'
+  ctx.shadowBlur = 4
+  ctx.fillText(text, tx, ty)
+  ctx.restore()
 }
 
 /** The Moon's disc, lit on the side towards the Sun as much as it is */
