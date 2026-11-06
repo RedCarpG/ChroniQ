@@ -1,9 +1,9 @@
 // 观月's backdrop: the sky about the Moon as one would see it from the place, over the whole screen.
 // The Moon is looked at straight on (the view turned to it, the horizon kept level, as in the 天象
 // page's dome view: lib/domeProjection), drawn by MoonGlobe at its true size for the field of view;
-// round it, the sky's colour for where the Sun is, the stars and planets that are there, and the
-// ground with the horizon when it comes into view. Zoomed in, the Moon fills the screen as in a
-// telescope; zoomed out, it is the small bright disc one sees with the eye, among the stars.
+// round it, dark space (at any hour: no daylight blue), the stars and planets that are there, and the
+// ground with the horizon when it comes into view. Zoomed in, the Moon is larger than the screen, as
+// in a telescope; zoomed out, it is the small bright disc one sees with the eye, among the stars.
 //
 // A drag across moves the time; the wheel, a pinch or the buttons zoom.
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -19,8 +19,9 @@ const RAD = Math.PI / 180
 
 /** Widest field of view, degrees */
 export const MOON_FOV_MAX = 100
-/** Narrowest: the Moon filling nine tenths of the screen's shorter side */
-export const moonFovMin = (diameter: number) => fovFor(diameter, 0.9)
+/** Narrowest: the Moon three times as wide as the screen's shorter side (a close look at its craters;
+ *  past that its map, 2048 pixels round, would only blur) */
+export const moonFovMin = (diameter: number) => fovFor(diameter, 3)
 /** The field of view in which a disc `diameter` degrees across fills `share` of the shorter side */
 export function fovFor(diameter: number, share: number) {
   return (4 * Math.atan(Math.tan((diameter * RAD) / 4) / share)) / RAD
@@ -56,35 +57,6 @@ const COMPASS: [string, string, number][] = [
   ['西北', 'NW', 315],
 ]
 
-type RGB = [number, number, number]
-const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
-const mix = (a: RGB, b: RGB, k: number): RGB => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k]
-const css = (c: RGB, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`
-/** The sky's colour at the zenith and at the horizon for where the Sun is (its altitude, degrees) */
-const SKY: [number, RGB, RGB][] = [
-  [-18, hex('#03050c'), hex('#0a1124')],
-  [-12, hex('#060a18'), hex('#141d3c')],
-  [-6, hex('#0e1736'), hex('#33406e')],
-  [-2, hex('#1d2e60'), hex('#9a7a78')],
-  [4, hex('#2e5aa0'), hex('#a8bfd8')],
-  [20, hex('#3f74bd'), hex('#a9cbea')],
-]
-function skyTone(sunAlt: number): [RGB, RGB] {
-  if (sunAlt <= SKY[0][0]) return [SKY[0][1], SKY[0][2]]
-  for (let i = 1; i < SKY.length; i++) {
-    if (sunAlt <= SKY[i][0]) {
-      const k = (sunAlt - SKY[i - 1][0]) / (SKY[i][0] - SKY[i - 1][0])
-      return [mix(SKY[i - 1][1], SKY[i][1], k), mix(SKY[i - 1][2], SKY[i][2], k)]
-    }
-  }
-  const last = SKY[SKY.length - 1]
-  return [last[1], last[2]]
-}
-/** The faintest star that shows, for where the Sun is and how much of the Moon is lit */
-function starLimit(sunAlt: number, lit: number) {
-  const dark = sunAlt > -0.8 ? -1.6 : sunAlt > -6 ? 1.2 : sunAlt > -12 ? 3.4 : sunAlt > -18 ? 5 : 6
-  return dark - (sunAlt < -12 ? 1.1 * lit : 0)
-}
 /** A star's colour from its B−V index */
 const starTint = (bv: number) =>
   bv < 0 ? '#b8ccff' : bv < 0.3 ? '#e2e9ff' : bv < 0.6 ? '#fff8ec' : bv < 1 ? '#ffeccc' : bv < 1.4 ? '#ffd8ae' : '#ffc394'
@@ -131,7 +103,6 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
   }, [])
 
   const bodies = useMemo(() => skyAt(utc, latitude, longitude, false, false).bodies, [utc, latitude, longitude])
-  const sunAlt = bodies[0].alt
   // Always looking straight at the Moon, in the middle of the room left free (below the horizon too:
   // the ground and horizon come into view when the field is wide enough)
   const view: DomeView = { az: moon.az, alt: moon.alt, fov }
@@ -159,12 +130,14 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
       canvas.height = Math.round(h * dpr)
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, sunAlt, lit: moon.lit, moonX, moonY, moonPx, bodies, faint, en, name })
+    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, lit: moon.lit, moonX, moonY, moonPx, bodies, faint, en, name })
   })
 
-  // A drag across moves the time (about five minutes a pixel zoomed in, more zoomed out); two fingers pinch
+  // A drag across moves the time (about five minutes a pixel zoomed in, more zoomed out); two fingers
+  // pinch. Once a second finger has come down, the gesture only zooms until every finger is lifted; a
+  // touch only starts moving the time after a little way or a moment, so a pinch never begins as a drag
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const gesture = useRef<{ x: number; dist?: number; fov: number } | null>(null)
+  const gesture = useRef<{ x: number; dist?: number; fov: number; pinched: boolean; dragging: boolean; at: number } | null>(null)
   const perPx = 5 * 60_000 * Math.max(1, Math.sqrt(fov / 2))
   const clampFov = (f: number) => Math.max(moonFovMin(moon.diameter), Math.min(MOON_FOV_MAX, f))
   const handlers = {
@@ -172,27 +145,32 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
       e.currentTarget.setPointerCapture?.(e.pointerId)
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const pts = [...pointers.current.values()]
-      gesture.current = { x: e.clientX, fov, dist: pts.length === 2 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : undefined }
+      if (pts.length === 1) gesture.current = { x: e.clientX, fov, pinched: false, dragging: false, at: e.timeStamp }
+      else if (pts.length === 2) gesture.current = { x: e.clientX, fov, dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), pinched: true, dragging: false, at: e.timeStamp }
     },
     onPointerMove: (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (!pointers.current.has(e.pointerId) || !gesture.current) return
+      const g = gesture.current
+      if (!pointers.current.has(e.pointerId) || !g) return
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const pts = [...pointers.current.values()]
-      const g = gesture.current
-      if (pts.length === 2 && g.dist) {
-        onFov(clampFov((g.fov * g.dist) / Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y))))
-      } else if (pts.length === 1) {
-        const dx = e.clientX - g.x
-        if (Math.abs(dx) >= 1) {
-          g.x = e.clientX
-          onScrub(Math.round((dx * perPx) / 60_000) * 60_000)
-        }
+      if (g.pinched) {
+        if (pts.length === 2 && g.dist) onFov(clampFov((g.fov * g.dist) / Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y))))
+        return
+      }
+      const dx = e.clientX - g.x
+      if (!g.dragging) {
+        const touch = e.pointerType === 'touch'
+        if (Math.abs(dx) < (touch ? 10 : 3) || (touch && e.timeStamp - g.at < 120)) return
+        g.dragging = true
+      }
+      if (Math.abs(dx) >= 1) {
+        g.x = e.clientX
+        onScrub(Math.round((dx * perPx) / 60_000) * 60_000)
       }
     },
     onPointerUp: (e: React.PointerEvent<HTMLCanvasElement>) => {
       pointers.current.delete(e.pointerId)
-      const rest = [...pointers.current.values()]
-      gesture.current = rest.length === 1 ? { x: rest[0].x, fov } : null
+      if (pointers.current.size === 0) gesture.current = null
     },
     onWheel: (e: React.WheelEvent<HTMLCanvasElement>) => onFov(clampFov(fov * Math.exp(e.deltaY * 0.0015))),
   }
@@ -206,11 +184,23 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
           const b = [c * Math.cos(f.lon * RAD), c * Math.sin(f.lon * RAD), Math.sin(f.lat * RAD)]
           const n = [0, 1, 2].map((i) => b[0] * X[i] + b[1] * Y[i] + b[2] * Z[i])
           if (n[2] < 0.2 || (!f.sea && moonPx < 420)) return []
-          return [{ ...f, x: moonX + (n[0] * moonPx) / 2, y: moonY - (n[1] * moonPx) / 2 }]
+          const x = moonX + (n[0] * moonPx) / 2
+          const y = moonY - (n[1] * moonPx) / 2
+          if (x < 0 || y < 0 || x > screen.w || y > screen.h) return []
+          return [{ ...f, x, y }]
         })
       : []
 
-  const box = moonPx * 1.02
+  // The globe's element: the disc's square, or, once the disc is larger than the screen, only the part
+  // of it on the screen (MoonGlobe draws just that), so the canvas never grows past the screen
+  const R = moonPx / 2
+  const box = {
+    left: Math.max(-2, moonX - R * 1.02),
+    top: Math.max(-2, moonY - R * 1.02),
+    right: Math.min(screen.w + 2, moonX + R * 1.02),
+    bottom: Math.min(screen.h + 2, moonY + R * 1.02),
+  }
+  const onScreen = box.right > box.left && box.bottom > box.top
   return (
     <div className="moon-sky">
       <canvas
@@ -223,12 +213,12 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
         onPointerCancel={handlers.onPointerUp}
         onWheel={handlers.onWheel}
       />
-      {moonX > -box && moonX < screen.w + box && moonY > -box && moonY < screen.h + box && (
+      {onScreen && (
         <div
           className="moon-sky-globe"
-          style={{ left: moonX - box / 2, top: moonY - box / 2, width: box, height: box }}
+          style={{ left: box.left, top: box.top, width: box.right - box.left, height: box.bottom - box.top }}
         >
-          <MoonGlobe frame={moon.frame} lit={moon.lit} label={globeLabel} />
+          <MoonGlobe frame={moon.frame} lit={moon.lit} label={globeLabel} crop={{ cx: moonX - box.left, cy: moonY - box.top, r: R }} />
         </div>
       )}
       {named.map((f) => (
@@ -244,7 +234,6 @@ interface Scene {
   utc: Date
   latitude: number
   longitude: number
-  sunAlt: number
   lit: number
   moonX: number
   moonY: number
@@ -256,26 +245,17 @@ interface Scene {
 }
 
 function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, view: DomeView, s: Scene) {
-  // ---- The sky's colour: lighter towards the horizon, by the altitude down the middle of the screen ----
-  const [zenith, horizon] = skyTone(s.sunAlt)
-  const grad = ctx.createLinearGradient(0, 0, 0, h)
-  for (let i = 0; i <= 6; i++) {
-    const y = (i / 6) * h
-    // The altitude at this height on the middle column (inverse stereographic, the column being level)
-    const Y = (cam.cy - y) / cam.scale
-    const theta = 2 * Math.atan(Y / 2)
-    const alt = view.alt + theta / RAD
-    // Above the horizon, lighter towards it; below, the unlit sky behind the ground, dark
-    const k = Math.max(0, Math.min(1, alt / 45))
-    const tone = alt >= 0 ? mix(horizon, zenith, Math.sqrt(k)) : mix(horizon, SKY[0][1], Math.min(1, -alt / 6))
-    grad.addColorStop(i / 6, css(tone))
-  }
-  ctx.fillStyle = grad
+  // ---- Space behind it all, the same at any hour (no daylight blue): a little lighter about the Moon ----
+  const space = ctx.createRadialGradient(s.moonX, s.moonY, 0, s.moonX, s.moonY, Math.max(w, h) * 0.9)
+  space.addColorStop(0, '#121a32')
+  space.addColorStop(0.5, '#0a0f20')
+  space.addColorStop(1, '#04060d')
+  ctx.fillStyle = space
   ctx.fillRect(0, 0, w, h)
 
   // ---- The Moon's light in the sky: a soft halo about the disc, and the sky brightened for some
   // degrees round it (a whole telescope view lies inside that, faintly lit) ----
-  const night = s.sunAlt < -6 ? 1 : s.sunAlt < 0 ? 0.6 : 0.25
+  const night = 1
   const wide = 2 * cam.scale * 2 * Math.tan((8 * RAD) / 4)
   const sky = ctx.createRadialGradient(s.moonX, s.moonY, 0, s.moonX, s.moonY, Math.max(wide, s.moonPx))
   const a2 = 0.05 * s.lit * night
@@ -307,7 +287,8 @@ function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camer
 
   // ---- The stars, as J2000 directions with the camera turned to them ----
   const turned = turnCamera(cam, horizonMatrix(s.utc, s.latitude, s.longitude))
-  const limit = starLimit(s.sunAlt, s.lit)
+  // All the stars to magnitude 6, as from space; only close to the Moon are they lost in its light
+  const limit = 6
   const p: [number, number] = [0, 0]
   const reach = Math.cos(Math.min(170, view.fov * 1.2) * RAD)
   const drawStars = (rows: readonly number[]) => {
@@ -380,9 +361,8 @@ function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camer
   }
   const ground = ctx.createLinearGradient(0, 0, 0, h)
   // A see-through shade, as on the 天象 page's dome: the sky below still shows dimly through it
-  const day = s.sunAlt > -2
-  ground.addColorStop(0, day ? 'rgba(34,42,32,0.62)' : 'rgba(6,9,10,0.6)')
-  ground.addColorStop(1, day ? 'rgba(22,27,22,0.75)' : 'rgba(3,5,7,0.72)')
+  ground.addColorStop(0, 'rgba(6,9,10,0.6)')
+  ground.addColorStop(1, 'rgba(3,5,7,0.72)')
   ctx.fillStyle = ground
   ctx.fill('evenodd')
   ctx.strokeStyle = 'rgba(220,190,130,0.6)'
