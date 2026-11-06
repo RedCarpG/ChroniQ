@@ -2158,6 +2158,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* While it is retrograde the line of sight turns red and says so; its trail on the zodiac doubles back */
 .orrery-sight.retro { stroke: #ff7a6b; stroke-opacity: 0.95; }
 .orrery-sight.sun { stroke: #ffcf4a; }
+.orrery-ray { stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
 .orrery-retro { fill: #ff8a7a; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: rgb(10 14 28 / 0.7); stroke-width: 2px; pointer-events: none; }
 .orrery-seen-dot { pointer-events: none; }
 .orrery-table tbody tr { cursor: pointer; outline: none; transition: background-color 0.2s; }
@@ -2292,6 +2293,55 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
   .moon-title .moon-name strong { font-size: 32px; }
   .moon-title .moon-name span { font-size: 15px; }
   .moon-page .moon-days { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); }
+}
+
+/* 太阳系 over the whole screen (SolarSystemView, Immersive) */
+.space-stars { position: absolute; left: 0; top: 0; display: block; pointer-events: none; }
+.solar-sky { position: absolute; inset: 0; }
+.solar-sky .orrery { position: absolute; max-width: none; margin: 0; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; overflow: visible; }
+.solar-sky .orrery-bg { fill: url(#orrery-space); }
+.solar-bar .solar-clock { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.solar-play { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.solar-play-button {
+  height: 32px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--accent); color: var(--on-accent);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
+}
+.solar-play-button.on { background: rgb(216 191 140 / 0.2); color: var(--accent); }
+.solar-play .seg button { white-space: nowrap; }
+.solar-play select { height: 30px; padding: 0 6px; font-size: 12px; }
+.solar-year { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.solar-track { position: relative; height: 22px; }
+.solar-track::before { content: ''; position: absolute; left: 0; right: 0; top: 10px; height: 2px; border-radius: 1px; background: #2b3656; }
+.solar-retro { position: absolute; top: 8px; height: 6px; border-radius: 3px; background: rgb(230 110 94 / 0.6); pointer-events: none; }
+.solar-track input[type='range'] {
+  position: absolute; inset: 0; width: 100%; height: 22px; margin: 0; padding: 0; background: none; border: 0;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.solar-track input[type='range']::-webkit-slider-runnable-track { height: 22px; background: none; }
+.solar-track input[type='range']::-moz-range-track { height: 22px; background: none; }
+.solar-track input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; margin-top: 3px; border-radius: 50%; border: 0;
+  background: #f3ead2; box-shadow: 0 0 0 3px rgb(216 191 140 / 0.35);
+}
+.solar-track input[type='range']::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; border: 0; background: #f3ead2; box-shadow: 0 0 0 3px rgb(216 191 140 / 0.35); }
+.solar-track input[type='range']:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.solar-months { display: flex; justify-content: space-between; gap: 6px; font-size: 10px; color: var(--muted); }
+.solar-retro-key { color: #e66e5e; }
+/* The chosen planet, at the top of the panel */
+.solar-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgb(216 191 140 / 0.4); background: rgb(216 191 140 / 0.08); }
+.solar-card-head { display: flex; align-items: baseline; gap: 8px; }
+.solar-card-head strong { font-family: var(--font-title); font-size: 16px; letter-spacing: 0.06em; }
+.solar-card-head .retro { margin-left: auto; color: var(--bad); font-size: 12px; }
+.solar-card-head .muted { margin-left: auto; font-size: 12px; }
+.solar-card p { margin: 0; font-size: 12.5px; line-height: 1.6; }
+.solar-page .imm-panel .row-note { margin: 0; font-size: 12px; }
+.solar-page .orrery-table { font-size: 12.5px; }
+.solar-page .imm-panel .orrery-table .orrery-light { display: none; }
+.solar-page .imm-panel .orrery-table .sign-full { display: none; }
+.solar-page .imm-panel .orrery-table .sign-short { display: inline; }
+@media (max-width: 860px) {
+  .solar-play { gap: 8px; flex-wrap: nowrap; }
+  .solar-year { flex: 1 1 auto; }
 }
 
 /* ---------- 静: quiet controls, the footer's way, wherever they fit ----------

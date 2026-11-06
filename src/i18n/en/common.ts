@@ -124,6 +124,7 @@ export const COMMON: Record<string, string> = {
   // Saved charts drawer
   已保存的命盘: 'Saved charts',
   收起: 'Hide',
+  展开: 'Show',
   命盘名称: 'Chart name',
   '已保存为「{name}」': 'Saved as “{name}”',
   '为当前命盘命名（可选）': 'Name this chart (optional)',

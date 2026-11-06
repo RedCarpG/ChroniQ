@@ -85,6 +85,29 @@ export function seenTrail(key: PlanetKey, times: Date[]): number[] {
   return times.map((utc) => geoLon(body, A.MakeTime(utc)))
 }
 
+/**
+ * When a planet goes backwards among the stars (seen from Earth) between two instants, found a day at
+ * a time: each span from the first day it is going back to the last (cut at the ends of the time given)
+ */
+export function retroSpans(key: PlanetKey, from: Date, to: Date): { start: Date; end: Date }[] {
+  if (key === 'earth') return []
+  const days = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / DAY))
+  const times = Array.from({ length: days + 1 }, (_, i) => new Date(from.getTime() + i * DAY))
+  const lons = seenTrail(key, times)
+  const spans: { start: Date; end: Date }[] = []
+  let start: Date | null = null
+  for (let i = 1; i < lons.length; i++) {
+    const back = ((lons[i] - lons[i - 1] + 540) % 360) - 180 < 0
+    if (back && !start) start = times[i - 1]
+    if (!back && start) {
+      spans.push({ start, end: times[i - 1] })
+      start = null
+    }
+  }
+  if (start) spans.push({ start, end: times[times.length - 1] })
+  return spans
+}
+
 /** One orbit of each planet, sampled from the given moment: [x, y] points in AU. */
 export function orbits(utc: Date, samples = 180): Record<PlanetKey, [number, number][]> {
   const out = {} as Record<PlanetKey, [number, number][]>

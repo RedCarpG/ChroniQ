@@ -80,4 +80,21 @@ describe('观月', () => {
     expect(container.querySelector('.moon-name')!.textContent).toMatch(/正月廿二$/)
     expect(Number(fact('月龄')!.split(' ')[0])).toBeCloseTo(21, 0)
   })
+
+  it('moves the time when the sky is dragged across, and zooms out and back', () => {
+    const { container, time } = setUp()
+    const sky = document.querySelector<HTMLCanvasElement>('.moon-sky-canvas')!
+    fireEvent.pointerDown(sky, { pointerId: 1, clientX: 100, clientY: 100 })
+    // Zoomed in, five minutes a pixel
+    fireEvent.pointerMove(sky, { pointerId: 1, clientX: 112, clientY: 100 })
+    fireEvent.pointerUp(sky, { pointerId: 1, clientX: 112, clientY: 100 })
+    expect(time()).toBe('20:38')
+    const [zoomIn, zoomOut, reset] = [...container.querySelectorAll<HTMLButtonElement>('.imm-zoom button')]
+    expect(reset.disabled).toBe(true)
+    fireEvent.click(zoomOut)
+    expect(reset.disabled).toBe(false)
+    expect(zoomIn.disabled).toBe(false)
+    fireEvent.click(reset)
+    expect(reset.disabled).toBe(true)
+  })
 })
