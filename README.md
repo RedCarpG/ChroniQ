@@ -56,14 +56,14 @@
     <td width="50%" valign="top">
       <a href="docs/images/moon.jpg"><img src="docs/images/moon.jpg" alt="观月：月球表面、月相、月出月落与月度变化" /></a>
       <br /><b>🌕 观月｜今晚的月亮长这样</b><br />
-      看看月面纹理，查看天平动、照亮比例和当地月出月落。
+      月亮铺满屏幕，挂在此刻真实的星空里，从望远镜放大到肉眼；拖动改时间，标出月海与环形山。
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <a href="docs/images/solar.jpg"><img src="docs/images/solar.jpg" alt="太阳系：行星轨道、位置、距离和顺逆行信息" /></a>
       <br /><b>🪐 太阳系｜让行星跑一会儿</b><br />
-      行星轨道、距离、光行时、顺逆行，还能播放时间，看它们沿轨道前进。
+      从金星缩放到冥王星，播放时间看它们沿轨道前进；选一颗行星，看它怎样「逆行」。
     </td>
     <td width="50%" valign="top">
       <a href="docs/images/bazi.jpg"><img src="docs/images/bazi.jpg" alt="八字：出生信息、四柱排盘及岁运信息" /></a>

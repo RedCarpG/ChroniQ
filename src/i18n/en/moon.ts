@@ -27,4 +27,13 @@ export const MOON: Record<string, string> = {
   '月亮按你在此地所见画出：天顶在上，亮面朝向太阳，并随天平动微微转动。':
     'The Moon as seen from this place: the zenith up, the lit side towards the Sun, turned a little by its libration.',
   '月面图像：NASA 科学可视化工作室（CGI Moon Kit，LRO 数据）。': 'Moon maps: NASA’s Scientific Visualization Studio (CGI Moon Kit, from LRO data).',
+  前一天: 'A day back',
+  前一小时: 'An hour back',
+  后一小时: 'An hour on',
+  后一天: 'A day on',
+  '月龄 {n} 天': '{n} days old',
+  '左右拖动改变时间 · 滚轮或双指缩放': 'Drag across to change the time · scroll or pinch to zoom',
+  月海与环形山的名字: 'Names of seas and craters',
+  此刻的月亮: 'The Moon now',
+  '月亮的高度 · 拖动或用方向键改变时间': 'The Moon’s height · drag, or use the arrow keys, to change the time',
 }

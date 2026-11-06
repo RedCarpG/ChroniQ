@@ -9,11 +9,13 @@ import { toUtc } from '../lib/timeZone'
 import { useSettings, useT, useTerm } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
-import { MoonGlobe } from './MoonGlobe'
 import { MoonGlyph } from './MoonGlyph'
 import { PlacePicker } from './PlacePicker'
+import { Immersive, useNarrow } from './Immersive'
+import { fovFor, MOON_FOV_MAX, moonFovMin, MoonSky } from './MoonSky'
 
 const DAY = 86_400_000
+const HOUR = 3_600_000
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /**
@@ -76,7 +78,7 @@ export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
   const dayKey = `${wall.year}-${wall.month}-${wall.day}`
   const times = useMemo(() => moonTimes(wall, latitude, longitude, timeZone), [dayKey, latitude, longitude, timeZone])
   const noonKey = `${dayKey} ${wall.hour < 12}`
-  const heights = useMemo(() => heightsAround(utc, latitude, longitude, timeZone), [noonKey, latitude, longitude, timeZone])
+  const heightsAt = useMemo(() => heightsAround(utc, latitude, longitude, timeZone), [noonKey, latitude, longitude, timeZone])
   const apsis = useMemo(() => nextApsis(utc), [dayKey])
   const lunarText = (y: number, m: number, d: number) => {
     const lunar = SolarDay.fromYmd(y, m, d).getLunarDay()
@@ -96,136 +98,217 @@ export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
   const up = moon.alt > 0
   const quarterName: Record<QuarterName, string> = { 朔: t('朔'), 上弦: t('上弦'), 望: t('望'), 下弦: t('下弦') }
 
-  return (
-    <div className="moon-page">
-      <section className="card">
-        <div className="fortunes-head sky-head">
-          <h3 className="section-title">
-            <TitleMark />
-            {t('观月')}
-          </h3>
-          <div className="overlay-bar sky-controls">
-            <DateParts
-              label={t('日期')}
-              value={wall}
-              onChange={(d) => pick(atWall({ ...wall, ...d }))}
-            />
-            <input
-              type="time"
-              aria-label={t('时间')}
-              value={`${pad(wall.hour)}:${pad(wall.minute)}`}
-              onChange={(e) => {
-                const [hour, minute] = e.target.value.split(':').map(Number)
-                if (!Number.isNaN(hour)) pick(atWall({ ...wall, hour, minute }))
-              }}
-            />
-            <button
-              type="button"
-              className={`ghost toggle${live ? ' on' : ''}`}
-              aria-pressed={live}
-              onClick={() => {
-                setLive(true)
-                setTime(Date.now())
-              }}
-            >
-              {t('现在')}
-            </button>
-          </div>
-        </div>
+  // The Moon over the whole screen (MoonSky), zoomed from the eye's view to a telescope's; at first
+  // it fills about two thirds of the screen's shorter side
+  const narrow = useNarrow()
+  const [fov, setFov] = useState<number | null>(null)
+  const fovMin = moonFovMin(moon.diameter)
+  const shownFov = fov ?? fovFor(moon.diameter, narrow ? 0.72 : 0.62)
+  const zoomBy = (k: number) => setFov(Math.max(fovMin, Math.min(MOON_FOV_MAX, shownFov * k)))
+  const [features, setFeatures] = useState(true)
+  const phaseName = t(moonPhaseName(moon.phase))
+  const lunar = lunarText(wall.year, wall.month, wall.day)
+  const where = `${formatAzimuth(moon.az, language)} · ${up ? t('高 {altitude}°', { altitude: moon.alt.toFixed(1) }) : t('地平线下')}`
+  const step = (ms: number) => pick(time + ms)
 
-        <div className="moon-layout">
-          <div className={`moon-stage${up ? '' : ' down'}`} style={{ '--glow': (0.15 + 0.5 * moon.lit).toFixed(2) } as React.CSSProperties}>
-            <MoonGlobe frame={moon.frame} lit={moon.lit} label={t('{phase}，照亮 {n}%', { phase: t(moonPhaseName(moon.phase)), n: Math.round(moon.lit * 100) })} />
-            {!up && <span className="moon-down-note">{t('此刻月亮在地平线下')}</span>}
-          </div>
-          <div className="moon-facts">
-            <div className="moon-name">
-              <strong>{t(moonPhaseName(moon.phase))}</strong>
-              <span>{lunarText(wall.year, wall.month, wall.day)}</span>
-            </div>
-            <dl className="sky-facts">
-              <dt>{t('月龄')}</dt>
-              <dd>{t('{n} 天', { n: age.toFixed(1) })}</dd>
-              <dt>{t('照亮')}</dt>
-              <dd>{Math.round(moon.lit * 100)}%</dd>
-              <dt>{t('方位')}</dt>
-              <dd>
-                {formatAzimuth(moon.az, language)} · {up ? t('高 {altitude}°', { altitude: moon.alt.toFixed(1) }) : t('地平线下')}
-              </dd>
-              <dt>{t('月出')}</dt>
-              <dd>{times.rise ? clock(times.rise) : '—'}</dd>
-              <dt>{t('中天')}</dt>
-              <dd>{times.transit ? clock(times.transit) : '—'}</dd>
-              <dt>{t('月落')}</dt>
-              <dd>{times.set ? clock(times.set) : '—'}</dd>
-              <dt>{t('距离')}</dt>
-              <dd>
-                {t('约 {n} 万公里', { n: en ? Math.round(moon.distanceKm / 1000) * 1000 : (moon.distanceKm / 1e4).toFixed(1) })} ·{' '}
-                {t('视直径 {d}′', { d: (moon.diameter * 60).toFixed(1) })}
-              </dd>
-              <dt>{apsis.kind === 'perigee' ? t('下次近地点') : t('下次远地点')}</dt>
-              <dd>
-                {dateText(apsis.time)} {clock(apsis.time)} · {t('约 {n} 万公里', { n: en ? Math.round(apsis.distanceKm / 1000) * 1000 : (apsis.distanceKm / 1e4).toFixed(1) })}
-              </dd>
-              <dt>
-                <span className="tip-label" title={t('天平动让我们能多看到月面边缘的一点：经度为正时东缘（危海一侧）转过来，纬度为正时北缘转过来。')}>
-                  {t('天平动')}
-                </span>
-              </dt>
-              <dd>{t('经 {lon}° · 纬 {lat}°', { lon: signed(moon.libration.lon), lat: signed(moon.libration.lat) })}</dd>
-              <dt>{t('宿')}</dt>
-              <dd>{t('月离{mansion}', { mansion: term(mansionOf(moon.ra).mansion.name) })}</dd>
-            </dl>
-            <div className="moon-place">
-              <PlacePicker label={t('观测地')} place={place} onChange={setPlace} />
-              <button type="button" className="ghost" onClick={locate} disabled={locating === 'busy'}>
-                {locating === 'busy' ? t('定位中…') : t('📍 用我的位置')}
-              </button>
-              {locating === 'failed' && <small className="muted">{t('无法取得位置（可能未授权），请从列表中选择城市。')}</small>}
-            </div>
-          </div>
-        </div>
-
-        <MoonHeights heights={heights} time={time} onPick={pick} clock={clock} />
-
-        <div className="moon-month">
-          <h4 className="moon-month-title">{t('本月月相')}</h4>
-          <ol className="moon-quarters">
-            {month.quarters.map((q) => (
-              <li key={q.time.getTime()}>
-                <b>{quarterName[q.name]}</b> {dateText(q.time)} {clock(q.time)}
-              </li>
-            ))}
-          </ol>
-          <div className="moon-days" role="group" aria-label={t('本月月相')}>
-            {monthDays(month.start, month.end, timeZone).map((d) => {
-              const on = d.year === wall.year && d.month === wall.month && d.day === wall.day
-              const glyph = phaseAt(new Date(atWall({ ...d, hour: 21, minute: 0 })))
-              return (
-                <button
-                  key={`${d.month}-${d.day}`}
-                  type="button"
-                  className={`moon-day${on ? ' on' : ''}`}
-                  aria-pressed={on}
-                  onClick={() => pick(atWall({ ...wall, ...d }))}
-                >
-                  <MoonGlyph moon={{ angle: glyph.angle, lit: glyph.lit, name: '' }} />
-                  <span className="moon-day-lunar">{lunarText(d.year, d.month, d.day).slice(-2)}</span>
-                  <small>
-                    {d.month}/{d.day}
-                  </small>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <p className="muted row-note">
-          {t('月亮按你在此地所见画出：天顶在上，亮面朝向太阳，并随天平动微微转动。')}{' '}
-          {t('月面图像：NASA 科学可视化工作室（CGI Moon Kit，LRO 数据）。')}
-        </p>
-      </section>
+  const toolbar = (
+    <div className="imm-glass moon-bar">
+      <h3 className="section-title">
+        <TitleMark />
+        {t('观月')}
+      </h3>
+      <DateParts label={t('日期')} value={wall} onChange={(d) => pick(atWall({ ...wall, ...d }))} />
+      <input
+        type="time"
+        aria-label={t('时间')}
+        value={`${pad(wall.hour)}:${pad(wall.minute)}`}
+        onChange={(e) => {
+          const [hour, minute] = e.target.value.split(':').map(Number)
+          if (!Number.isNaN(hour)) pick(atWall({ ...wall, hour, minute }))
+        }}
+      />
+      <button
+        type="button"
+        className={`ghost toggle${live ? ' on' : ''}`}
+        aria-pressed={live}
+        onClick={() => {
+          setLive(true)
+          setTime(Date.now())
+        }}
+      >
+        {t('现在')}
+      </button>
+      <span className="imm-steps">
+        <button type="button" className="ghost" onClick={() => step(-DAY)} aria-label={t('前一天')} title={t('前一天')}>
+          ◀◀
+        </button>
+        <button type="button" className="ghost" onClick={() => step(-HOUR)} aria-label={t('前一小时')} title={t('前一小时')}>
+          ◀
+        </button>
+        <button type="button" className="ghost" onClick={() => step(HOUR)} aria-label={t('后一小时')} title={t('后一小时')}>
+          ▶
+        </button>
+        <button type="button" className="ghost" onClick={() => step(DAY)} aria-label={t('后一天')} title={t('后一天')}>
+          ▶▶
+        </button>
+      </span>
     </div>
+  )
+
+  const overlay = (
+    <>
+      <div className="moon-title">
+        <div className="moon-name">
+          <strong>{phaseName}</strong>
+          <span>{lunar}</span>
+        </div>
+        <div className="moon-title-sub">
+          {t('月龄 {n} 天', { n: age.toFixed(1) })} · {t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })}
+          {!up && ` · ${t('此刻月亮在地平线下')}`}
+        </div>
+      </div>
+      <div className="imm-zoom" role="group" aria-label={t('缩放')}>
+        <button type="button" onClick={() => zoomBy(1 / 1.6)} disabled={shownFov <= fovMin * 1.001} aria-label={t('放大')} title={t('放大')}>
+          +
+        </button>
+        <button type="button" onClick={() => zoomBy(1.6)} disabled={shownFov >= MOON_FOV_MAX * 0.999} aria-label={t('缩小')} title={t('缩小')}>
+          −
+        </button>
+        <button type="button" onClick={() => setFov(null)} disabled={fov === null} aria-label={t('复原')} title={t('复原')}>
+          ⟲
+        </button>
+      </div>
+      <p className="imm-hint">{t('左右拖动改变时间 · 滚轮或双指缩放')}</p>
+    </>
+  )
+
+  const days = (
+    <div className="moon-days" role="group" aria-label={t('本月月相')}>
+      {monthDays(month.start, month.end, timeZone).map((d) => {
+        const on = d.year === wall.year && d.month === wall.month && d.day === wall.day
+        const glyph = phaseAt(new Date(atWall({ ...d, hour: 21, minute: 0 })))
+        return (
+          <button
+            key={`${d.month}-${d.day}`}
+            type="button"
+            className={`moon-day${on ? ' on' : ''}`}
+            aria-pressed={on}
+            onClick={() => pick(atWall({ ...wall, ...d }))}
+          >
+            <MoonGlyph moon={{ angle: glyph.angle, lit: glyph.lit, name: '' }} />
+            <span className="moon-day-lunar">{lunarText(d.year, d.month, d.day).slice(-2)}</span>
+            <small>
+              {d.month}/{d.day}
+            </small>
+          </button>
+        )
+      })}
+    </div>
+  )
+  const heights = <MoonHeights heights={heightsAt} time={time} onPick={pick} clock={clock} compact={narrow ? 'small' : 'wide'} />
+
+  const panel = (
+    <>
+      <div className="moon-facts">
+        <dl className="sky-facts">
+          <dt>{t('月龄')}</dt>
+          <dd>{t('{n} 天', { n: age.toFixed(1) })}</dd>
+          <dt>{t('照亮')}</dt>
+          <dd>{Math.round(moon.lit * 100)}%</dd>
+          <dt>{t('方位')}</dt>
+          <dd>{where}</dd>
+          <dt>{t('月出')}</dt>
+          <dd>{times.rise ? clock(times.rise) : '—'}</dd>
+          <dt>{t('中天')}</dt>
+          <dd>{times.transit ? clock(times.transit) : '—'}</dd>
+          <dt>{t('月落')}</dt>
+          <dd>{times.set ? clock(times.set) : '—'}</dd>
+          <dt>{t('距离')}</dt>
+          <dd>
+            {t('约 {n} 万公里', { n: en ? Math.round(moon.distanceKm / 1000) * 1000 : (moon.distanceKm / 1e4).toFixed(1) })} ·{' '}
+            {t('视直径 {d}′', { d: (moon.diameter * 60).toFixed(1) })}
+          </dd>
+          <dt>{apsis.kind === 'perigee' ? t('下次近地点') : t('下次远地点')}</dt>
+          <dd>
+            {dateText(apsis.time)} {clock(apsis.time)} · {t('约 {n} 万公里', { n: en ? Math.round(apsis.distanceKm / 1000) * 1000 : (apsis.distanceKm / 1e4).toFixed(1) })}
+          </dd>
+          <dt>
+            <span className="tip-label" title={t('天平动让我们能多看到月面边缘的一点：经度为正时东缘（危海一侧）转过来，纬度为正时北缘转过来。')}>
+              {t('天平动')}
+            </span>
+          </dt>
+          <dd>{t('经 {lon}° · 纬 {lat}°', { lon: signed(moon.libration.lon), lat: signed(moon.libration.lat) })}</dd>
+          <dt>{t('宿')}</dt>
+          <dd>{t('月离{mansion}', { mansion: term(mansionOf(moon.ra).mansion.name) })}</dd>
+        </dl>
+      </div>
+      <div className="moon-place">
+        <PlacePicker label={t('观测地')} place={place} onChange={setPlace} />
+        <button type="button" className="ghost" onClick={locate} disabled={locating === 'busy'}>
+          {locating === 'busy' ? t('定位中…') : t('📍 用我的位置')}
+        </button>
+        {locating === 'failed' && <small className="muted">{t('无法取得位置（可能未授权），请从列表中选择城市。')}</small>}
+      </div>
+      <div className="moon-month">
+        <h4 className="moon-month-title">{t('本月月相')}</h4>
+        <ol className="moon-quarters">
+          {month.quarters.map((q) => (
+            <li key={q.time.getTime()}>
+              <b>{quarterName[q.name]}</b> {dateText(q.time)} {clock(q.time)}
+            </li>
+          ))}
+        </ol>
+        {narrow && days}
+      </div>
+      <div className="sky-switches">
+        <button type="button" role="switch" aria-checked={features} className={`sky-switch${features ? ' on' : ''}`} onClick={() => setFeatures((f) => !f)}>
+          {t('月海与环形山的名字')}
+          <span className="sky-switch-track" aria-hidden="true" />
+        </button>
+      </div>
+      <p className="muted row-note">
+        {t('月亮按你在此地所见画出：天顶在上，亮面朝向太阳，并随天平动微微转动。')}{' '}
+        {t('月面图像：NASA 科学可视化工作室（CGI Moon Kit，LRO 数据）。')}
+      </p>
+    </>
+  )
+
+  return (
+    <Immersive
+      name="moon-page"
+      backdrop={(frame) => (
+        <MoonSky
+          utc={utc}
+          latitude={latitude}
+          longitude={longitude}
+          moon={moon}
+          // On a phone the title lies under the Moon: it is centred in the room above it
+          frame={narrow ? { ...frame, height: Math.max(120, frame.height - 96) } : frame}
+          fov={shownFov}
+          onFov={setFov}
+          onScrub={step}
+          features={features}
+          en={en}
+          name={(zh) => t(zh)}
+          globeLabel={t('{phase}，照亮 {n}%', { phase: phaseName, n: Math.round(moon.lit * 100) })}
+        />
+      )}
+      toolbar={toolbar}
+      overlay={overlay}
+      panelTitle={t('此刻的月亮')}
+      panel={panel}
+      summary={`${phaseName} · ${lunar} · ${t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })} · ${where}`}
+      bottom={
+        narrow ? (
+          heights
+        ) : (
+          <div className="imm-glass moon-strip">
+            {days}
+            {heights}
+          </div>
+        )
+      }
+    />
   )
 }
 
@@ -254,14 +337,18 @@ function MoonHeights({
   time,
   onPick,
   clock,
+  compact,
 }: {
   heights: ReturnType<typeof heightsAround>
   time: number
   onPick: (ms: number) => void
   clock: (d: Date) => string
+  /** A strip along the bottom of the screen (wide), or under the phone's sheet (small) */
+  compact?: 'wide' | 'small'
 }) {
   const t = useT()
-  const [W, H, X0, X1, TOP, BOTTOM] = [720, 168, 30, 712, 12, 146]
+  const [W, H, X0, X1, TOP, BOTTOM] =
+    compact === 'wide' ? [1000, 86, 26, 992, 4, 68] : compact === 'small' ? [360, 70, 22, 356, 4, 54] : [720, 168, 30, 712, 12, 146]
   const start = heights.start.getTime()
   const span = heights.end.getTime() - start
   const xOf = (ms: number) => X0 + ((ms - start) / span) * (X1 - X0)
@@ -284,17 +371,19 @@ function MoonHeights({
     onPick(Math.min(ms, start + span - 60_000))
   }
   return (
-    <div className="moon-heights">
-      <h4 className="moon-month-title">
-        {t('月亮的高度')}
-        <small className="muted"> · {t('拖动或用方向键改变时间')}</small>
-      </h4>
+    <div className={`moon-heights${compact ? ` ${compact}` : ''}`}>
+      {!compact && (
+        <h4 className="moon-month-title">
+          {t('月亮的高度')}
+          <small className="muted"> · {t('拖动或用方向键改变时间')}</small>
+        </h4>
+      )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         tabIndex={0}
         role="slider"
-        aria-label={t('时间')}
+        aria-label={compact ? t('月亮的高度 · 拖动或用方向键改变时间') : t('时间')}
         aria-valuemin={start}
         aria-valuemax={start + span}
         aria-valuenow={time}
@@ -330,7 +419,7 @@ function MoonHeights({
           />
         ))}
         <line className="mh-horizon" x1={X0} x2={X1} y1={yOf(0)} y2={yOf(0)} />
-        {[30, 60].map((a) => (
+        {(compact ? [45] : [30, 60]).map((a) => (
           <g key={a}>
             <line className="mh-grid" x1={X0} x2={X1} y1={yOf(a)} y2={yOf(a)} />
             <text className="mh-label" x={X0 - 4} y={yOf(a) + 3} textAnchor="end">
@@ -340,14 +429,14 @@ function MoonHeights({
         ))}
         <path className="mh-moon" d={path} />
         {s
-          .filter((p) => clock(p.time).endsWith(':00') && Number(clock(p.time).slice(0, 2)) % 3 === 0)
+          .filter((p) => clock(p.time).endsWith(':00') && Number(clock(p.time).slice(0, 2)) % (compact === 'small' ? 6 : 3) === 0)
           .map((p) => (
             <text key={p.time.getTime()} className="mh-label" x={xOf(p.time.getTime())} y={H - 6} textAnchor="middle">
               {clock(p.time)}
             </text>
           ))}
         <line className="mh-now" x1={xOf(time)} x2={xOf(time)} y1={TOP} y2={BOTTOM} />
-        <circle className="mh-dot" cx={xOf(time)} cy={yOf(nowAlt)} r={5} />
+        <circle className="mh-dot" cx={xOf(time)} cy={yOf(nowAlt)} r={compact ? 4 : 5} />
       </svg>
     </div>
   )
