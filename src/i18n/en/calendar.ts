@@ -195,5 +195,7 @@ export const CALENDAR: Record<string, string> = {
   今日星象: 'The day in the stars',
   '{time} 进入{sign}': 'Enters {sign} at {time}',
   今天没有行星逆行: 'No planet is retrograde today',
+  当日星象: 'The day in the stars',
+  这天没有行星逆行: 'No planet is retrograde that day',
   星盘行运: 'Transits',
 }

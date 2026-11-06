@@ -41,8 +41,10 @@ import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { SkyDayEvents, SkyForecast, useSkyEventText, useSkyEvents } from './SkyForecast'
 import type { SkyMoment } from './SkyView'
-import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
+import { loadSkyPlace, loadStarSettings, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useSettings, useT, useTerm } from '../settingsContext'
+import { westernToday } from '../lib/westernToday'
+import { WesternDayList } from './WesternDay'
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
 const MIN_YEAR = 1900
@@ -224,6 +226,13 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
   const moonText = (m: MoonDay) =>
     `${t(m.name)}${m.time ? ` ${m.time}${notBeijing ? ' (UTC+8)' : ''}` : ''} · ${t('照亮 {pct}%', { pct: Math.round(m.lit * 100) })}`
   const selectedMoon = moonOf(selected)
+  // 今日星象 for the selected day: as it is now for today, at noon for any other day
+  const isToday = sameDay(selected, todaySolar())
+  const starSettings = useMemo(loadStarSettings, [])
+  const western = useMemo(() => {
+    const at = isToday ? new Date() : new Date(selected.getYear(), selected.getMonth() - 1, selected.getDay(), 12)
+    return westernToday(at, starSettings)
+  }, [selected, isToday, starSettings])
   // 斗柄指月: for the month shown, or the day picked when it is in that month (and in week and year views)
   const anchor =
     mode !== 'month' || (selected.getYear() === view.year && selected.getMonth() === view.month)
@@ -738,6 +747,10 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
             <dt>{term('星宿')}</dt>
             <dd>{term(detail.twentyEightStar)}宿</dd>
           </dl>
+          <div className="day-western">
+            <span className="tag-title neutral">{isToday ? t('今日星象') : t('当日星象')}</span>
+            <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')} />
+          </div>
           <TagBlock title={term('宜')} kind="good" items={detail.recommends.map(term)} />
           <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
