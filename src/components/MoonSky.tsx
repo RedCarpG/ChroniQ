@@ -132,9 +132,9 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
 
   const bodies = useMemo(() => skyAt(utc, latitude, longitude, false, false).bodies, [utc, latitude, longitude])
   const sunAlt = bodies[0].alt
-  // Looking at the Moon; when it is below the horizon, higher, so the horizon comes into view when the
-  // field is wide enough (the Moon kept within it)
-  const view: DomeView = { az: moon.az, alt: moon.alt < 0 ? Math.max(moon.alt, Math.min(-0.2 * fov, moon.alt + 0.42 * fov)) : moon.alt, fov }
+  // Always looking straight at the Moon, in the middle of the room left free (below the horizon too:
+  // the ground and horizon come into view when the field is wide enough)
+  const view: DomeView = { az: moon.az, alt: moon.alt, fov }
   const cam = useMemo(() => {
     const c = cameraFor(view, Math.max(1, frame.width), Math.max(1, frame.height))
     return { ...c, cx: frame.left + frame.width / 2, cy: frame.top + frame.height / 2 }
@@ -147,7 +147,6 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
   /** Pixels across a disc of this many degrees at the middle of the view */
   const across = (deg: number) => 2 * cam.scale * 2 * Math.tan((deg * RAD) / 4)
   const moonPx = across(moon.diameter)
-  const up = moon.alt > -moon.diameter / 2
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -226,7 +225,7 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
       />
       {moonX > -box && moonX < screen.w + box && moonY > -box && moonY < screen.h + box && (
         <div
-          className={`moon-sky-globe${up ? '' : ' down'}`}
+          className="moon-sky-globe"
           style={{ left: moonX - box / 2, top: moonY - box / 2, width: box, height: box }}
         >
           <MoonGlobe frame={moon.frame} lit={moon.lit} label={globeLabel} />
@@ -266,8 +265,10 @@ function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camer
     const Y = (cam.cy - y) / cam.scale
     const theta = 2 * Math.atan(Y / 2)
     const alt = view.alt + theta / RAD
+    // Above the horizon, lighter towards it; below, the unlit sky behind the ground, dark
     const k = Math.max(0, Math.min(1, alt / 45))
-    grad.addColorStop(i / 6, css(mix(horizon, zenith, Math.sqrt(k))))
+    const tone = alt >= 0 ? mix(horizon, zenith, Math.sqrt(k)) : mix(horizon, SKY[0][1], Math.min(1, -alt / 6))
+    grad.addColorStop(i / 6, css(tone))
   }
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, w, h)
@@ -378,9 +379,10 @@ function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camer
     ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2, true)
   }
   const ground = ctx.createLinearGradient(0, 0, 0, h)
+  // A see-through shade, as on the 天象 page's dome: the sky below still shows dimly through it
   const day = s.sunAlt > -2
-  ground.addColorStop(0, day ? 'rgba(38,48,36,0.9)' : 'rgba(7,10,12,0.9)')
-  ground.addColorStop(1, day ? 'rgba(24,30,24,0.96)' : 'rgba(3,5,7,0.96)')
+  ground.addColorStop(0, day ? 'rgba(34,42,32,0.62)' : 'rgba(6,9,10,0.6)')
+  ground.addColorStop(1, day ? 'rgba(22,27,22,0.75)' : 'rgba(3,5,7,0.72)')
   ctx.fillStyle = ground
   ctx.fill('evenodd')
   ctx.strokeStyle = 'rgba(220,190,130,0.6)'
