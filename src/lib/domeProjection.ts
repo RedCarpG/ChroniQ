@@ -155,3 +155,29 @@ export function groundOf(cam: Camera, view: DomeView): Ground {
   // Looking up, the nadir is behind and the ground is outside the circle; looking down, inside it
   return { kind: 'circle', x, y, r, inside: view.alt < 0 }
 }
+
+/** How far in from the screen's edge the pointer to something out of view sits, px */
+const EDGE = 34
+
+/**
+ * Where on the screen a direction is, or, when it is out of view (off the side, or behind), where
+ * an arrow at the edge should point to it from: the way to turn to bring it in.
+ */
+export function markPlace(cam: Camera, v: V3, w: number, h: number): { x: number; y: number; inView: boolean; angle: number } {
+  const p: [number, number] = [0, 0]
+  const shown = projectDir(cam, v, p)
+  if (shown && p[0] >= EDGE && p[0] <= w - EDGE && p[1] >= EDGE && p[1] <= h - EDGE) return { x: p[0], y: p[1], inView: true, angle: 0 }
+  // The way to it from the middle: on the screen if it is drawn, else from its right and up parts
+  let dx = shown ? p[0] - cam.cx : v[0] * cam.r[0] + v[1] * cam.r[1] + v[2] * cam.r[2]
+  let dy = shown ? p[1] - cam.cy : -(v[0] * cam.u[0] + v[1] * cam.u[1] + v[2] * cam.u[2])
+  // Straight behind: any way round will do; down, towards the ground, as one would turn
+  if (Math.hypot(dx, dy) < 1e-9) [dx, dy] = [0, 1]
+  const reach = Math.min(dx ? (w / 2 - EDGE) / Math.abs(dx) : Infinity, dy ? (h / 2 - EDGE) / Math.abs(dy) : Infinity)
+  return { x: cam.cx + dx * reach, y: cam.cy + dy * reach, inView: false, angle: Math.atan2(dy, dx) }
+}
+
+/** The angle between two directions given by azimuth and altitude, degrees */
+export function degreesApart(a: { az: number; alt: number }, b: { az: number; alt: number }): number {
+  const [p, q] = [dirOf(a.az, a.alt), dirOf(b.az, b.alt)]
+  return Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]))) / RAD
+}

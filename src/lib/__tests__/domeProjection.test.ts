@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraFor, dirOf, groundOf, projectDir, projectXYZ, turnCamera, unproject, viewShift, type DomeView } from '../domeProjection'
+import { cameraFor, degreesApart, dirOf, groundOf, markPlace, projectDir, projectXYZ, turnCamera, unproject, viewShift, type DomeView } from '../domeProjection'
 import { directionsAt, horizonMatrix } from '../sky'
 
 const at = (): [number, number] => [0, 0]
@@ -92,5 +92,40 @@ describe('domeProjection', () => {
     expect(viewShift(up, { ...up, az: 10 }, 390)).toBeGreaterThan(30)
     // A sensor's tremble of a hundredth of a degree is under a quarter pixel
     expect(viewShift(view, { ...view, alt: view.alt + 0.01 }, 390)).toBeLessThan(0.25)
+  })
+
+  it('marks something in view where it is', () => {
+    const m = markPlace(cam, dirOf(205, 35), 390, 844)
+    expect(m.inView).toBe(true)
+    const p = at()
+    projectDir(cam, dirOf(205, 35), p)
+    expect([m.x, m.y]).toEqual(p)
+  })
+
+  it('points to something out of view from the edge, the way to turn', () => {
+    // Off to the right (west of where one faces south-south-west): an arrow on the right edge, pointing
+    // rightwards (and up a little: looking up, the sky at the same height to the side lies higher)
+    const right = markPlace(cam, dirOf(290, 30), 390, 844)
+    expect(right.inView).toBe(false)
+    expect(right.x).toBeCloseTo(390 - 34)
+    expect(Math.cos(right.angle)).toBeGreaterThan(0.5)
+    // High overhead behind: up
+    const up = markPlace(cam, dirOf(20, 70), 390, 844)
+    expect(up.inView).toBe(false)
+    expect(up.y).toBeCloseTo(34)
+    // Straight behind and level: down, towards the ground
+    const behind = markPlace(cam, dirOf(20, -30), 390, 844)
+    expect(behind.inView).toBe(false)
+    expect(behind.x).toBeGreaterThanOrEqual(34)
+    expect(behind.x).toBeLessThanOrEqual(390 - 34)
+    expect(behind.y).toBeGreaterThanOrEqual(34)
+    expect(behind.y).toBeLessThanOrEqual(844 - 34)
+  })
+
+  it('measures the angle between two directions', () => {
+    expect(degreesApart({ az: 10, alt: 0 }, { az: 10, alt: 0 })).toBeCloseTo(0)
+    expect(degreesApart({ az: 0, alt: 0 }, { az: 90, alt: 0 })).toBeCloseTo(90)
+    // Near the zenith a big turn in azimuth is a small angle
+    expect(degreesApart({ az: 0, alt: 89 }, { az: 180, alt: 89 })).toBeCloseTo(2)
   })
 })

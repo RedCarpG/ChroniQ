@@ -202,7 +202,10 @@ export const SKY: Record<string, string> = {
   对准天空: 'Point at the sky',
   '没有得到使用方向传感器的许可。': 'Permission to use the motion sensors was not given.',
   '这台设备没有提供指南针数据。': 'This device gives no compass readings.',
-  '举起手机对准天空。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。': 'Hold your phone up to the sky. The direction comes from its compass and can be off: if it is, move the phone in a few figures of eight.',
+  '举起手机对准天空，也可以划动看看别处。方向靠手机的指南针，可能有偏差；不准时把手机画几个 8 字校准。':
+    'Hold your phone up to the sky, or swipe to look elsewhere. The direction comes from its compass and can be off: if it is, move the phone in a few figures of eight.',
+  '正在看别处 · 晃一下手机回到对准': 'Looking elsewhere · shake the phone to point again',
+  回到对准: 'Point again',
   退出: 'Exit',
   // 今晚观星, the cloud forecast and the light of towns
   今晚观星: 'Stargazing tonight',
