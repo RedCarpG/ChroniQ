@@ -1,4 +1,4 @@
-import { BODY_COLOUR } from './bodyColours'
+import { BODY_COLOUR, DSO_COLOUR } from './bodyColours'
 import { project, projectSky, pathData, placeLabels } from './skyGeometry'
 import { SKYLINE, GROUND, TICKS, SKY_STOPS, HORIZON_GLOW } from './skyDecorations'
 import { useSkyBackdrop } from './useSkyBackdrop'
@@ -138,16 +138,6 @@ function usePref(key: string, initial: boolean): [boolean, () => void] {
   return [on, toggle]
 }
 
-/** Each kind of deep-sky object's colour on the map (as Stellarium marks them) */
-const DSO_COLOUR: Record<Messier['kind'], string> = {
-  galaxy: '#ff9a8a',
-  gc: '#ffd27a',
-  oc: '#ffd27a',
-  nebula: '#8fe3a8',
-  pn: '#8fe3a8',
-  snr: '#8fe3a8',
-  asterism: '#b8c0d8',
-}
 /** A deep-sky object's size on the map (map units at the full view, near the zenith): half its long axis */
 const dsoRadius = (m: Messier) => ((m.size[0] / 60 / 2) * R) / 90
 
@@ -2515,6 +2505,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 en,
                 name: (zh) => t(zh),
                 ground: showGround,
+                deepSky: showDso,
+                eqGrid,
+                ecliptic: showEcliptic,
                 mark: domeMark,
               }}
               viewRef={domeView}
