@@ -74,9 +74,9 @@ export function App() {
   // Opened from 天象预告: the moment the sky page starts at, for that visit
   const [skyMoment, setSkyMoment] = useState<SkyMoment | null>(null)
   // Opened from a day's Moon (日历, 今日): the day 观月 starts at; from a planet (今日): the one 太阳系 picks
-  const [moonDay, setMoonDay] = useState<{ year: number; month: number; day: number } | null>(null)
+  const [moonDay, setMoonDay] = useState<{ year: number; month: number; day: number } | number | null>(null)
   const [solarPlanet, setSolarPlanet] = useState<string | null>(null)
-  const viewMoon = (day: { year: number; month: number; day: number } | null) => {
+  const viewMoon = (day: { year: number; month: number; day: number } | number | null) => {
     setMoonDay(day)
     goTab('moon')
   }
@@ -355,7 +355,7 @@ export function App() {
                 setBaziInput((prev) => ({ ...prev, year: day.getYear(), month: day.getMonth(), day: day.getDay() }))
                 goTab('bazi')
               }}
-              onViewMoon={(day) => viewMoon({ year: day.getYear(), month: day.getMonth(), day: day.getDay() })}
+              onViewMoon={(at) => viewMoon(typeof at === 'number' ? at : { year: at.getYear(), month: at.getMonth(), day: at.getDay() })}
             />
           ) : tab === 'today' ? (
             <Suspense fallback={<SplashSignal />}>

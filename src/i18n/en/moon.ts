@@ -36,4 +36,13 @@ export const MOON: Record<string, string> = {
   月海与环形山的名字: 'Names of seas and craters',
   此刻的月亮: 'The Moon now',
   '月亮的高度 · 拖动或用方向键改变时间': 'The Moon’s height · drag, or use the arrow keys, to change the time',
+  全食中: 'wholly in the umbra',
+  偏食中: 'partly in the umbra',
+  在半影中: 'in the penumbra',
+  月食: 'Eclipse',
+  '下次：{date} {kind}': 'Next: {kind}, {date}',
+  '食甚 {time}': 'greatest {time}',
+  '初亏 {a} · 复圆 {b}': 'partial {a}–{b}',
+  '食既 {a} · 生光 {b}': 'total {a}–{b}',
+  '看食甚 →': 'Go to greatest →',
 }

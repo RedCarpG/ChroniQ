@@ -64,8 +64,8 @@ interface Props {
   skyPlace: StarPlace
   /** Opens the sky at a moment */
   onViewSky: (moment: SkyMoment) => void
-  /** Open 观月 at a day */
-  onViewMoon: (day: SolarDay) => void
+  /** Open 观月 at a day (in its evening), or at an instant (a lunar eclipse) */
+  onViewMoon: (at: SolarDay | number) => void
 }
 type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper' | 'skyEvents'>
 
@@ -749,7 +749,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
           <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
           <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
-          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
+          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} onViewMoon={(time) => onViewMoon(time)} />
           <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')}>
             <dt>{t('月相')}</dt>
             <dd className="moon-line">

@@ -36,6 +36,10 @@ uniform float uMapped;
 uniform float uRelief;
 uniform float uEarthshine;
 uniform float uAa;
+// Earth's shadow: its centre on the disc (disc radii, y up), and the umbra's and penumbra's radii
+uniform vec4 uShadow;
+// How bright the umbra's light is: all of it in totality, much less beside a sunlit part (as the eye sees it)
+uniform float uUmbraGain;
 const float PI = 3.14159265;
 void main() {
   // This pixel on the disc: 1 at its edge, y up
@@ -61,7 +65,14 @@ void main() {
   float light = mu0 > 0.0 ? 2.0 * mu0 / (mu0 + mu + 1e-4) : 0.0;
   // Sunlit peaks just past the terminator, but no light far into the night side
   light *= smoothstep(-0.12, 0.02, dot(n, uSun));
-  vec3 colour = albedo * light * 1.6 + albedo * uEarthshine * vec3(0.78, 0.88, 1.1) * (0.45 + 0.55 * mu);
+  // In a lunar eclipse: the penumbra hides part of the Sun, more towards the umbra; in the umbra only
+  // the light bent through Earth's air reaches the Moon, faint and copper red, darkest at the middle
+  float ds = length(v - uShadow.xy);
+  float seen = clamp((ds - uShadow.z) / max(uShadow.w - uShadow.z, 1e-3), 0.0, 1.0);
+  float umbral = 1.0 - smoothstep(uShadow.z - 0.03, uShadow.z + 0.03, ds);
+  float level = mix(pow(seen, 0.8), (0.05 + 0.13 * clamp(ds / uShadow.z, 0.0, 1.0)) * uUmbraGain, umbral);
+  vec3 tint = mix(vec3(1.0), vec3(0.95, 0.42, 0.22), umbral);
+  vec3 colour = albedo * light * 1.6 * level * tint + albedo * uEarthshine * vec3(0.78, 0.88, 1.1) * (0.45 + 0.55 * mu);
   gl_FragColor = vec4(pow(colour, vec3(1.0 / 2.2)) * edge, edge);
 }`
 
@@ -187,6 +198,9 @@ export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: 
     // Earthshine: the Earth seen from the Moon is nearly full when the Moon is new
     c.uniform1f(loc('uEarthshine'), 0.07 * (1 - lit) ** 2)
     c.uniform1f(loc('uAa'), 1.2 / radius)
+    const sh = frame.shadow ?? { x: 1e4, y: 1e4, umbra: 1, penumbra: 2 }
+    c.uniform4f(loc('uShadow'), sh.x, sh.y, sh.umbra, sh.penumbra)
+    c.uniform1f(loc('uUmbraGain'), Math.hypot(sh.x, sh.y) + 1 <= sh.umbra ? 1 : 0.35)
     c.clear(c.COLOR_BUFFER_BIT)
     c.drawArrays(c.TRIANGLE_STRIP, 0, 4)
   }

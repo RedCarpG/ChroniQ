@@ -130,7 +130,10 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
       canvas.height = Math.round(h * dpr)
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, lit: moon.lit, moonX, moonY, moonPx, bodies, faint, en, name })
+    // In a lunar eclipse the Moon's light in the sky fades with it (to about a tenth when wholly in the umbra)
+    const sh = moon.frame.shadow
+    const shade = Math.min(1, Math.max(0.12, (Math.hypot(sh.x, sh.y) - sh.umbra + 1) / 2))
+    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, lit: moon.lit * shade, moonX, moonY, moonPx, bodies, faint, en, name })
   })
 
   // A drag across moves the time (about five minutes a pixel zoomed in, more zoomed out); two fingers

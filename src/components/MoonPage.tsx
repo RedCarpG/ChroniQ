@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { enDate } from '../lib/calendar'
 import { mansionOf } from '../lib/mansions'
-import { heightsAround, lunation, moonTimes, moonView, nextApsis, phaseAt, wallOf, type QuarterName } from '../lib/moonView'
+import { heightsAround, lunarEclipseAt, lunation, moonTimes, moonView, nextApsis, phaseAt, wallOf, type EclipseKind, type QuarterName } from '../lib/moonView'
 import { formatAzimuth, moonPhaseName } from '../lib/sky'
 import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { toUtc } from '../lib/timeZone'
@@ -29,8 +29,8 @@ export function MoonPage({
   day,
 }: {
   fallbackPlace: StarPlace
-  /** Opened from a day's Moon (日历): that day, in the evening (or now, for today) */
-  day?: { year: number; month: number; day: number } | null
+  /** Opened from a day's Moon (日历): that day, in the evening (or now, for today); or an instant (a lunar eclipse) */
+  day?: { year: number; month: number; day: number } | number | null
 }) {
   const t = useT()
   const term = useTerm()
@@ -63,10 +63,13 @@ export function MoonPage({
   // The moment: now (kept up to the minute), or one chosen
   const opensOnDay = () => {
     if (!day) return false
+    if (typeof day === 'number') return true
     const today = wallOf(new Date(), place.timeZone)
     return !(today.year === day.year && today.month === day.month && today.day === day.day)
   }
-  const [time, setTime] = useState(() => (opensOnDay() ? toUtc({ ...day!, hour: 21, minute: 0 }, place.timeZone).date.getTime() : Date.now()))
+  const [time, setTime] = useState(() =>
+    typeof day === 'number' ? Math.round(day / 60_000) * 60_000 : opensOnDay() ? toUtc({ ...day!, hour: 21, minute: 0 }, place.timeZone).date.getTime() : Date.now(),
+  )
   const [live, setLive] = useState(() => !opensOnDay())
   useEffect(() => {
     if (!live) return
@@ -92,6 +95,18 @@ export function MoonPage({
   const noonKey = `${dayKey} ${wall.hour < 12}`
   const heightsAt = useMemo(() => heightsAround(utc, latitude, longitude, timeZone), [noonKey, latitude, longitude, timeZone])
   const apsis = useMemo(() => nextApsis(utc), [dayKey])
+  // The lunar eclipse now, or the next one (found again each hour)
+  const hourKey = Math.floor(time / HOUR)
+  const eclipse = useMemo(() => lunarEclipseAt(new Date(hourKey * HOUR)), [hourKey])
+  const eclipseName: Record<EclipseKind, string> = { penumbral: t('半影月食'), partial: t('月偏食'), total: t('月全食') }
+  const inShadow = (span: [Date, Date] | null) => !!span && time >= span[0].getTime() && time <= span[1].getTime()
+  const eclipseNow = inShadow(eclipse.eclipse.penumbral)
+    ? inShadow(eclipse.eclipse.total)
+      ? t('全食中')
+      : inShadow(eclipse.eclipse.partial)
+        ? t('偏食中')
+        : t('在半影中')
+    : null
   const lunarText = (y: number, m: number, d: number) => {
     const lunar = SolarDay.fromYmd(y, m, d).getLunarDay()
     return term(`${lunar.getLunarMonth().getName()}${lunar.getName()}`)
@@ -181,6 +196,7 @@ export function MoonPage({
         </div>
         <div className="moon-title-sub">
           {t('月龄 {n} 天', { n: age.toFixed(1) })} · {t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })}
+          {eclipseNow && ` · ${eclipseName[eclipse.eclipse.kind]} · ${eclipseNow}`}
           {!up && ` · ${t('此刻月亮在地平线下')}`}
         </div>
       </div>
@@ -255,6 +271,28 @@ export function MoonPage({
             </span>
           </dt>
           <dd>{t('经 {lon}° · 纬 {lat}°', { lon: signed(moon.libration.lon), lat: signed(moon.libration.lat) })}</dd>
+          <dt>{t('月食')}</dt>
+          <dd className="moon-eclipse">
+            {eclipseNow ? (
+              <>
+                {eclipseName[eclipse.eclipse.kind]} · {eclipseNow}
+              </>
+            ) : (
+              <>
+                {t('下次：{date} {kind}', { date: dateText(eclipse.eclipse.peak), kind: eclipseName[eclipse.eclipse.kind] })}
+              </>
+            )}
+            <span className="muted">
+              {t('食甚 {time}', { time: `${dateText(eclipse.eclipse.peak)} ${clock(eclipse.eclipse.peak)}` })}
+              {eclipse.eclipse.partial && ` · ${t('初亏 {a} · 复圆 {b}', { a: clock(eclipse.eclipse.partial[0]), b: clock(eclipse.eclipse.partial[1]) })}`}
+              {eclipse.eclipse.total && ` · ${t('食既 {a} · 生光 {b}', { a: clock(eclipse.eclipse.total[0]), b: clock(eclipse.eclipse.total[1]) })}`}
+            </span>
+            {Math.abs(eclipse.eclipse.peak.getTime() - time) > 60_000 && (
+              <button type="button" className="ghost view-more" onClick={() => pick(Math.round(eclipse.eclipse.peak.getTime() / 60_000) * 60_000)}>
+                {t('看食甚 →')}
+              </button>
+            )}
+          </dd>
           <dt>{t('宿')}</dt>
           <dd>{t('月离{mansion}', { mansion: term(mansionOf(moon.ra).mansion.name) })}</dd>
         </dl>

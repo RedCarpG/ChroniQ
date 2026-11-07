@@ -2292,6 +2292,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .moon-title-sub { font-size: 13px; color: #b6bccc; }
 .moon-page .imm-panel .moon-month-title { margin: 0 0 6px; }
 .moon-page .moon-place { margin-top: 0; }
+.moon-eclipse { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.moon-eclipse .muted { font-size: 12px; line-height: 1.5; }
+.moon-eclipse .view-more { height: 24px; margin: 0; padding: 0; font-size: 12px; }
 .moon-page .moon-place .ghost { height: 28px; margin: 0; padding: 0 8px; font-size: 13px; }
 .moon-page .moon-quarters { margin: 0; }
 /* The strip along the bottom: the lunation's days, and the Moon's height through the day */

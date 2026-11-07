@@ -156,7 +156,18 @@ export function useSkyEventText(place: StarPlace) {
 }
 
 /** The events on the picked day, in the day panel */
-export function SkyDayEvents({ events, place, onViewSky }: { events: SkyEvent[]; place: StarPlace; onViewSky: (moment: SkyMoment) => void }) {
+export function SkyDayEvents({
+  events,
+  place,
+  onViewSky,
+  onViewMoon,
+}: {
+  events: SkyEvent[]
+  place: StarPlace
+  onViewSky: (moment: SkyMoment) => void
+  /** A lunar eclipse can also be watched in 观月, at its greatest */
+  onViewMoon?: (time: number) => void
+}) {
   const t = useT()
   const text = useSkyEventText(place)
   if (events.length === 0) return null
@@ -172,6 +183,11 @@ export function SkyDayEvents({ events, place, onViewSky }: { events: SkyEvent[];
             <button type="button" className="ghost" data-sound="gong" onClick={() => onViewSky(skyMomentOf(e))}>
               {t('在天象中查看 →')}
             </button>
+            {e.kind === 'lunarEclipse' && onViewMoon && (
+              <button type="button" className="ghost" data-sound="gong" onClick={() => onViewMoon(e.time)}>
+                {t('观月 →')}
+              </button>
+            )}
           </li>
         ))}
       </ul>
