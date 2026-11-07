@@ -54,7 +54,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * map is drawn over the whole screen (Immersive); the wheel, a pinch or the buttons zoom it from the
  * inner planets out to Pluto, and a drag across moves the date.
  */
-export function SolarSystemView() {
+export function SolarSystemView({ planet }: { /** Opened from a planet (今日): the one picked at first */ planet?: string | null } = {}) {
   const t = useT()
   const { language } = useSettings()
   const en = language === 'en'
@@ -69,6 +69,10 @@ export function SolarSystemView() {
   // The planet picked out: hovered, or chosen (a click; a click on empty space lets go). A chosen
   // one keeps Earth's line of sight to it and its trail among the stars, also while playing.
   const pick = usePick<PlanetKey>()
+  useEffect(() => {
+    if (planet && PLANETS.some((p) => p.key === planet)) pick.choose(planet as PlanetKey)
+    // only as the page opens
+  }, [])
   const focus = pick.active
 
   // Following now: refresh once a minute

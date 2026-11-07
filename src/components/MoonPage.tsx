@@ -24,7 +24,14 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * is turned (its libration); under it, its height and the Sun's through the day, which the time is
  * dragged along, and the month of phases from one 朔 to the next. The place is the 天象 page's.
  */
-export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
+export function MoonPage({
+  fallbackPlace,
+  day,
+}: {
+  fallbackPlace: StarPlace
+  /** Opened from a day's Moon (日历): that day, in the evening (or now, for today) */
+  day?: { year: number; month: number; day: number } | null
+}) {
   const t = useT()
   const term = useTerm()
   const { language } = useSettings()
@@ -54,8 +61,13 @@ export function MoonPage({ fallbackPlace }: { fallbackPlace: StarPlace }) {
   }
 
   // The moment: now (kept up to the minute), or one chosen
-  const [time, setTime] = useState(() => Date.now())
-  const [live, setLive] = useState(true)
+  const opensOnDay = () => {
+    if (!day) return false
+    const today = wallOf(new Date(), place.timeZone)
+    return !(today.year === day.year && today.month === day.month && today.day === day.day)
+  }
+  const [time, setTime] = useState(() => (opensOnDay() ? toUtc({ ...day!, hour: 21, minute: 0 }, place.timeZone).date.getTime() : Date.now()))
+  const [live, setLive] = useState(() => !opensOnDay())
   useEffect(() => {
     if (!live) return
     const id = setInterval(() => setTime(Date.now()), 60_000)

@@ -73,9 +73,22 @@ export function App() {
   // side of the new tab (styles.css: [data-vt='page']).
   // Opened from 天象预告: the moment the sky page starts at, for that visit
   const [skyMoment, setSkyMoment] = useState<SkyMoment | null>(null)
+  // Opened from a day's Moon (日历, 今日): the day 观月 starts at; from a planet (今日): the one 太阳系 picks
+  const [moonDay, setMoonDay] = useState<{ year: number; month: number; day: number } | null>(null)
+  const [solarPlanet, setSolarPlanet] = useState<string | null>(null)
+  const viewMoon = (day: { year: number; month: number; day: number } | null) => {
+    setMoonDay(day)
+    goTab('moon')
+  }
+  const viewSolar = (planet: string) => {
+    setSolarPlanet(planet)
+    goTab('solar')
+  }
   const goTab = (next: Tab) => {
     if (next === tab) return
     if (next !== 'sky') setSkyMoment(null)
+    if (next !== 'moon') setMoonDay(null)
+    if (next !== 'solar') setSolarPlanet(null)
     setLoadError(false)
     const root = document.documentElement
     root.dataset.pageDir = TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 'next' : 'back'
@@ -342,6 +355,7 @@ export function App() {
                 setBaziInput((prev) => ({ ...prev, year: day.getYear(), month: day.getMonth(), day: day.getDay() }))
                 goTab('bazi')
               }}
+              onViewMoon={(day) => viewMoon({ year: day.getYear(), month: day.getMonth(), day: day.getDay() })}
             />
           ) : tab === 'today' ? (
             <Suspense fallback={<SplashSignal />}>
@@ -351,6 +365,8 @@ export function App() {
                   setSkyMoment(moment)
                   goTab('sky')
                 }}
+                onViewMoon={() => viewMoon(null)}
+                onViewSolar={viewSolar}
               />
             </Suspense>
           ) : tab === 'timeline' ? (
@@ -373,11 +389,11 @@ export function App() {
             </Suspense>
           ) : tab === 'moon' ? (
             <Suspense fallback={<SplashSignal />}>
-              <MoonPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} />
+              <MoonPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} day={moonDay} />
             </Suspense>
           ) : tab === 'solar' ? (
             <Suspense fallback={<SplashSignal />}>
-              <SolarSystemView />
+              <SolarSystemView planet={solarPlanet} />
             </Suspense>
           ) : tab === 'star' ? (
             <Suspense fallback={<SplashSignal />}>

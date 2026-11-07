@@ -64,13 +64,15 @@ interface Props {
   skyPlace: StarPlace
   /** Opens the sky at a moment */
   onViewSky: (moment: SkyMoment) => void
+  /** Open 观月 at a day */
+  onViewMoon: (day: SolarDay) => void
 }
 type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper' | 'skyEvents'>
 
 /** 北京时间, as the 朔望弦 are given, is not the time here (taken from now's offset) */
 const notBeijing = new Date().getTimezoneOffset() !== -480
 
-export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky }: Props) {
+export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky, onViewMoon }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
@@ -753,6 +755,9 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
             <dd className="moon-line">
               <MoonGlyph moon={selectedMoon} />
               {moonText(selectedMoon)}
+              <button type="button" className="ghost view-more" data-sound="gong" onClick={() => onViewMoon(selected)}>
+                {t('观月 →')}
+              </button>
             </dd>
           </WesternDayList>
           <button className="primary block" data-sound="gong" onClick={() => onPickBazi(selected)}>

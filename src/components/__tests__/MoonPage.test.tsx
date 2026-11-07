@@ -112,4 +112,10 @@ describe('观月', () => {
     fireEvent.pointerUp(sky, touch(1, 120))
     expect(time()).toBe('19:38')
   })
+
+  it('opens on a day picked elsewhere (日历), that evening', () => {
+    const { container } = render(<MoonPage fallbackPlace={DEFAULT_PLACE} day={{ year: 2026, month: 3, day: 10 }} />)
+    expect(container.querySelector<HTMLInputElement>('.moon-page input[type=time]')!.value).toBe('21:00')
+    expect(container.querySelector('.moon-name')!.textContent).toMatch(/正月廿二$/)
+  })
 })

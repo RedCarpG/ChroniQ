@@ -2695,6 +2695,12 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 }
 .today-bodies strong { font-family: var(--font-title); font-size: 15px; font-weight: 600; }
 .today-bodies button:hover strong { color: var(--accent); }
+/* A tonight body opens 天象 (its row) or, by the small link beside it, 观月 or 太阳系 */
+.tonight-bodies > li { display: flex; align-items: center; gap: 6px; }
+.tonight-bodies > li > button:first-child { flex: 1; min-width: 0; }
+.today-bodies button.view-more, .moon-line .view-more {
+  display: inline-flex; flex: none; width: auto; height: 26px; margin: 0 0 0 auto; padding: 0 4px; font-size: 12px; letter-spacing: 0.04em; white-space: nowrap;
+}
 .today-chart-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
 .today-chart-name strong { font-family: var(--font-title); font-size: 16px; font-weight: 600; }
 .today-chart-name .muted { font-size: 12px; }

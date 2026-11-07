@@ -74,4 +74,9 @@ describe('太阳系', () => {
     fireEvent.pointerUp(map(), touch(1, 40))
     expect(month()).toBe('11')
   })
+
+  it('opens with a planet picked (from 今日)', () => {
+    const { container } = render(<SolarSystemView planet="venus" />)
+    expect(container.querySelector('.solar-card strong')!.textContent).toBe('金星')
+  })
 })
