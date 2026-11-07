@@ -8,7 +8,7 @@ import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
 import { TitleMark } from './Logo'
 import { BODY_COLOUR } from './bodyColours'
-import { Immersive, useNarrow, type Frame } from './Immersive'
+import { Immersive, useNarrow, WhenButton, type Frame } from './Immersive'
 
 const C = 200
 const R = 180
@@ -465,23 +465,23 @@ export function SolarSystemView() {
     )
   }
 
+  // One line: the date and time (the date's pickers under it), and 现在
   const toolbar = (
-    <div className="imm-glass solar-bar">
+    <div className="imm-glass imm-bar solar-bar">
       <h3 className="section-title">
         <TitleMark />
         {t('太阳系')}
       </h3>
-      <DateParts
-        label={t('日期')}
-        value={ymd}
-        onChange={(d) => {
-          const keep = new Date(time)
-          goTo(new Date(d.year, d.month - 1, d.day, keep.getHours(), keep.getMinutes()).getTime())
-        }}
-      />
-      <span className="solar-clock">
-        {pad(date.getHours())}:{pad(date.getMinutes())}
-      </span>
+      <WhenButton label={`${dateText(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`}>
+        <DateParts
+          label={t('日期')}
+          value={ymd}
+          onChange={(d) => {
+            const keep = new Date(time)
+            goTo(new Date(d.year, d.month - 1, d.day, keep.getHours(), keep.getMinutes()).getTime())
+          }}
+        />
+      </WhenButton>
       <button
         type="button"
         className={`ghost toggle${live && !playing ? ' on' : ''}`}

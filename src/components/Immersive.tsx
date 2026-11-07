@@ -4,9 +4,10 @@
 // details on the right that folds away, and a strip along the bottom. On a phone the panel is a
 // sheet at the bottom: one line and the bottom strip when folded, half the screen or all of it when
 // pulled up. The backdrop is told the room left free between them (the window), to centre itself in.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useT } from '../settingsContext'
+import { useDismiss } from './useDismiss'
 
 /** The room the controls leave free, in CSS pixels of the screen */
 export interface Frame {
@@ -176,6 +177,28 @@ export function Immersive({ name, backdrop, toolbar, overlay, panelTitle, panel,
             </div>
           </aside>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The moment, as one short line in the toolbar (the date and time it shows); a tap opens the pickers
+ * under it, so the toolbar stays on one line, on a phone too. A tap elsewhere or Esc closes them.
+ */
+export function WhenButton({ label, children }: { label: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useDismiss(ref, open, close)
+  return (
+    <div className="imm-when" ref={ref}>
+      <button type="button" className="ghost imm-when-button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {label}
+        <span className="sky-fold-mark" aria-hidden="true" />
+      </button>
+      <div className="imm-when-pop" hidden={!open}>
+        {children}
       </div>
     </div>
   )
