@@ -2354,6 +2354,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .solar-track input[type='range']:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .solar-months { display: flex; justify-content: space-between; gap: 6px; font-size: 10px; color: var(--muted); }
 .solar-retro-key { color: #e66e5e; }
+/* The year's moments with the Sun over the slider: a dot each, in the planet's colour */
+.solar-events { position: relative; height: 12px; }
+.solar-event {
+  position: absolute; top: 1px; width: 10px; height: 10px; margin-left: -5px; padding: 0; border: 1.5px solid rgb(9 13 26 / 0.9); border-radius: 50%;
+  background: var(--c); cursor: pointer; transition: transform 0.15s, opacity 0.2s;
+}
+.solar-event:hover, .solar-event:focus-visible { transform: scale(1.4); outline: none; }
+.solar-event.dim { opacity: 0.35; }
+/* 俯视 / 斜视, beside the zoom buttons */
+.solar-tilt { position: absolute; right: 46px; bottom: 6px; height: 30px; background: rgb(12 16 30 / 0.72); border-radius: 8px; }
+.solar-tilt button { white-space: nowrap; }
+/* The chosen planet's card, beside it on the map */
+.solar-float { position: absolute; z-index: 2; box-sizing: border-box; animation: sky-info-in 0.2s ease; }
+.solar-float .solar-card { background: rgb(9 13 26 / 0.86); backdrop-filter: blur(8px); }
 /* The chosen planet, at the top of the panel */
 .solar-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgb(216 191 140 / 0.4); background: rgb(216 191 140 / 0.08); }
 .solar-card-head { display: flex; align-items: baseline; gap: 8px; }

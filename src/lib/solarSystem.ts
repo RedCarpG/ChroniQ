@@ -31,6 +31,8 @@ export interface PlanetPosition {
   /** Heliocentric ecliptic x, y (AU): x towards the vernal equinox (♈ 0°) */
   x: number
   y: number
+  /** Above (+) or below the ecliptic, AU */
+  z: number
   /** Heliocentric ecliptic longitude, 0–360 */
   lon: number
   /** Distance from the Sun, AU */
@@ -67,6 +69,7 @@ export function planetsAt(utc: Date): PlanetPosition[] {
       name,
       x,
       y,
+      z,
       lon: norm((Math.atan2(y, x) * 180) / Math.PI),
       sun: Math.hypot(x, y, z),
       earth: key === 'earth' ? 0 : Math.hypot(x - ex, y - ey, z - ez),
@@ -108,16 +111,62 @@ export function retroSpans(key: PlanetKey, from: Date, to: Date): { start: Date;
   return spans
 }
 
-/** One orbit of each planet, sampled from the given moment: [x, y] points in AU. */
-export function orbits(utc: Date, samples = 180): Record<PlanetKey, [number, number][]> {
-  const out = {} as Record<PlanetKey, [number, number][]>
+/** One orbit of each planet, sampled from the given moment: [x, y, z] points in AU. */
+export function orbits(utc: Date, samples = 180): Record<PlanetKey, [number, number, number][]> {
+  const out = {} as Record<PlanetKey, [number, number, number][]>
   for (const { key, body, period } of PLANETS) {
-    out[key] = Array.from({ length: samples }, (_, i) => {
-      const [x, y] = helio(body, A.MakeTime(new Date(utc.getTime() + (i / samples) * period * DAY)))
-      return [x, y] as [number, number]
-    })
+    out[key] = Array.from({ length: samples }, (_, i) => helio(body, A.MakeTime(new Date(utc.getTime() + (i / samples) * period * DAY))))
   }
   return out
+}
+
+/**
+ * A planet's moments with the Sun, seen from Earth: an outer planet's opposition (冲日, opposite the
+ * Sun, up all night and nearest) and conjunction (合日, behind the Sun); an inner planet's inferior
+ * conjunction (下合, between us and the Sun), superior conjunction (上合, beyond it) and greatest
+ * elongations, east in the evening sky and west in the morning (东大距, 西大距).
+ */
+export type PlanetEventKind = 'opposition' | 'conjunction' | 'inferior' | 'superior' | 'east' | 'west'
+export interface PlanetEvent {
+  key: PlanetKey
+  kind: PlanetEventKind
+  time: Date
+  /** For an elongation: how far from the Sun, degrees */
+  elongation?: number
+}
+
+/** Every planet's events between two instants, in time order */
+export function planetEvents(from: Date, to: Date): PlanetEvent[] {
+  const out: PlanetEvent[] = []
+  const end = to.getTime()
+  const each = (find: (t: A.AstroTime) => { time: A.AstroTime; extra?: Partial<PlanetEvent> } | null, make: (time: Date, extra?: Partial<PlanetEvent>) => PlanetEvent) => {
+    let t = A.MakeTime(from)
+    for (let i = 0; i < 40; i++) {
+      const found = find(t)
+      if (!found || found.time.date.getTime() > end) break
+      out.push(make(found.time.date, found.extra))
+      t = found.time.AddDays(1)
+    }
+  }
+  for (const { key, body } of PLANETS) {
+    if (key === 'earth') continue
+    const inner = key === 'mercury' || key === 'venus'
+    const relative = (angle: number) => (t: A.AstroTime) => ({ time: A.SearchRelativeLongitude(body, angle, t) })
+    // Relative longitude (the planet's heliocentric longitude less Earth's): 0 lines it up with Earth on
+    // the same side of the Sun (an inner planet's inferior conjunction, an outer one's opposition), 180
+    // puts it beyond the Sun
+    each(relative(0), (time) => ({ key, kind: inner ? 'inferior' : 'opposition', time }))
+    each(relative(180), (time) => ({ key, kind: inner ? 'superior' : 'conjunction', time }))
+    if (inner)
+      each(
+        (t) => {
+          const e = A.SearchMaxElongation(body, t)
+          return { time: e.time, extra: { kind: e.visibility === 'evening' ? 'east' : 'west', elongation: e.elongation } }
+        },
+        (time, extra) => ({ key, kind: extra!.kind!, time, elongation: extra!.elongation }),
+      )
+  }
+  return out.sort((a, b) => a.time.getTime() - b.time.getTime())
 }
 
 /** Light travel time for a distance in AU, e.g. 8.3 分钟, 4.1 小时 (8.3 min, 4.1 h in English) */
