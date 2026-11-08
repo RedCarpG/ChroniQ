@@ -548,6 +548,12 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
 
   // On a phone, the time bar above the sky unfolded (folded to one line at first)
   const [timeOpen, setTimeOpen] = useState(false)
+  /** Back to the sky of this moment, following the clock (a press while following only refreshes it) */
+  const goNow = () => {
+    setSpeed(0)
+    setNow(new Date())
+    setPicked(null)
+  }
   // 地点 in the bar above the sky opens the place's details under it; a click elsewhere or Esc shuts them
   const [placeOpen, setPlaceOpen] = useState(false)
   const placeRef = useRef<HTMLDivElement>(null)
@@ -2148,9 +2154,22 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             data-sound={timeOpen ? 'off' : 'on'}
             onClick={() => setTimeOpen((o) => !o)}
           >
-            {t('{m}月{d}日', { m: Number(wall.date.slice(5, 7)), d: Number(wall.date.slice(8, 10)) })} {wall.time} · {t(place.name)}
-            {speed !== 0 && ` · ${rateLabel(speed)}`}
+            <span className="sky-time-text">
+              {t('{m}月{d}日', { m: Number(wall.date.slice(5, 7)), d: Number(wall.date.slice(8, 10)) })} {wall.time} · {t(place.name)}
+              {speed !== 0 && ` · ${rateLabel(speed)}`}
+            </span>
             <span className="sky-fold-mark" aria-hidden="true" />
+          </button>
+          {/* 现在 always at hand, not inside the folded bar */}
+          <button
+            type="button"
+            className={`ghost toggle sky-time-now${picked ? ' sky-now-hint' : ' on'}`}
+            title={picked ? t('回到现在') : undefined}
+            aria-pressed={!picked}
+            data-sound={picked ? 'on' : 'tap'}
+            onClick={goNow}
+          >
+            {t('现在')}
           </button>
           <button
             type="button"
@@ -2177,11 +2196,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
           aria-pressed={!picked}
           // Already following the clock: pressing again only refreshes it
           data-sound={picked ? 'on' : 'tap'}
-          onClick={() => {
-            setSpeed(0)
-            setNow(new Date())
-            setPicked(null)
-          }}
+          onClick={goNow}
         >
           {t('现在')}
         </button>

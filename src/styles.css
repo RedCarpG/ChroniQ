@@ -3161,6 +3161,10 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   .sky-time-summary[aria-expanded='true'] .sky-fold-mark { transform: translateY(2px) rotate(-135deg); }
   .sky-time-play { width: 40px; height: 34px; margin: 0; padding: 0; }
   .sky-time-play.on { color: var(--accent); border-color: var(--accent); }
+  .sky-time-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sky-time-now { flex: none; height: 34px; margin: 0; padding: 0 10px; font-size: 13px; }
+  /* In the bar the fold opens, 现在 is already beside the summary */
+  .sky-timebar > .toggle { display: none; }
   .sky-toolbar:not(.time-open) .sky-timebar { display: none; }
   /* 天象's 显示 drawer: on a phone it covers most of the screen, so it is a dark panel rather than a
      see-through shade (the sky, the table and the page's words showed through its own) */
