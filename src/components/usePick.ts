@@ -42,5 +42,5 @@ export function usePick<T>() {
     }),
     [picked],
   )
-  return { active: hover ?? picked, hover, picked, props, clear: () => setPicked(null) }
+  return { active: hover ?? picked, hover, picked, props, clear: () => setPicked(null), choose: (thing: T) => setPicked(thing) }
 }

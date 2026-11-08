@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { DipperDial } from './DipperDial'
@@ -41,10 +41,11 @@ import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { SkyDayEvents, SkyForecast, useSkyEventText, useSkyEvents } from './SkyForecast'
 import type { SkyMoment } from './SkyView'
-import { loadSkyPlace, loadStarSettings, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
+import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { useSettings, useT, useTerm } from '../settingsContext'
-import { westernToday } from '../lib/westernToday'
-import { WesternDayList } from './WesternDay'
+
+/** 当日星象, with astronomy-engine, loaded apart from the first screen */
+const CalendarStars = lazy(() => import('./CalendarStars'))
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
 const MIN_YEAR = 1900
@@ -64,13 +65,15 @@ interface Props {
   skyPlace: StarPlace
   /** Opens the sky at a moment */
   onViewSky: (moment: SkyMoment) => void
+  /** Open 观月 at a day (in its evening), or at an instant (a lunar eclipse) */
+  onViewMoon: (at: SolarDay | number) => void
 }
 type CalendarShow = keyof Pick<Settings, 'dayGanzhi' | 'moonPhase' | 'dipper' | 'skyEvents'>
 
 /** 北京时间, as the 朔望弦 are given, is not the time here (taken from now's offset) */
 const notBeijing = new Date().getTimezoneOffset() !== -480
 
-export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky }: Props) {
+export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky, onViewMoon }: Props) {
   const [selected, setSelected] = useState(todaySolar)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
@@ -228,11 +231,11 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
   const selectedMoon = moonOf(selected)
   // 今日星象 for the selected day: as it is now for today, at noon for any other day
   const isToday = sameDay(selected, todaySolar())
-  const starSettings = useMemo(loadStarSettings, [])
-  const western = useMemo(() => {
-    const at = isToday ? new Date() : new Date(selected.getYear(), selected.getMonth() - 1, selected.getDay(), 12)
-    return westernToday(at, starSettings)
-  }, [selected, isToday, starSettings])
+  // Now for today (to the minute it was chosen), noon for another day
+  const starsAt = useMemo(
+    () => (isToday ? Math.floor(Date.now() / 60_000) * 60_000 : new Date(selected.getYear(), selected.getMonth() - 1, selected.getDay(), 12).getTime()),
+    [selected, isToday],
+  )
   // 斗柄指月: for the month shown, or the day picked when it is in that month (and in week and year views)
   const anchor =
     mode !== 'month' || (selected.getYear() === view.year && selected.getMonth() === view.month)
@@ -747,14 +750,29 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
           <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
           <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
           <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
-          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} />
-          <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')}>
+          <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} onViewMoon={(time) => onViewMoon(time)} />
+          {/* The Moon's phase at once; the rest when its code is in (CalendarStars, apart from the first screen) */}
+          <Suspense fallback={<dl className="kv western-day">
             <dt>{t('月相')}</dt>
             <dd className="moon-line">
               <MoonGlyph moon={selectedMoon} />
               {moonText(selectedMoon)}
+              <button type="button" className="ghost view-more" data-sound="gong" onClick={() => onViewMoon(selected)}>
+                {t('观月 →')}
+              </button>
             </dd>
-          </WesternDayList>
+          </dl>}>
+            <CalendarStars at={starsAt} isToday={isToday}>
+            <dt>{t('月相')}</dt>
+            <dd className="moon-line">
+              <MoonGlyph moon={selectedMoon} />
+              {moonText(selectedMoon)}
+              <button type="button" className="ghost view-more" data-sound="gong" onClick={() => onViewMoon(selected)}>
+                {t('观月 →')}
+              </button>
+            </dd>
+          </CalendarStars>
+          </Suspense>
           <button className="primary block" data-sound="gong" onClick={() => onPickBazi(selected)}>
             {t('以此日排八字 →')}
           </button>

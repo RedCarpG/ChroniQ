@@ -14,6 +14,7 @@ import { horizonMatrix, skyAt, vectorsOfStars } from '../lib/sky'
 import { BODY_COLOUR } from './bodyColours'
 import type { Frame } from './Immersive'
 import { MoonGlobe } from './MoonGlobe'
+import { MOON_FEATURES, type MoonFeature } from '../lib/moonFeatures'
 
 const RAD = Math.PI / 180
 
@@ -27,24 +28,6 @@ export function fovFor(diameter: number, share: number) {
   return (4 * Math.atan(Math.tan((diameter * RAD) / 4) / share)) / RAD
 }
 
-/** Seas and craters on the near side to name: selenographic latitude and longitude (east +), degrees */
-const FEATURES: { zh: string; en: string; lat: number; lon: number; sea: boolean }[] = [
-  { zh: '静海', en: 'Mare Tranquillitatis', lat: 8.5, lon: 31.4, sea: true },
-  { zh: '澄海', en: 'Mare Serenitatis', lat: 28, lon: 17.5, sea: true },
-  { zh: '危海', en: 'Mare Crisium', lat: 17, lon: 59.1, sea: true },
-  { zh: '丰富海', en: 'Mare Fecunditatis', lat: -7.8, lon: 51.3, sea: true },
-  { zh: '酒海', en: 'Mare Nectaris', lat: -15.2, lon: 35.5, sea: true },
-  { zh: '雨海', en: 'Mare Imbrium', lat: 32.8, lon: -15.6, sea: true },
-  { zh: '风暴洋', en: 'Oceanus Procellarum', lat: 18.4, lon: -57.4, sea: true },
-  { zh: '云海', en: 'Mare Nubium', lat: -21.3, lon: -16.6, sea: true },
-  { zh: '湿海', en: 'Mare Humorum', lat: -24.4, lon: -38.6, sea: true },
-  { zh: '冷海', en: 'Mare Frigoris', lat: 56, lon: 1.4, sea: true },
-  { zh: '第谷', en: 'Tycho', lat: -43.3, lon: -11.4, sea: false },
-  { zh: '哥白尼', en: 'Copernicus', lat: 9.6, lon: -20.1, sea: false },
-  { zh: '开普勒', en: 'Kepler', lat: 8.1, lon: -38, sea: false },
-  { zh: '阿里斯塔克', en: 'Aristarchus', lat: 23.7, lon: -47.4, sea: false },
-  { zh: '柏拉图', en: 'Plato', lat: 51.6, lon: -9.4, sea: false },
-]
 
 const COMPASS: [string, string, number][] = [
   ['北', 'N', 0],
@@ -130,7 +113,10 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
       canvas.height = Math.round(h * dpr)
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, lit: moon.lit, moonX, moonY, moonPx, bodies, faint, en, name })
+    // In a lunar eclipse the Moon's light in the sky fades with it (to about a tenth when wholly in the umbra)
+    const sh = moon.frame.shadow
+    const shade = Math.min(1, Math.max(0.12, (Math.hypot(sh.x, sh.y) - sh.umbra + 1) / 2))
+    drawSky(ctx, w, h, cam, view, { utc, latitude, longitude, lit: moon.lit * shade, moonX, moonY, moonPx, bodies, faint, en, name })
   })
 
   // A drag across moves the time (about five minutes a pixel zoomed in, more zoomed out); two fingers
@@ -138,10 +124,19 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
   // touch only starts moving the time after a little way or a moment, so a pinch never begins as a drag
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const gesture = useRef<{ x: number; dist?: number; fov: number; pinched: boolean; dragging: boolean; at: number } | null>(null)
+  // A sea or crater tapped: its card beside it (a tap on the sky, or Esc, puts it away)
+  const [chosen, setChosen] = useState<string | null>(null)
+  useEffect(() => {
+    if (!chosen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setChosen(null)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [chosen])
   const perPx = 5 * 60_000 * Math.max(1, Math.sqrt(fov / 2))
   const clampFov = (f: number) => Math.max(moonFovMin(moon.diameter), Math.min(MOON_FOV_MAX, f))
   const handlers = {
     onPointerDown: (e: React.PointerEvent<HTMLCanvasElement>) => {
+      setChosen(null)
       e.currentTarget.setPointerCapture?.(e.pointerId)
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const pts = [...pointers.current.values()]
@@ -178,7 +173,7 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
   // The seas and craters, where they are on the disc as it is turned
   const named =
     features && moonPx >= 200
-      ? FEATURES.flatMap((f) => {
+      ? MOON_FEATURES.flatMap((f) => {
           const [X, Y, Z] = moon.frame.body
           const c = Math.cos(f.lat * RAD)
           const b = [c * Math.cos(f.lon * RAD), c * Math.sin(f.lon * RAD), Math.sin(f.lat * RAD)]
@@ -222,10 +217,21 @@ export function MoonSky({ utc, latitude, longitude, moon, frame, fov, onFov, onS
         </div>
       )}
       {named.map((f) => (
-        <span key={f.zh} className={`moon-feature${f.sea ? ' sea' : ''}`} style={{ left: f.x, top: f.y }}>
+        <button
+          key={f.zh}
+          type="button"
+          className={`moon-feature${f.sea ? ' sea' : ''}${chosen === f.zh ? ' on' : ''}`}
+          style={{ left: f.x, top: f.y }}
+          aria-expanded={chosen === f.zh}
+          onClick={() => setChosen((c) => (c === f.zh ? null : f.zh))}
+        >
           {en ? f.en : f.zh}
-        </span>
+        </button>
       ))}
+      {(() => {
+        const f = named.find((n) => n.zh === chosen)
+        return f ? <FeatureCard feature={f} x={f.x} y={f.y} screen={screen} en={en} /> : null
+      })()}
     </div>
   )
 }
@@ -387,4 +393,22 @@ function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camer
     ctx.fillStyle = major ? 'rgba(235,205,140,0.95)' : 'rgba(220,195,150,0.7)'
     ctx.fillText(s.en ? en : zh, p[0], p[1] + (major ? 18 : 15))
   }
+}
+
+/** A sea's or crater's card, beside its name (kept on the screen) */
+function FeatureCard({ feature: f, x, y, screen, en }: { feature: MoonFeature; x: number; y: number; screen: { w: number; h: number }; en: boolean }) {
+  const width = Math.min(260, screen.w - 24)
+  const left = Math.max(12, Math.min(screen.w - width - 12, x - 8))
+  const below = y + 18
+  const style = below + 150 < screen.h ? { left, top: below, width } : { left, bottom: screen.h - y + 14, width }
+  return (
+    <div className="moon-feature-card" role="note" style={style}>
+      <strong>{en ? f.en : f.zh}</strong>
+      <span className="muted">
+        {en ? `${f.sea ? 'Sea' : 'Crater'} · ${f.km} km across` : `${f.sea ? '月海' : '环形山'} · 直径约 ${f.km} 公里`}
+        {!en && ` · ${f.en}`}
+      </span>
+      <p>{en ? f.note.en : f.note.zh}</p>
+    </div>
+  )
 }

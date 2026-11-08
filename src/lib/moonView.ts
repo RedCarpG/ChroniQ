@@ -25,6 +25,12 @@ const norm360 = (d: number) => ((d % 360) + 360) % 360
 export interface MoonFrame {
   body: [V3, V3, V3]
   sun: V3
+  /**
+   * Earth's shadow on the disc, in units of the disc's radius: where its axis meets the Moon's plane
+   * (x right, y up from the disc's centre) and the radii of the umbra and the penumbra there. Far off
+   * the disc except in a lunar eclipse.
+   */
+  shadow: { x: number; y: number; umbra: number; penumbra: number }
 }
 
 export interface MoonView {
@@ -87,6 +93,33 @@ export function moonView(utc: Date, latitude: number, longitude: number): MoonVi
   const phi = latitude * RAD
   const parallactic = Math.atan2(Math.sin(hourAngle), Math.tan(phi) * Math.cos(dl) - Math.sin(dl) * Math.cos(hourAngle)) / RAD
 
+  // Earth's shadow at the Moon (as the Explanatory Supplement gives it, its radii enlarged by 2% for
+  // the atmosphere): its axis runs from the Sun through Earth's centre, so it is placed geocentrically
+  const KM = 149_597_870.7
+  const moonKm = Math.hypot(...moonGeo) * KM
+  const sunKm = Math.hypot(...sunGeo) * KM
+  const rho = Math.asin(1737.4 / moonKm)
+  const parallax = Math.asin(6378.14 / moonKm)
+  const sunRadius = Math.asin(696_000 / sunKm)
+  const sunParallax = Math.asin(6378.14 / sunKm)
+  const umbra = 1.02 * (parallax - sunRadius + sunParallax)
+  const penumbra = 1.02 * (parallax + sunRadius + sunParallax)
+  // The shadow's axis and the Moon's centre, both as seen from Earth's centre, set on the screen's plane
+  // (the topocentric view differs by the Moon's parallax, up to a degree, but the shadow lies on the
+  // Moon where it lies: what matters is where it is against the Moon's geocentric centre)
+  const anti = unit(scale(sunGeo, -1))
+  const mg = unit(moonGeo)
+  const tanRho = Math.tan(rho)
+  const onPlane = (v: V3) => [dot(v, right) / dot(v, d), dot(v, up) / dot(v, d)]
+  const shadow =
+    dot(anti, mg) > 0.9
+      ? (() => {
+          const [ax, ay] = onPlane(anti)
+          const [mx, my] = onPlane(mg)
+          return { x: (ax - mx) / tanRho, y: (ay - my) / tanRho, umbra: Math.tan(umbra) / tanRho, penumbra: Math.tan(penumbra) / tanRho }
+        })()
+      : { x: 1e4, y: 1e4, umbra: 1, penumbra: 2 }
+
   return {
     phase: A.MoonPhase(t),
     lit: illum.phase_fraction,
@@ -98,7 +131,7 @@ export function moonView(utc: Date, latitude: number, longitude: number): MoonVi
     libration: { lon: lib.elon, lat: lib.elat },
     brightLimb,
     parallactic,
-    frame: { body: [screen(x), screen(y), screen(north)], sun: screen(unit(sub(sunGeo, moonGeo))) },
+    frame: { body: [screen(x), screen(y), screen(north)], sun: screen(unit(sub(sunGeo, moonGeo))), shadow },
   }
 }
 
@@ -206,4 +239,33 @@ export function wallOf(utc: Date, timeZone: string): { year: number; month: numb
 export function phaseAt(utc: Date): { angle: number; lit: number } {
   const t = A.MakeTime(utc)
   return { angle: A.MoonPhase(t), lit: A.Illumination(A.Body.Moon, t).phase_fraction }
+}
+
+export type EclipseKind = 'penumbral' | 'partial' | 'total'
+export interface LunarEclipse {
+  kind: EclipseKind
+  peak: Date
+  /** Each phase's start and end: in the penumbra (all of it), partly in the umbra, wholly in it */
+  penumbral: [Date, Date]
+  partial: [Date, Date] | null
+  total: [Date, Date] | null
+}
+
+/**
+ * The lunar eclipse an instant falls in (from the Moon touching the penumbra to its leaving it), or
+ * else the next one after it
+ */
+export function lunarEclipseAt(utc: Date): { eclipse: LunarEclipse; now: boolean } {
+  const info = A.SearchLunarEclipse(A.MakeTime(new Date(utc.getTime() - 6 * 3_600_000)))
+  const peak = info.peak.date.getTime()
+  const span = (minutes: number): [Date, Date] | null => (minutes > 0 ? [new Date(peak - minutes * 60_000), new Date(peak + minutes * 60_000)] : null)
+  const eclipse: LunarEclipse = {
+    kind: info.kind === A.EclipseKind.Total ? 'total' : info.kind === A.EclipseKind.Partial ? 'partial' : 'penumbral',
+    peak: info.peak.date,
+    penumbral: span(info.sd_penum)!,
+    partial: span(info.sd_partial),
+    total: span(info.sd_total),
+  }
+  const t = utc.getTime()
+  return { eclipse, now: t >= eclipse.penumbral[0].getTime() && t <= eclipse.penumbral[1].getTime() }
 }

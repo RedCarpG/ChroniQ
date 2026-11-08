@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import heightsUrl from '../assets/moon/ldem_3_8bit.jpg'
 import colourLargeUrl from '../assets/moon/lroc_color_2k.jpg'
+import colourHugeUrl from '../assets/moon/lroc_color_4k.jpg'
 import colourSmallUrl from '../assets/moon/lroc_color_poles_1k.jpg'
 import type { MoonFrame } from '../lib/moonView'
 import { litPart } from '../lib/sky'
@@ -36,6 +37,10 @@ uniform float uMapped;
 uniform float uRelief;
 uniform float uEarthshine;
 uniform float uAa;
+// Earth's shadow: its centre on the disc (disc radii, y up), and the umbra's and penumbra's radii
+uniform vec4 uShadow;
+// How bright the umbra's light is: all of it in totality, much less beside a sunlit part (as the eye sees it)
+uniform float uUmbraGain;
 const float PI = 3.14159265;
 void main() {
   // This pixel on the disc: 1 at its edge, y up
@@ -61,7 +66,14 @@ void main() {
   float light = mu0 > 0.0 ? 2.0 * mu0 / (mu0 + mu + 1e-4) : 0.0;
   // Sunlit peaks just past the terminator, but no light far into the night side
   light *= smoothstep(-0.12, 0.02, dot(n, uSun));
-  vec3 colour = albedo * light * 1.6 + albedo * uEarthshine * vec3(0.78, 0.88, 1.1) * (0.45 + 0.55 * mu);
+  // In a lunar eclipse: the penumbra hides part of the Sun, more towards the umbra; in the umbra only
+  // the light bent through Earth's air reaches the Moon, faint and copper red, darkest at the middle
+  float ds = length(v - uShadow.xy);
+  float seen = clamp((ds - uShadow.z) / max(uShadow.w - uShadow.z, 1e-3), 0.0, 1.0);
+  float umbral = 1.0 - smoothstep(uShadow.z - 0.03, uShadow.z + 0.03, ds);
+  float level = mix(pow(seen, 0.8), (0.05 + 0.13 * clamp(ds / uShadow.z, 0.0, 1.0)) * uUmbraGain, umbral);
+  vec3 tint = mix(vec3(1.0), vec3(0.95, 0.42, 0.22), umbral);
+  vec3 colour = albedo * light * 1.6 * level * tint + albedo * uEarthshine * vec3(0.78, 0.88, 1.1) * (0.45 + 0.55 * mu);
   gl_FragColor = vec4(pow(colour, vec3(1.0 / 2.2)) * edge, edge);
 }`
 
@@ -74,8 +86,9 @@ interface Gl {
   height: WebGLTexture
 }
 
-function setUp(canvas: HTMLCanvasElement): Gl | null {
-  const gl = canvas.getContext('webgl', { premultipliedAlpha: true, antialias: false, alpha: true })
+function setUp(canvas: HTMLCanvasElement, keep = false): Gl | null {
+  // keep: the picture stays in the canvas after drawing, to be copied out (a poster)
+  const gl = canvas.getContext('webgl', { premultipliedAlpha: true, antialias: false, alpha: true, preserveDrawingBuffer: keep })
   if (!gl) return null
   const shader = (type: number, source: string) => {
     const s = gl.createShader(type)!
@@ -134,6 +147,52 @@ const loadImage = (url: string) =>
     image.src = url
   })
 
+/** Draws the Moon on the canvas, w × h device pixels, the disc at (cx, cy) with radius r (device pixels, from the top left) */
+function paint(g: Gl, w: number, h: number, disc: GlobeCrop, frame: MoonFrame, lit: number, mapped: number) {
+  const { gl: c, loc } = g
+    c.viewport(0, 0, w, h)
+    c.uniform2f(loc('uRes'), w, h)
+    c.uniform2f(loc('uCentre'), disc.cx, disc.cy)
+    c.uniform1f(loc('uRadius'), disc.r)
+    const [x, y, z] = frame.body
+    // Rows of the matrix: the Moon's axes in screen coordinates (WebGL takes it column by column)
+    c.uniformMatrix3fv(loc('uBody'), false, [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]])
+    c.uniform3fv(loc('uSun'), frame.sun)
+    c.uniform3fv(loc('uPole'), z)
+    c.uniform2f(loc('uTexel'), 1 / 1024, 1 / 512)
+    c.uniform1f(loc('uMapped'), mapped)
+    c.uniform1f(loc('uRelief'), 2.4)
+    // Earthshine: the Earth seen from the Moon is nearly full when the Moon is new
+    c.uniform1f(loc('uEarthshine'), 0.07 * (1 - lit) ** 2)
+    c.uniform1f(loc('uAa'), 1.2 / disc.r)
+    const sh = frame.shadow ?? { x: 1e4, y: 1e4, umbra: 1, penumbra: 2 }
+    c.uniform4f(loc('uShadow'), sh.x, sh.y, sh.umbra, sh.penumbra)
+    c.uniform1f(loc('uUmbraGain'), Math.hypot(sh.x, sh.y) + 1 <= sh.umbra ? 1 : 0.35)
+    c.clear(c.COLOR_BUFFER_BIT)
+    c.drawArrays(c.TRIANGLE_STRIP, 0, 4)
+}
+
+/**
+ * The Moon alone, drawn once to a canvas of its own (size × size pixels) with the larger map: for a
+ * picture to save (the poster). Null where there is no WebGL or the maps cannot be had.
+ */
+export async function renderMoon(frame: MoonFrame, lit: number, size: number): Promise<HTMLCanvasElement | null> {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const g = setUp(canvas, true)
+  if (!g) return null
+  try {
+    const [colour, heights] = await Promise.all([loadImage(colourLargeUrl), loadImage(heightsUrl)])
+    upload(g, 0, g.colour, colour, g.gl.RGB)
+    upload(g, 1, g.height, heights, g.gl.LUMINANCE)
+  } catch {
+    return null
+  }
+  paint(g, size, size, { cx: size / 2, cy: size / 2, r: size / 2 / 1.02 }, frame, lit, 1)
+  return canvas
+}
+
 /** Which part of the disc the element shows, in its own CSS pixels: the disc's centre and radius */
 export interface GlobeCrop {
   cx: number
@@ -151,9 +210,11 @@ export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: 
   const [flat, setFlat] = useState(false)
   // Whether the maps are in (0: a grey Moon, in its phase, until they come)
   const mapped = useRef(0)
-  // The larger colour map, fetched once the Moon is drawn large (asked for at most once)
-  const large = useRef<'no' | 'asked'>('no')
-  const askLarge = useRef(() => {})
+  // The larger colour maps, fetched once the Moon is drawn large (2K) or zoomed in close (4K), each
+  // asked for at most once; a smaller one arriving late does not replace a larger one in already
+  const asked = useRef(0)
+  const shown = useRef(0)
+  const askMap = useRef((_level: number) => {})
   const cropRef = useRef(crop)
   cropRef.current = crop
   const draw = useRef(() => {})
@@ -161,7 +222,6 @@ export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: 
     const g = gl.current
     const canvas = canvasRef.current
     if (!g || !canvas) return
-    const { gl: c, loc } = g
     const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1)
     const w = Math.max(1, Math.round(canvas.clientWidth * dpr))
     const h = Math.max(1, Math.round(canvas.clientHeight * dpr))
@@ -171,24 +231,9 @@ export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: 
     }
     const disc = cropRef.current ?? { cx: canvas.clientWidth / 2, cy: canvas.clientHeight / 2, r: canvas.clientWidth / 2 / 1.02 }
     const radius = Math.max(0.5, disc.r * dpr)
-    if (radius > 320 && mapped.current && large.current === 'no') askLarge.current()
-    c.viewport(0, 0, w, h)
-    c.uniform2f(loc('uRes'), w, h)
-    c.uniform2f(loc('uCentre'), disc.cx * dpr, disc.cy * dpr)
-    c.uniform1f(loc('uRadius'), radius)
-    const [x, y, z] = frame.body
-    // Rows of the matrix: the Moon's axes in screen coordinates (WebGL takes it column by column)
-    c.uniformMatrix3fv(loc('uBody'), false, [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]])
-    c.uniform3fv(loc('uSun'), frame.sun)
-    c.uniform3fv(loc('uPole'), z)
-    c.uniform2f(loc('uTexel'), 1 / 1024, 1 / 512)
-    c.uniform1f(loc('uMapped'), mapped.current)
-    c.uniform1f(loc('uRelief'), 2.4)
-    // Earthshine: the Earth seen from the Moon is nearly full when the Moon is new
-    c.uniform1f(loc('uEarthshine'), 0.07 * (1 - lit) ** 2)
-    c.uniform1f(loc('uAa'), 1.2 / radius)
-    c.clear(c.COLOR_BUFFER_BIT)
-    c.drawArrays(c.TRIANGLE_STRIP, 0, 4)
+    const want = radius > 640 ? 2 : radius > 320 ? 1 : 0
+    if (mapped.current && want > asked.current) askMap.current(want)
+    paint(g, w, h, { cx: disc.cx * dpr, cy: disc.cy * dpr, r: radius }, frame, lit, mapped.current)
   }
 
   useLayoutEffect(() => {
@@ -200,11 +245,16 @@ export function MoonGlobe({ frame, lit, label, crop }: { frame: MoonFrame; lit: 
     let gone = false
     // The maps: the heights and the smaller colour map first, the larger one too once the Moon is
     // drawn large (now, or later when zoomed in)
-    askLarge.current = () => {
-      large.current = 'asked'
-      loadImage(colourLargeUrl)
+    const maxTexture = g.gl.getParameter(g.gl.MAX_TEXTURE_SIZE) as number
+    askMap.current = (level: number) => {
+      // A device that cannot hold a 4096-wide texture keeps the 2K map
+      const fits = level === 2 && maxTexture < 4096 ? 1 : level
+      if (fits <= asked.current) return
+      asked.current = fits
+      loadImage(fits === 2 ? colourHugeUrl : colourLargeUrl)
         .then((image) => {
-          if (gone) return
+          if (gone || fits < shown.current) return
+          shown.current = fits
           upload(g, 0, g.colour, image, g.gl.RGB)
           draw.current()
         })

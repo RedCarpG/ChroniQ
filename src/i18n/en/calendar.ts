@@ -199,4 +199,6 @@ export const CALENDAR: Record<string, string> = {
   黄历: 'Almanac',
   这天没有行星逆行: 'No planet is retrograde that day',
   星盘行运: 'Transits',
+  '观月 →': 'Moon →',
+  '太阳系 →': 'Solar system →',
 }

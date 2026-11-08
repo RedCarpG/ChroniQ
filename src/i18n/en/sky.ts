@@ -296,4 +296,12 @@ export const SKY: Record<string, string> = {
   '为了让内行星也看得见，远处的距离按比例压缩。': 'Further distances are compressed so the inner planets still show.',
   '{n} 颗行星逆行': '{n} planets retrograde',
   没有行星逆行: 'No planet retrograde',
+  冲日: ' at opposition',
+  合日: ' in conjunction with the Sun',
+  下合: ' at inferior conjunction',
+  上合: ' at superior conjunction',
+  东大距: ' at greatest eastern elongation',
+  西大距: ' at greatest western elongation',
+  俯视: 'From above',
+  斜视: 'Tilted',
 }

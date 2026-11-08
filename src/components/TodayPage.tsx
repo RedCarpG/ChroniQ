@@ -43,7 +43,18 @@ const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', v
  * 今日: one screen for the day. The almanac and the Moon, what can be seen tonight from the 天象 page's
  * place, and how today meets the chart chosen in the 命盘 drawer.
  */
-export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPlace; onViewSky: (moment: SkyMoment) => void }) {
+export function TodayPage({
+  fallbackPlace,
+  onViewSky,
+  onViewMoon,
+  onViewSolar,
+}: {
+  fallbackPlace: StarPlace
+  onViewSky: (moment: SkyMoment) => void
+  /** Open 观月 now, or 太阳系 with a planet picked */
+  onViewMoon: () => void
+  onViewSolar: (planet: string) => void
+}) {
   const t = useT()
   const term = useTerm()
   const { language } = useSettings()
@@ -167,6 +178,9 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
           <dd className="moon-line">
             <MoonGlyph moon={moon} />
             {t(moon.name)} · {t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })}
+            <button type="button" className="ghost view-more" data-sound="gong" onClick={onViewMoon}>
+              {t('观月 →')}
+            </button>
           </dd>
         </dl>
         <div className="tag-block">
@@ -304,6 +318,15 @@ export function TodayPage({ fallbackPlace, onViewSky }: { fallbackPlace: StarPla
                           {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
                         </span>
                       </span>
+                    </button>
+                    {/* The Moon up close, or the planet on its orbit */}
+                    <button
+                      type="button"
+                      className="ghost view-more"
+                      data-sound="gong"
+                      onClick={() => (b.key === 'moon' ? onViewMoon() : onViewSolar(b.key))}
+                    >
+                      {b.key === 'moon' ? t('观月 →') : t('太阳系 →')}
                     </button>
                   </li>
                 )

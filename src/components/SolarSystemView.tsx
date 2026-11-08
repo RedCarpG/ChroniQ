@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SIGN_ELEMENT, SIGN_GLYPHS, SIGNS } from '../lib/astrology'
 import { enDate } from '../lib/calendar'
 import { zodiacStars } from '../lib/eclipticStars'
-import { PLANETS, lightTime, orbits, planetsAt, retroSpans, seenTrail, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
+import { PLANETS, lightTime, orbits, planetEvents, planetsAt, retroSpans, seenTrail, type PlanetEvent, type PlanetEventKind, type PlanetKey, type PlanetPosition } from '../lib/solarSystem'
 import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
 import { DateParts } from './BirthForm'
@@ -17,16 +17,21 @@ const DAY = 86400000
 const R_Z1 = 193
 const R_Z2 = 211
 const R_ZMID = (R_Z1 + R_Z2) / 2
-/** A point at an ecliptic longitude (counter-clockwise from ♈ 0°, to the right) and a radius */
-const polar = (lon: number, r: number): [number, number] => [
+/**
+ * A point at an ecliptic longitude (counter-clockwise from ♈ 0°, to the right) and a radius in the
+ * ecliptic's plane; `sq` squashes it upright when the plane is seen tilted (斜视: cos of the tilt)
+ */
+const polarAt = (lon: number, r: number, sq: number): [number, number] => [
   C + r * Math.cos((lon * Math.PI) / 180),
-  C - r * Math.sin((lon * Math.PI) / 180),
+  C - r * Math.sin((lon * Math.PI) / 180) * sq,
 ]
 /** The ring of a sign, from one longitude to another (counter-clockwise on screen) */
-const sector = (from: number, to: number) => {
-  const [a, b, c, d] = [polar(from, R_Z2), polar(to, R_Z2), polar(to, R_Z1), polar(from, R_Z1)]
-  return `M${a}A${R_Z2} ${R_Z2} 0 0 0 ${b}L${c}A${R_Z1} ${R_Z1} 0 0 1 ${d}Z`
+const sectorAt = (from: number, to: number, sq: number) => {
+  const [a, b, c, d] = [polarAt(from, R_Z2, sq), polarAt(to, R_Z2, sq), polarAt(to, R_Z1, sq), polarAt(from, R_Z1, sq)]
+  return `M${a}A${R_Z2} ${R_Z2 * sq} 0 0 0 ${b}L${c}A${R_Z1} ${R_Z1 * sq} 0 0 1 ${d}Z`
 }
+/** 斜视: how far the view is tilted from straight above the ecliptic's pole, degrees */
+const TILT = 64
 /** 白羊 12° */
 const signDeg = (lon: number) => [SIGNS[Math.floor((((lon % 360) + 360) % 360) / 30)], Math.floor((((lon % 360) + 360) % 360) % 30)] as const
 
@@ -54,7 +59,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * map is drawn over the whole screen (Immersive); the wheel, a pinch or the buttons zoom it from the
  * inner planets out to Pluto, and a drag across moves the date.
  */
-export function SolarSystemView() {
+export function SolarSystemView({ planet }: { /** Opened from a planet (今日): the one picked at first */ planet?: string | null } = {}) {
   const t = useT()
   const { language } = useSettings()
   const en = language === 'en'
@@ -65,10 +70,37 @@ export function SolarSystemView() {
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(7)
   const [reach, setReach] = useState(REACH_START)
+  // 俯视 (from the ecliptic's pole) or 斜视 (tilted, the orbits ellipses and each planet as far above or
+  // below the ecliptic as it is); the tilt glides between them
+  const [tilted, setTilted] = useState(false)
+  const [tilt, setTilt] = useState(0)
+  useEffect(() => {
+    const to = tilted ? TILT : 0
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return setTilt(to)
+    let raf = 0
+    const from = tilt
+    const start = performance.now()
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / 450)
+      setTilt(from + (to - from) * (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2))
+      if (k < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+    // glides from wherever it is
+  }, [tilted])
+  const sq = Math.cos((tilt * Math.PI) / 180)
+  const lift = Math.sin((tilt * Math.PI) / 180)
+  const polar = (lon: number, r: number) => polarAt(lon, r, sq)
+  const sector = (from: number, to: number) => sectorAt(from, to, sq)
   const zoomTo = (r: number) => setReach(Math.max(REACH_MIN, Math.min(REACH_MAX, r)))
   // The planet picked out: hovered, or chosen (a click; a click on empty space lets go). A chosen
   // one keeps Earth's line of sight to it and its trail among the stars, also while playing.
   const pick = usePick<PlanetKey>()
+  useEffect(() => {
+    if (planet && PLANETS.some((p) => p.key === planet)) pick.choose(planet as PlanetKey)
+    // only as the page opens
+  }, [])
   const focus = pick.active
 
   // Following now: refresh once a minute
@@ -117,22 +149,22 @@ export function SolarSystemView() {
       sizes.set(w, (sizes.get(w) ?? '') + `M${x.toFixed(1)} ${y.toFixed(1)}h.01`)
     }
     return [...sizes]
-  }, [decade])
-  const xy = (x: number, y: number): [number, number] => {
-    const d = Math.hypot(x, y)
+  }, [decade, sq])
+  const xy = (x: number, y: number, z = 0): [number, number] => {
+    const d = Math.hypot(x, y, z)
     const k = d ? radiusAt(d, reach) / d : 0
-    return [C + x * k, C - y * k]
+    return [C + x * k, C - (y * sq + z * lift) * k]
   }
   // The orbits' outlines only change with the zoom, not with the date (which playback moves every frame)
   const orbitPoints = useMemo(
-    () => Object.fromEntries(Object.entries(paths).map(([key, pts]) => [key, pts.map(([x, y]) => xy(x, y).join(',')).join(' ')])),
-    // xy follows the zoom
-    [paths, reach],
+    () => Object.fromEntries(Object.entries(paths).map(([key, pts]) => [key, pts.map(([x, y, z]) => xy(x, y, z).join(',')).join(' ')])),
+    // xy follows the zoom and the tilt
+    [paths, reach, sq],
   )
   /** Where an off-map planet's direction meets the rim */
   const rim = (p: PlanetPosition): [number, number] => {
     const a = Math.atan2(p.y, p.x)
-    return [C + (R + 8) * Math.cos(a), C - (R + 8) * Math.sin(a)]
+    return [C + (R + 8) * Math.cos(a), C - (R + 8) * Math.sin(a) * sq]
   }
   const inside = (p: PlanetPosition) => p.sun <= reach * 1.02
   const shown = planets.filter(inside)
@@ -171,12 +203,16 @@ export function SolarSystemView() {
     const period = PLANETS.find((x) => x.key === p.key)!.period
     const at = Math.floor(((((time - t0) / (period * DAY)) % 1) + 1) % 1 * n)
     const back = Array.from({ length: 11 }, (_, k) => xy(...pts[(((at - k) % n) + n) % n]).join(','))
-    return [`${xy(p.x, p.y).join(',')} ${back.slice(0, 4).join(' ')}`, back.slice(3, 7).join(' '), back.slice(6).join(' ')]
+    return [`${xy(p.x, p.y, p.z).join(',')} ${back.slice(0, 4).join(' ')}`, back.slice(3, 7).join(' '), back.slice(6).join(' ')]
   }
   // The year of the date, along the bottom; the chosen planet's times of going backwards marked on it
   const year = date.getFullYear()
   const yearStart = new Date(year, 0, 1).getTime()
   const yearEnd = new Date(year + 1, 0, 1).getTime()
+  const yearEvents = useMemo(() => planetEvents(new Date(yearStart), new Date(yearEnd)).filter((e) => e.key !== 'pluto'), [yearStart, yearEnd])
+  const eventName: Record<PlanetEventKind, string> = { opposition: t('冲日'), conjunction: t('合日'), inferior: t('下合'), superior: t('上合'), east: t('东大距'), west: t('西大距') }
+  const eventText = (e: PlanetEvent) =>
+    `${t(PLANETS.find((p) => p.key === e.key)!.name)}${eventName[e.kind]} · ${dateText(e.time)}${e.elongation ? ` · ${Math.round(e.elongation)}°` : ''}`
   const yearRetro = useMemo(
     () => (pick.picked && pick.picked !== 'earth' ? retroSpans(pick.picked, new Date(yearStart), new Date(yearEnd)) : []),
     [pick.picked, yearStart, yearEnd],
@@ -302,7 +338,7 @@ export function SolarSystemView() {
               </radialGradient>
             ))}
           </defs>
-          <circle className="orrery-bg" cx={C} cy={C} r={R_Z2 + 14} fill="url(#orrery-space)" />
+          <ellipse className="orrery-bg" cx={C} cy={C} rx={R_Z2 + 14} ry={(R_Z2 + 14) * sq} fill="url(#orrery-space)" />
           {/* The zodiac: where each planet stands among the stars, seen from Earth, is marked on it */}
           <g className="orrery-zodiac">
             {SIGNS.map((name, i) => {
@@ -337,9 +373,9 @@ export function SolarSystemView() {
           </g>
           {grid.map(({ au, r, label }) => (
             <g key={au}>
-              <circle className="orrery-grid" cx={C} cy={C} r={r} />
+              <ellipse className="orrery-grid" cx={C} cy={C} rx={r} ry={r * sq} />
               {label && (
-                <text className="orrery-au" x={C + 3} y={C - r - 3}>
+                <text className="orrery-au" x={C + 3} y={C - r * sq - 3}>
                   {au} AU
                 </text>
               )}
@@ -371,8 +407,8 @@ export function SolarSystemView() {
           {focused && focused.key !== 'earth' && focused.retrograde && (
             <text
               className="orrery-retro"
-              x={(xy(earth.x, earth.y)[0] + (shown.includes(focused) ? xy(focused.x, focused.y)[0] : rim(focused)[0])) / 2}
-              y={(xy(earth.x, earth.y)[1] + (shown.includes(focused) ? xy(focused.x, focused.y)[1] : rim(focused)[1])) / 2 - 6}
+              x={(xy(earth.x, earth.y, earth.z)[0] + (shown.includes(focused) ? xy(focused.x, focused.y, focused.z)[0] : rim(focused)[0])) / 2}
+              y={(xy(earth.x, earth.y, earth.z)[1] + (shown.includes(focused) ? xy(focused.x, focused.y, focused.z)[1] : rim(focused)[1])) / 2 - 6}
               textAnchor="middle"
             >
               {t('逆行')}
@@ -381,21 +417,21 @@ export function SolarSystemView() {
           {focused?.key === 'earth' && (
             // From Earth the Sun is what it sees on the zodiac (as the table's Earth row): its line of
             // sight runs through the Sun to the zodiac, and a chosen Earth's trail is the Sun's way through the year
-            <line className="orrery-sight sun" x1={xy(earth.x, earth.y)[0]} y1={xy(earth.x, earth.y)[1]} x2={polar(focused.geo, R_Z1 - 4)[0]} y2={polar(focused.geo, R_Z1 - 4)[1]} />
+            <line className="orrery-sight sun" x1={xy(earth.x, earth.y, earth.z)[0]} y1={xy(earth.x, earth.y, earth.z)[1]} x2={polar(focused.geo, R_Z1 - 4)[0]} y2={polar(focused.geo, R_Z1 - 4)[1]} />
           )}
           {focused && focused.key !== 'earth' && (
             <line
               className={`orrery-sight${focused.retrograde ? ' retro' : ''}`}
-              x1={xy(earth.x, earth.y)[0]}
-              y1={xy(earth.x, earth.y)[1]}
-              x2={shown.includes(focused) ? xy(focused.x, focused.y)[0] : rim(focused)[0]}
-              y2={shown.includes(focused) ? xy(focused.x, focused.y)[1] : rim(focused)[1]}
+              x1={xy(earth.x, earth.y, earth.z)[0]}
+              y1={xy(earth.x, earth.y, earth.z)[1]}
+              x2={shown.includes(focused) ? xy(focused.x, focused.y, focused.z)[0] : rim(focused)[0]}
+              y2={shown.includes(focused) ? xy(focused.x, focused.y, focused.z)[1] : rim(focused)[1]}
             />
           )}
           {/* …and on past it, fading: the way one looks from Earth to see it among the stars */}
           {focused && focused.key !== 'earth' && shown.includes(focused) && (() => {
-            const [ex, ey] = xy(earth.x, earth.y)
-            const [px, py] = xy(focused.x, focused.y)
+            const [ex, ey] = xy(earth.x, earth.y, earth.z)
+            const [px, py] = xy(focused.x, focused.y, focused.z)
             const d = Math.hypot(px - ex, py - ey) || 1
             const len = Math.max(40, Math.min(110, R - Math.hypot(px - C, py - C)))
             const [qx, qy] = [px + ((px - ex) / d) * len, py + ((py - ey) / d) * len]
@@ -409,8 +445,9 @@ export function SolarSystemView() {
               </>
             )
           })()}
-          {shown.map((p) => {
-            const [x, y] = xy(p.x, p.y)
+          {/* Further first, so a nearer planet lies over it when the view is tilted */}
+          {[...shown].sort((a, b) => a.y * lift - a.z * sq - (b.y * lift - b.z * sq)).reverse().map((p) => {
+            const [x, y] = xy(p.x, p.y, p.z)
             // Crowding the Sun when the map reaches far out, only Earth keeps its name
             const named = p.key === 'earth' || focus === p.key || radiusAt(p.sun, reach) > 22
             return (
@@ -461,6 +498,22 @@ export function SolarSystemView() {
             )
           })}
         </svg>
+        {/* On a wide screen the chosen planet's card lies beside it on the map (on a phone, in the sheet) */}
+        {!narrow && card && chosen && (() => {
+          const [vx, vy] = inside(chosen) ? xy(chosen.x, chosen.y, chosen.z) : rim(chosen)
+          const left0 = frame.left + (frame.width - side) / 2
+          const top0 = frame.top + (frame.height - side) / 2
+          const px = left0 + ((vx + 18) / 436) * side
+          const py = top0 + ((vy + 18) / 436) * side
+          const w = 250
+          const left = px + 18 + w > window.innerWidth - 12 ? px - 18 - w : px + 18
+          const top = Math.max(frame.top, Math.min(frame.top + frame.height - 150, py + 14))
+          return (
+            <div className="solar-float" style={{ left, top, width: w }}>
+              {card}
+            </div>
+          )
+        })()}
       </div>
     )
   }
@@ -499,6 +552,14 @@ export function SolarSystemView() {
 
   const overlay = (
     <>
+      <div className="seg small solar-tilt" role="group" aria-label={t('视角')}>
+        <button type="button" className={tilted ? undefined : 'on'} aria-pressed={!tilted} onClick={() => setTilted(false)}>
+          {t('俯视')}
+        </button>
+        <button type="button" className={tilted ? 'on' : undefined} aria-pressed={tilted} onClick={() => setTilted(true)}>
+          {t('斜视')}
+        </button>
+      </div>
       <div className="imm-zoom" role="group" aria-label={t('缩放')}>
         <button type="button" onClick={() => zoomTo(reach / 1.6)} disabled={reach <= REACH_MIN * 1.001} aria-label={t('放大')} title={t('放大')}>
           +
@@ -547,6 +608,25 @@ export function SolarSystemView() {
         </div>
       )}
       <div className="solar-year">
+        {/* The year's moments with the Sun: oppositions, conjunctions, greatest elongations; a tap goes
+            there and picks the planet */}
+        <div className="solar-events">
+          {yearEvents.map((e) => (
+            <button
+              key={`${e.key}-${e.kind}-${e.time.getTime()}`}
+              type="button"
+              className={`solar-event${pick.picked && pick.picked !== e.key ? ' dim' : ''}`}
+              style={{ left: `${((e.time.getTime() - yearStart) / (yearEnd - yearStart)) * 100}%`, '--c': BODY_COLOUR[e.key] } as React.CSSProperties}
+              title={eventText(e)}
+              aria-label={eventText(e)}
+              onClick={() => {
+                setPlaying(false)
+                goTo(e.time.getTime())
+                pick.choose(e.key)
+              }}
+            />
+          ))}
+        </div>
         <div className="solar-track">
           {yearRetro.map((s) => (
             <span
@@ -608,7 +688,7 @@ export function SolarSystemView() {
 
   const panel = (
     <>
-      {card}
+      {narrow ? card : !chosen && card}
       <p className="muted row-note">
         {dateText(date)} {pad(date.getHours())}:{pad(date.getMinutes())}
         {live && !playing ? t('（随时间更新）') : ''}

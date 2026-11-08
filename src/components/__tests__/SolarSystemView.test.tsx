@@ -38,7 +38,8 @@ describe('太阳系', () => {
   it('picks a planet: its card says it is going backwards, and until when', () => {
     const { container } = setUp()
     fireEvent.click(document.querySelector('.orrery-planet.pl-venus')!)
-    const card = container.querySelector('.solar-card')!
+    // On a wide screen the card lies beside the planet on the map (behind the page, in <body>)
+    const card = document.querySelector('.solar-card')!
     expect(card.querySelector('strong')!.textContent).toBe('金星')
     expect(card.textContent).toContain('逆行中')
     expect(card.textContent).toMatch(/转顺行/)
@@ -47,7 +48,7 @@ describe('太阳系', () => {
   })
 
   it('moves the date when the map is dragged across, without letting go of the planet', () => {
-    const { container, map, month } = setUp()
+    const { map, month } = setUp()
     fireEvent.click(document.querySelector('.orrery-planet.pl-venus')!)
     expect(month()).toBe('11')
     fireEvent.pointerDown(map(), { pointerId: 1, clientX: 100, clientY: 100 })
@@ -55,7 +56,7 @@ describe('太阳系', () => {
     fireEvent.pointerUp(map(), { pointerId: 1, clientX: 160, clientY: 100 })
     fireEvent.click(map())
     expect(month()).not.toBe('11')
-    expect(container.querySelector('.solar-card strong')!.textContent).toBe('金星')
+    expect(document.querySelector('.solar-card strong')!.textContent).toBe('金星')
   })
 
   it('zooms with two fingers without moving the date, also when one finger lifts first', () => {
@@ -73,5 +74,10 @@ describe('太阳系', () => {
     fireEvent.pointerMove(map(), touch(1, 40))
     fireEvent.pointerUp(map(), touch(1, 40))
     expect(month()).toBe('11')
+  })
+
+  it('opens with a planet picked (from 今日)', () => {
+    render(<SolarSystemView planet="venus" />)
+    expect(document.querySelector('.solar-card strong')!.textContent).toBe('金星')
   })
 })
