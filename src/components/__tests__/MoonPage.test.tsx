@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import './dom'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PLACE } from '../../lib/place'
 import { MoonPage } from '../MoonPage'
@@ -117,5 +117,15 @@ describe('观月', () => {
     const { container } = render(<MoonPage fallbackPlace={DEFAULT_PLACE} day={{ year: 2026, month: 3, day: 10 }} />)
     expect(container.querySelector<HTMLInputElement>('.moon-page input[type=time]')!.value).toBe('21:00')
     expect(container.querySelector('.moon-name')!.textContent).toMatch(/正月廿二$/)
+  })
+
+  it('opens on a moment of birth, seen from the birthplace, its poster open', async () => {
+    const tokyo = { name: '东京', latitude: 35.68, longitude: 139.69, timeZone: 'Asia/Tokyo' }
+    // 1990-05-15 22:30 in Tokyo
+    const { container } = render(<MoonPage fallbackPlace={DEFAULT_PLACE} day={Date.UTC(1990, 4, 15, 13, 30)} birthPlace={tokyo} />)
+    expect(container.querySelector<HTMLInputElement>('.moon-page input[type=time]')!.value).toBe('22:30')
+    expect(container.querySelector<HTMLSelectElement>('.moon-place select')!.value).toContain('东京')
+    // The poster loads apart
+    expect(await screen.findByRole('dialog', { name: '月相海报' })).toBeTruthy()
   })
 })

@@ -16,7 +16,8 @@ import { parseShareHash } from './lib/shareLink'
 import { loadSchools, saveSchools, type SchoolSettings } from './lib/schools'
 import { loadZiweiSchools, saveZiweiSchools, type ZiweiSchoolSettings } from './lib/ziweiSchools'
 import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/starPrefs'
-import { DEFAULT_PLACE } from './lib/place'
+import { DEFAULT_PLACE, type Place } from './lib/place'
+import { toUtc } from './lib/timeZone'
 import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
 import { hantReady, loadHant } from './lib/hant'
@@ -76,8 +77,18 @@ export function App() {
   // Opened from a day's Moon (日历, 今日): the day 观月 starts at; from a planet (今日): the one 太阳系 picks
   const [moonDay, setMoonDay] = useState<{ year: number; month: number; day: number } | number | null>(null)
   const [solarPlanet, setSolarPlanet] = useState<string | null>(null)
+  // From a chart (八字, 星盘): the Moon at the moment of birth, seen from the birthplace, its poster open
+  const [moonBirth, setMoonBirth] = useState<Place | null>(null)
   const viewMoon = (day: { year: number; month: number; day: number } | number | null) => {
     setMoonDay(day)
+    setMoonBirth(null)
+    goTab('moon')
+  }
+  const viewBirthMoon = (input: BaziInput) => {
+    const place = input.place ?? DEFAULT_PLACE
+    const { year, month, day, hour, minute } = input
+    setMoonDay(toUtc({ year, month, day, hour, minute }, place.timeZone).date.getTime())
+    setMoonBirth(place)
     goTab('moon')
   }
   const viewSolar = (planet: string) => {
@@ -87,7 +98,10 @@ export function App() {
   const goTab = (next: Tab) => {
     if (next === tab) return
     if (next !== 'sky') setSkyMoment(null)
-    if (next !== 'moon') setMoonDay(null)
+    if (next !== 'moon') {
+      setMoonDay(null)
+      setMoonBirth(null)
+    }
     if (next !== 'solar') setSolarPlanet(null)
     setLoadError(false)
     const root = document.documentElement
@@ -381,6 +395,7 @@ export function App() {
                 onChange={setBaziInput}
                 schools={schools}
                 onSchoolsChange={changeSchools}
+                onViewBirthMoon={() => viewBirthMoon(baziInput)}
               />
             </Suspense>
           ) : tab === 'sky' ? (
@@ -389,7 +404,7 @@ export function App() {
             </Suspense>
           ) : tab === 'moon' ? (
             <Suspense fallback={<SplashSignal />}>
-              <MoonPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} day={moonDay} />
+              <MoonPage fallbackPlace={baziInput.place ?? DEFAULT_PLACE} day={moonDay} birthPlace={moonBirth} />
             </Suspense>
           ) : tab === 'solar' ? (
             <Suspense fallback={<SplashSignal />}>
@@ -403,6 +418,7 @@ export function App() {
                 onChange={setBaziInput}
                 settings={starSettings}
                 onSettingsChange={changeStarSettings}
+                onViewBirthMoon={() => viewBirthMoon(baziInput)}
               />
             </Suspense>
           ) : (

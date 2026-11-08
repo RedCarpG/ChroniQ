@@ -73,10 +73,12 @@ interface Props {
   onChange: (input: BaziInput) => void
   settings: StarSettings
   onSettingsChange: (settings: StarSettings) => void
+  /** Open 观月 at the moment of birth */
+  onViewBirthMoon?: () => void
 }
 
 /** 西洋占星 natal chart: the shared birth form, a birthplace, the wheel and the tables. */
-export function StarChartView({ input, onChange, settings, onSettingsChange }: Props) {
+export function StarChartView({ input, onChange, settings, onSettingsChange, onViewBirthMoon }: Props) {
   const t = useT()
   const { birthSky } = useSettings()
   // The chart's own birthplace, shared with 八字 / 紫微 and saved with the chart
@@ -181,6 +183,14 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           {chart.dst && t('（当时实行夏令时，已换算）')} · {t('回归黄道')} ·{' '}
           {t(STAR_SCHOOLS.houses.options.find((o) => o.value === settings.houses)?.label ?? '')}
           {chart.housesFallback && t('（极圈内无法使用普拉西度，已改用等宫制）')}
+          {onViewBirthMoon && (
+            <>
+              {' · '}
+              <button type="button" className="ghost view-more birth-moon" data-sound="gong" onClick={onViewBirthMoon}>
+                {t('出生时的月亮 →')}
+              </button>
+            </>
+          )}
         </p>
         <div className="overlay-bar">
           <div className="seg small" role="group" aria-label={t('比较盘')}>
