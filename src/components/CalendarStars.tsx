@@ -12,7 +12,7 @@ export default function CalendarStars({ at, isToday, children }: { at: number; i
   const settings = useMemo(loadStarSettings, [])
   const western = useMemo(() => westernToday(new Date(at), settings), [at, settings])
   return (
-    <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')}>
+    <WesternDayList western={western} noRetro={isToday ? t('今天没有行星逆行') : t('这天没有行星逆行')} fold>
       {children}
     </WesternDayList>
   )

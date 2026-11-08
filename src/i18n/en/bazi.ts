@@ -32,6 +32,9 @@ export const BAZI: Record<string, string> = {
 
   // Chart header
   '属{zodiac}': 'Year of the {zodiac}',
+  显示内容: 'What to show',
+  简洁: 'Simple',
+  '纳音、星运、自坐、空亡、神煞、五星和胎元命宫在「详细」里': '纳音, 星运, 自坐, 空亡, 神煞, the five planets and 胎元 / 命宫 are under Details',
   '阳历 {date}': 'Gregorian {date}',
   '真太阳时 {time}（{offset}分）': 'True solar time {time} ({offset} min)',
 

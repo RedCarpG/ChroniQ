@@ -1,4 +1,5 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
+import { useStoredFlag } from './useStoredFlag'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
@@ -66,6 +67,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     0,
     chart.decades.findIndex((d) => d.startYear <= thisYear && thisYear <= d.endYear),
   )
+  // 简洁 (the stars, the 干支, 藏干, 五行 and 刑冲合会) or 详细 (all the rest too), for 原局 and 岁运 alike
+  const [fullChart, toggleFullChart] = useStoredFlag('chroniq-bazi-full', false)
   const [picked, setPicked] = useState<number | null>(null)
   const decadeIndex = picked ?? currentDecade
   const decade = chart.decades[decadeIndex]
@@ -209,22 +212,33 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       />
 
       <section className="card" id="bazi-natal">
-        <div className="chart-meta">
-          <div>
-            <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong> ·{' '}
-            {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
-          </div>
-          <div className="muted">{t('阳历 {date}', { date: dateTimeText(language, input) })}</div>
-          {chart.trueSolar && (
-            <div className="muted">
-              {t('真太阳时 {time}（{offset}分）', {
-                time: dateTimeText(language, chart.trueSolar.time),
-                offset: `${chart.trueSolar.offsetMinutes >= 0 ? '+' : '−'}${Math.abs(Math.round(chart.trueSolar.offsetMinutes))}`,
-              })}
+        {/* The chart's particulars, and beside them (never under them) 简洁 / 详细 */}
+        <div className="natal-head">
+          <div className="chart-meta">
+            <div>
+              <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong> ·{' '}
+              {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
             </div>
-          )}
-          <div className="muted">
-            {term('农历')} {term(chart.lunarText)}
+            <div className="muted">{t('阳历 {date}', { date: dateTimeText(language, input) })}</div>
+            {chart.trueSolar && (
+              <div className="muted">
+                {t('真太阳时 {time}（{offset}分）', {
+                  time: dateTimeText(language, chart.trueSolar.time),
+                  offset: `${chart.trueSolar.offsetMinutes >= 0 ? '+' : '−'}${Math.abs(Math.round(chart.trueSolar.offsetMinutes))}`,
+                })}
+              </div>
+            )}
+            <div className="muted">
+              {term('农历')} {term(chart.lunarText)}
+            </div>
+          </div>
+          <div className="seg small natal-view" role="group" aria-label={t('显示内容')}>
+            <button type="button" className={fullChart ? undefined : 'on'} aria-pressed={!fullChart} onClick={() => fullChart && toggleFullChart()}>
+              {t('简洁')}
+            </button>
+            <button type="button" className={fullChart ? 'on' : undefined} aria-pressed={fullChart} onClick={() => fullChart || toggleFullChart()}>
+              {t('详细')}
+            </button>
           </div>
         </div>
 
@@ -233,11 +247,13 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
             pillars={chart.pillars}
             schools={schools}
             dayMaster={chart.dayMaster.char}
+            full={fullChart}
             headerExtra={(p) =>
               chart.lateZiHour &&
               (p.label === '日柱' || p.label === '时柱') && <SchoolMark school="ziHour" settings={schools} />
             }
           />
+          {!fullChart && <p className="muted row-note natal-more">{t('纳音、星运、自坐、空亡、神煞、五星和胎元命宫在「详细」里')}</p>}
 
           <div className="elements">
             {ELEMENTS.map((e) => (
@@ -250,13 +266,16 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               </div>
             ))}
           </div>
-          <Suspense fallback={null}>
-            <FiveStars moment={moment} focus={skyFocus} pick={skyPick.props} />
-          </Suspense>
+          {fullChart && (
+            <Suspense fallback={null}>
+              <FiveStars moment={moment} focus={skyFocus} pick={skyPick.props} />
+            </Suspense>
+          )}
 
           <Relations title={term('原局刑冲合会')} items={chart.relations} schools={schools} />
         </HighlightScope>
 
+        {fullChart && (
         <dl className="kv inline">
           <dt>
             <ConceptTip name="胎元" />
@@ -275,6 +294,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </dt>
           <dd>{chart.bodySign}</dd>
         </dl>
+        )}
       </section>
 
       <BaziReadingCard chart={chart} />
@@ -440,6 +460,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
                 schools={schools}
                 dividerAt={natalShown && combined.length > 0 ? combined.length : undefined}
                 dayMaster={chart.dayMaster.char}
+                full={fullChart}
                 animate
               />
             </div>
