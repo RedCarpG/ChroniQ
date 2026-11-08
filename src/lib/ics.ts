@@ -39,7 +39,13 @@ function fold(line: string): string {
   return out.join('\r\n')
 }
 
-export function buildIcs(calendarName: string, entries: IcsEntry[], stamp: number = Date.now()): string {
+/** For a calendar subscribed to: what it is, and how often the phone should fetch it again (an ISO duration) */
+export interface IcsOptions {
+  description?: string
+  refresh?: string
+}
+
+export function buildIcs(calendarName: string, entries: IcsEntry[], stamp: number = Date.now(), options: IcsOptions = {}): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -48,6 +54,8 @@ export function buildIcs(calendarName: string, entries: IcsEntry[], stamp: numbe
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeText(calendarName)}`,
   ]
+  if (options.description) lines.push(`X-WR-CALDESC:${escapeText(options.description)}`)
+  if (options.refresh) lines.push(`REFRESH-INTERVAL;VALUE=DURATION:${options.refresh}`, `X-PUBLISHED-TTL:${options.refresh}`)
   for (const e of entries) {
     lines.push('BEGIN:VEVENT', `UID:${e.uid}@chroniq`, `DTSTAMP:${utcStamp(stamp)}`)
     if ('date' in e) {

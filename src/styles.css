@@ -2690,6 +2690,10 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-forecast-choices label { display: inline-flex; align-items: center; gap: 5px; }
 .sky-forecast-file small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; }
 .sky-forecast-file summary { cursor: pointer; font-size: 12px; }
+.feed-subscribe { border-top-style: dashed; }
+.feed-subscribe-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.feed-subscribe-actions a.primary { display: inline-block; padding: 10px 18px; text-decoration: none; }
+.feed-subscribe-url { width: 100%; font-size: 12px; }
 
 /* The event on the 天象 page: what it is, above the bodies, and on the map itself */
 .sky-event {

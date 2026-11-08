@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Monthly, so the subscribed calendar (scripts/feed.ts) rolls on even without a change to the site
+  schedule:
+    - cron: '17 3 1 * *'
 
 permissions:
   contents: read
