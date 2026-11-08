@@ -115,6 +115,9 @@ const CLOUD_DRAW_KEY = 'chroniq-sky-cloud-draw'
 const EQ_GRID_KEY = 'chroniq-sky-eqgrid'
 const ECLIPTIC_KEY = 'chroniq-sky-ecliptic'
 const RED_KEY = 'chroniq-sky-red'
+/** Whether the 显示 drawer's 专业设置 are open */
+const MORE_OPTIONS_KEY = 'chroniq-sky-more-options'
+const HINT_KEY = 'chroniq-sky-hint'
 
 /** 时间流动: how fast the time runs, in minutes of sky per second (negative: backwards) */
 const SPEEDS = [-360, -60, -10, -1, 0, 1, 10, 60, 360]
@@ -268,6 +271,8 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // 头顶 / 脚下: the half of the sky above the horizon, or the half beneath one's feet, seen as if
   // through the Earth: the nadir in the middle, and east and west swapped (looking down, east is right).
   const [below, setBelow] = useState(false)
+  /** The bodies under the horizon in the table too */
+  const [allBodies, setAllBodies] = useState(false)
   // 穹顶视角 (SkyDome): the sky as one stands under it, looking one way, the ground see-through; chosen
   // in 显示, and always while the phone is pointed at the sky (对准天空)
   const [dome, setDome] = useState(false)
@@ -601,6 +606,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   const [eqGrid, toggleEqGrid] = usePref(EQ_GRID_KEY, false)
   const [showEcliptic, toggleEcliptic] = usePref(ECLIPTIC_KEY, false)
   const [red, toggleRed] = usePref(RED_KEY, false)
+  const [moreOptions, toggleMoreOptions] = usePref(MORE_OPTIONS_KEY, false)
   // 穹顶视角's ground: a see-through shade, or none
   const [showGround, toggleGround] = usePref(GROUND_KEY, true)
   // With the cloud forecast on, whether its clouds are drawn over the sky (the 今晚观星 bars use it either way)
@@ -794,6 +800,24 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
   // While the sky is dragged through time, the paths and the history track (too slow to redo at
   // every step) wait until it is let go
   const [dragShift, setDragShift] = useState<number | null>(null)
+  // How to zoom and turn time: said until the sky has once been zoomed or dragged, then not again
+  const [hintSeen, setHintSeen] = useState(() => {
+    try {
+      return localStorage.getItem(HINT_KEY) === 'seen'
+    } catch {
+      return false
+    }
+  })
+  const used = dragShift !== null || view.z !== 1
+  useEffect(() => {
+    if (!used || hintSeen) return
+    setHintSeen(true)
+    try {
+      localStorage.setItem(HINT_KEY, 'seen')
+    } catch {
+      // storage unavailable: said again next visit
+    }
+  }, [used, hintSeen])
   const dragging = dragShift !== null || flowing
   const historyPoints = useMemo(
     () => (historyBody && !dragging ? historyTrack(historyBody, utc, place.latitude, place.longitude, history.days) : null),
@@ -2435,7 +2459,7 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
               </tr>
             </thead>
             <tbody>
-              {sky.bodies.map((b) => (
+              {sky.bodies.filter((b) => below || allBodies || b.alt >= 0).map((b) => (
                 <tr
                   key={b.key}
                   className={[b.alt < 0 && 'below', focus === b.key && 'on'].filter(Boolean).join(' ') || undefined}
@@ -2458,6 +2482,18 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
                 </tr>
               ))}
             </tbody>
+            {/* Those under the horizon only on asking (looking down, they are the ones shown) */}
+            {!below && sky.bodies.some((b) => b.alt < 0) && (
+              <tfoot>
+                <tr>
+                  <td colSpan={figures === 'mansions' ? 5 : 4}>
+                    <button type="button" className="ghost sky-below-toggle" aria-expanded={allBodies} onClick={() => setAllBodies((v) => !v)}>
+                      {allBodies ? t('只看地平线上的') : t('另有 {n} 个在地平线下 ›', { n: sky.bodies.filter((b) => b.alt < 0).length })}
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         )}
       </aside>
@@ -2509,41 +2545,47 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
             </button>
           ))}
         </div>
-        <span className="sky-option-title">{t('深空天体')}</span>
-        <SkySwitch on={showDso} label={t('梅西耶天体：星系、星团、星云')} onChange={toggleDso} />
-        <span className="sky-option-title">{t('坐标')}</span>
-        <SkySwitch on={eqGrid} label={t('赤道坐标网')} onChange={toggleEqGrid} />
-        <SkySwitch on={showEcliptic} label={t('黄道')} onChange={toggleEcliptic} />
-        <span className="sky-option-title">{t('轨迹')}</span>
-        <SkySwitch on={showPaths} label={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
-        <span className="sky-option-title">{t('光污染')}</span>
-        <label className="sky-bortle">
-          <input type="range" min={1} max={9} step={1} value={bortle} aria-label={t('光污染')} onChange={(e) => pickBortle(Number(e.target.value))} />
-          <span>{t('{n} 级 · {name}', { n: bortle, name: t(dark.name) })}</span>
-        </label>
-        <span className="sky-option-title">{t('今晚观星')}</span>
-        <SkySwitch on={showNight} label={t('每小时适不适合观星，列在天体表上方')} onChange={toggleNight} />
-        <span className="sky-option-title">{t('云量')}</span>
-        <SkySwitch on={weatherOn} label={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
-        {weatherOn && <SkySwitch on={drawClouds} label={t('把云画在天上（关掉只看预报）')} onChange={toggleDrawClouds} />}
-        <span className="sky-option-title">{t('夜视')}</span>
-        <SkySwitch on={red} label={t('红光模式：整页变暗红，不破坏暗适应')} onChange={toggleRed} />
-        <span className="sky-option-title">{t('画质')}</span>
-        <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
-          {(
-            [
-              ['clear', t('清晰')],
-              ['smooth', t('流畅')],
-            ] as const
-          ).map(([v, label]) => (
-            <button key={v} type="button" className={quality === v ? 'on' : undefined} aria-pressed={quality === v} onClick={() => pickQuality(v)}>
-              {label}
-            </button>
-          ))}
+        <SkySwitch on={red} label={t('红光夜视')} hint={t('整页变暗红，不破坏暗适应')} onChange={toggleRed} />
+        <span className="sky-option-title">{t('图层')}</span>
+        <SkySwitch on={showDso} label={t('深空天体')} hint={t('梅西耶天体：星系、星团、星云')} onChange={toggleDso} />
+        <SkySwitch on={showPaths} label={t('日月行星的轨迹')} hint={t('日月行星前后 12 小时的路径')} onChange={togglePaths} />
+        <SkySwitch on={showNight} label={t('今晚观星时段')} hint={t('每小时适不适合观星，列在天体表上方')} onChange={toggleNight} />
+        <SkySwitch on={weatherOn} label={t('云量预报（联网）')} hint={t('联网取云量预报，画在星图上')} onChange={toggleWeather} />
+        {weatherOn && <SkySwitch on={drawClouds} label={t('把云画在天上')} hint={t('把云画在天上（关掉只看预报）')} onChange={toggleDrawClouds} />}
+        <button type="button" className="sky-more-toggle" aria-expanded={moreOptions} onClick={toggleMoreOptions}>
+          {t('专业设置')}
+          <span aria-hidden="true">{moreOptions ? '−' : '+'}</span>
+        </button>
+        {moreOptions && (
+          <>
+            <SkySwitch on={eqGrid} label={t('赤道坐标网')} onChange={toggleEqGrid} />
+            <SkySwitch on={showEcliptic} label={t('黄道')} onChange={toggleEcliptic} />
+            <span className="sky-option-title">{t('光污染')}</span>
+            <label className="sky-bortle">
+              <input type="range" min={1} max={9} step={1} value={bortle} aria-label={t('光污染')} onChange={(e) => pickBortle(Number(e.target.value))} />
+              <span>{t('{n} 级 · {name}', { n: bortle, name: t(dark.name) })}</span>
+            </label>
+            <span className="sky-option-title">{t('画质')}</span>
+            <div className="seg small" role="group" aria-label={t('画质')} title={t('流畅：少画一些暗星和银河的细节，不闪烁、无流星，缩放和拖动更顺')}>
+              {(
+                [
+                  ['clear', t('清晰')],
+                  ['smooth', t('流畅')],
+                ] as const
+              ).map(([v, label]) => (
+                <button key={v} type="button" className={quality === v ? 'on' : undefined} aria-pressed={quality === v} onClick={() => pickQuality(v)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         </div>
-        </div>
-        {notes}
-        {sources}
+        <details className="sky-about">
+          <summary>{t('关于这张星图')}</summary>
+          {notes}
+          {sources}
+        </details>
       </DrawerPageTab>
 
       {createPortal(
@@ -2673,9 +2715,11 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
               ) : (
                 <>
                   <div className="sky-readout" ref={readoutRef} aria-hidden="true" />
-                  <div className="sky-drag-hint" aria-hidden="true">
-                    {view.z > Z_MIN ? t('拖动移动星图 · 中键左右拖动转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
-                  </div>
+                  {!hintSeen && (
+                    <div className="sky-drag-hint" aria-hidden="true">
+                      {view.z > Z_MIN ? t('拖动移动星图 · 中键左右拖动转动时间') : t('滚轮或双指缩放 · 左右拖动转动时间')}
+                    </div>
+                  )}
                 </>
               )}
               <div className="sky-zoom-buttons" role="group" aria-label={t('缩放')}>
@@ -2741,9 +2785,10 @@ function Star({
 }
 
 /** A switch: its label, and a track whose knob slides across when it is on */
-function SkySwitch({ on, label, onChange }: { on: boolean; label: string; onChange: () => void }) {
+/** A switch; `hint` says more about it, on hover */
+function SkySwitch({ on, label, hint, onChange }: { on: boolean; label: string; hint?: string; onChange: () => void }) {
   return (
-    <button type="button" role="switch" aria-checked={on} className={`sky-switch${on ? ' on' : ''}`} data-sound={on ? 'off' : 'on'} onClick={onChange}>
+    <button type="button" role="switch" aria-checked={on} title={hint} className={`sky-switch${on ? ' on' : ''}`} data-sound={on ? 'off' : 'on'} onClick={onChange}>
       <span className="sky-switch-label">{label}</span>
       <span className="sky-switch-track" aria-hidden="true" />
     </button>

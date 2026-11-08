@@ -45,6 +45,8 @@ const BODY_NAME: Record<string, string> = { moon: '月亮', mercury: '水星', v
  * 今日: one screen for the day. The almanac and the Moon, what can be seen tonight from the 天象 page's
  * place, and how today meets the chart chosen in the 命盘 drawer.
  */
+const TONIGHT_DETAIL_KEY = 'chroniq-today-tonight-detail'
+
 export function TodayPage({
   fallbackPlace,
   onViewSky,
@@ -80,6 +82,22 @@ export function TodayPage({
   const ganzhi = detail.pillars[2].stem.char + detail.pillars[2].branch.char
 
   const [place, setPlaceState] = useState<StarPlace>(() => loadSkyPlace(fallbackPlace))
+  // 今晚的天空 in a line a body, or with when in the night each is up and where to look
+  const [tonightDetail, setTonightDetail] = useState(() => {
+    try {
+      return localStorage.getItem(TONIGHT_DETAIL_KEY) === 'on'
+    } catch {
+      return false
+    }
+  })
+  const toggleTonightDetail = () => {
+    setTonightDetail(!tonightDetail)
+    try {
+      localStorage.setItem(TONIGHT_DETAIL_KEY, tonightDetail ? 'off' : 'on')
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+  }
   const setPlace = (next: StarPlace) => {
     setPlaceState(next)
     saveSkyPlace(next)
@@ -187,17 +205,24 @@ export function TodayPage({
         </dl>
         <AlmanacTags title={term('宜')} kind="good" items={detail.recommends.slice(0, 8)} info={ACTIVITY_INFO} />
         <AlmanacTags title={term('忌')} kind="bad" items={detail.avoids.slice(0, 8)} info={ACTIVITY_INFO} />
+        {/* Without a chart chosen, a line on what one would add (its card shows only with one) */}
+        {!(chart && bazi && dayStar) && (
+          <p className="muted today-note today-chart-hint">
+            {chartDays.charts.length === 0
+              ? t('在左侧「命盘」里保存一张命盘，这里会显示今天与它的关系。')
+              : t('在左侧「命盘」里选一张命盘，这里会显示今天与它的关系。')}
+          </p>
+        )}
       </section>
 
       <section className="card today-western">
         <h3 className="section-title">{t('今日星象')}</h3>
-        <WesternDayList western={western} noRetro={t('今天没有行星逆行')} />
+        <WesternDayList western={western} noRetro={t('今天没有行星逆行')} fold />
       </section>
 
+      {chart && bazi && dayStar && (
       <section className="card today-chart">
         <h3 className="section-title">{t('今日与命盘')}</h3>
-        {chart && bazi && dayStar ? (
-          <>
             <p className="today-chart-name">
               <strong>{chart.name}</strong>
               <span className="muted">{t('可在左侧「命盘」里换一张')}</span>
@@ -265,19 +290,17 @@ export function TodayPage({
               </p>
             )}
             <small className="muted">{t('命理内容是传统文化的说法，仅供参考。')}</small>
-          </>
-        ) : (
-          <p className="muted">
-            {chartDays.charts.length === 0
-              ? t('在左侧「命盘」里保存一张命盘，这里会显示今天与它的关系。')
-              : t('在左侧「命盘」里选一张命盘，这里会显示今天与它的关系。')}
-          </p>
-        )}
       </section>
+      )}
       </div>
 
       <section className="card today-sky">
-        <h3 className="section-title">{t('今晚的天空')}</h3>
+        <div className="today-card-head">
+          <h3 className="section-title">{t('今晚的天空')}</h3>
+          <button type="button" className="ghost fold-toggle" aria-pressed={tonightDetail} onClick={toggleTonightDetail}>
+            {tonightDetail ? t('简要') : t('详细')}
+          </button>
+        </div>
         <details className="sky-forecast-place">
           <summary>{t('{place} · 更换观测地', { place: t(place.name) })}</summary>
           <div className="sky-forecast-place-body">
@@ -304,15 +327,19 @@ export function TodayPage({
                       </span>
                       <span className="tonight-what">
                         <strong>{t(BODY_NAME[b.key])}</strong>
-                        <span className="sky-when">{range(b)}</span>
-                        <span className="tonight-night" aria-hidden="true">
-                          <span className="tonight-up" style={{ left: at(b.from), right: `calc(100% - ${at(b.to)})` }} />
-                          <span className="tonight-best" style={{ left: at(b.best) }} />
-                        </span>
-                        <span className="muted">
-                          {where(b)}
-                          {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
-                        </span>
+                        <span className="sky-when">{tonightDetail ? range(b) : `${range(b)} · ${t('{time} 最佳', { time: time(b.best) })}`}</span>
+                        {tonightDetail && (
+                          <>
+                            <span className="tonight-night" aria-hidden="true">
+                              <span className="tonight-up" style={{ left: at(b.from), right: `calc(100% - ${at(b.to)})` }} />
+                              <span className="tonight-best" style={{ left: at(b.best) }} />
+                            </span>
+                            <span className="muted">
+                              {where(b)}
+                              {b.key === 'moon' && ` · ${t('照亮 {pct}%', { pct: Math.round(tonight.moonLit * 100) })}`}
+                            </span>
+                          </>
+                        )}
                       </span>
                     </button>
                     {/* The Moon up close, or the planet on its orbit */}

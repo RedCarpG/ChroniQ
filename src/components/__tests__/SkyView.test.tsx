@@ -52,11 +52,23 @@ function setUp() {
   return {
     container,
     map,
-    row: (name: string) => [...container.querySelectorAll<HTMLElement>('.sky-table tbody tr')].find((r) => r.textContent!.includes(name))!,
+    // A body under the horizon is listed once the table is asked to show those too
+    row: (name: string) => {
+      const find = () => [...container.querySelectorAll<HTMLElement>('.sky-table tbody tr')].find((r) => r.textContent!.includes(name))
+      const toggle = container.querySelector<HTMLElement>('.sky-below-toggle[aria-expanded=false]')
+      if (!find() && toggle) fireEvent.click(toggle)
+      return find()!
+    },
     info: () => container.querySelector('.sky-chosen-info')?.textContent ?? null,
     ringed: () => map.querySelector('.sky-chosen') !== null,
     time: () => container.querySelector<HTMLInputElement>('.sky-controls input[type=time]')!.value,
   }
+}
+
+/** Opens the 显示 drawer's 专业设置 (画质, 光污染 …), folded at first */
+function openMoreOptions() {
+  const toggle = document.querySelector<HTMLElement>('.sky-more-toggle[aria-expanded=false]')
+  if (toggle) fireEvent.click(toggle)
 }
 
 describe('SkyView as the backdrop', () => {
@@ -104,7 +116,9 @@ describe('SkyView panels', () => {
     expect(handle.textContent).toBe('显示')
     const options = document.querySelector('#drawer-page-panel .sky-drawer-options')!
     expect(options.textContent).toContain('视角')
-    expect(options.querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('true')
+    // 红光夜视 first, off; the 专业设置 folded
+    expect(options.querySelector('[role=switch]')!.getAttribute('aria-checked')).toBe('false')
+    expect(options.querySelector('[aria-label=画质]')).toBeNull()
     const bodies = container.querySelector('.sky-bodies')!
     expect(bodies.querySelector('.sky-table')).not.toBeNull()
     expect(bodies.classList.contains('card')).toBe(false)
@@ -129,6 +143,7 @@ describe('SkyView panels', () => {
     localStorage.removeItem('chroniq-sky-quality')
     setUp()
     const twinkles = () => document.querySelectorAll('.sky-twinkles i').length
+    openMoreOptions()
     const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === label)!
     expect(button('清晰').getAttribute('aria-pressed')).toBe('true')
     expect(twinkles()).toBeGreaterThan(0)
@@ -422,6 +437,7 @@ describe('SkyView hovered while one is chosen', () => {
     expect(map.querySelectorAll('.sky-path.pulsing')).toHaveLength(1)
     fireEvent.pointerLeave(neptune, { pointerType: 'mouse' })
     expect(lit()).toBe(1)
+    openMoreOptions()
     const smoothButton = [...document.querySelectorAll<HTMLButtonElement>('[aria-label=画质] button')].find((b) => b.textContent === '流畅')!
     fireEvent.click(smoothButton)
     expect(map.querySelector('.sky-path.pulsing')).toBeNull()

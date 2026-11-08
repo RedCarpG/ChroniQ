@@ -1541,7 +1541,17 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .sky-drawer-options .sky-option-title:not(:first-child) { margin-top: 8px; }
 .sky-options.sky-drawer-options .seg { justify-self: stretch; height: 30px; }
 .sky-options.sky-drawer-options .seg button { flex: 1 1 auto; padding: 0 4px; font-size: 12.5px; white-space: nowrap; }
-.sky-drawer-options + .row-note { font-size: 12px; }
+.sky-more-toggle {
+  display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 6px 0;
+  border: 0; border-top: 1px solid var(--border); background: none; font-size: 13px; color: var(--muted); text-align: left;
+}
+.sky-more-toggle span { font-size: 15px; }
+.sky-more-toggle[aria-expanded='true'] { color: var(--accent); }
+.sky-about { margin-top: 14px; font-size: 12px; }
+.sky-table tfoot td { padding: 4px 0 0; border: 0; text-align: left; }
+.sky-below-toggle { padding: 4px 0; font-size: 12.5px; color: var(--muted); background: none; border: 0; }
+.sky-about summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+.sky-about .row-note { font-size: 12px; }
 /* On the right, always there: the bodies, or what is chosen, on the sky itself, no card behind them */
 .sky-bodies {
   grid-column: 2; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 10px;
@@ -2751,7 +2761,20 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .today-chart strong { font-weight: 600; }
 .today-chart small { font-size: 11px; }
 @media (max-width: 1100px) { .today-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .today-col { grid-row: span 2; } }
-@media (max-width: 720px) { .today-page { grid-template-columns: minmax(0, 1fr); } .today-col { grid-row: auto; } }
+/* On a phone, one column in the order one asks: the day, tonight, what is coming, then the rest */
+@media (max-width: 720px) {
+  .today-page { grid-template-columns: minmax(0, 1fr); }
+  .today-col { display: contents; }
+  .today-day { order: 1; }
+  .today-sky { order: 2; }
+  .today-coming { order: 3; }
+  .today-western { order: 4; }
+  .today-chart { order: 5; }
+}
+.today-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.fold-toggle { justify-self: start; padding: 2px 0; font-size: 12.5px; color: var(--muted); background: none; border: 0; }
+.fold-toggle:hover, .fold-toggle[aria-pressed='true'] { color: var(--accent); }
+.today-chart-hint { margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--border); }
 
 /* The choices over the sky (历史轨迹's 时长, in the bodies' column): on a plate of their own and in full
    text colour, as the sky behind them may be bright by day or full of stars */

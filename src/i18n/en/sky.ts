@@ -102,7 +102,6 @@ export const SKY: Record<string, string> = {
   '距离以天文单位（AU，日地平均距离约 1.5 亿千米）计；光行时是行星的光到达地球所需的时间。「逆行」是从地球看行星在星座间倒退， 其实是地球在内圈超过外行星（或内行星从地球与太阳之间经过）造成的视觉效果：悬停行星可看地球到它的视线。行星位置由 astronomy-engine 计算。':
     'Distances are in astronomical units (AU; the mean Sun–Earth distance, about 150 million km). Light time is how long a planet’s light takes to reach Earth. Retrograde is a planet seeming to move backwards among the stars as seen from Earth: in fact Earth overtaking an outer planet on its inner track (or an inner planet passing between Earth and the Sun). Hover over a planet to see Earth’s line of sight to it. Positions computed by astronomy-engine.',
   // Day paths
-  轨迹: 'Paths',
   画质: 'Quality',
   清晰: 'Sharp',
   流畅: 'Smooth',
@@ -209,6 +208,17 @@ export const SKY: Record<string, string> = {
   退出: 'Exit',
   // 今晚观星, the cloud forecast and the light of towns
   今晚观星: 'Stargazing tonight',
+  红光夜视: 'Red night light',
+  '整页变暗红，不破坏暗适应': 'The whole page in dim red, to keep your eyes dark-adapted',
+  图层: 'Layers',
+  只看地平线上的: 'Only those above the horizon',
+  '另有 {n} 个在地平线下 ›': '{n} more below the horizon ›',
+  日月行星的轨迹: 'Paths of the Sun, Moon and planets',
+  今晚观星时段: 'Hours for stargazing tonight',
+  '云量预报（联网）': 'Cloud forecast (online)',
+  把云画在天上: 'Draw the clouds in the sky',
+  专业设置: 'More settings',
+  关于这张星图: 'About this chart',
   '最佳 {from}–{to}': 'Best {from}–{to}',
   晴: 'clear',
   少云: 'a few clouds',
@@ -264,11 +274,8 @@ export const SKY: Record<string, string> = {
   行星状星云: 'planetary nebula',
   超新星遗迹: 'supernova remnant',
   星群: 'asterism',
-  坐标: 'Coordinates',
   赤道坐标网: 'Equatorial grid',
   黄道: 'Ecliptic',
-  夜视: 'Night vision',
-  '红光模式：整页变暗红，不破坏暗适应': 'Red light: the whole page in dim red, to keep your eyes dark-adapted',
   '小符号是梅西耶深空天体：椭圆是星系，带十字的圆是球状星团，虚线圆是疏散星团，方框是星云，带刻线的小圆是行星状星云；放大可看到更暗的。':
     'The small marks are Messier deep-sky objects: an ellipse is a galaxy, a crossed circle a globular cluster, a dashed circle an open cluster, a square a nebula and a ticked circle a planetary nebula; zoom in for fainter ones.',
   '赤道坐标网：实线是天赤道，纬线每 30° 一条赤纬，经线每 2 小时一条赤经。':
