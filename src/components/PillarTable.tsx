@@ -20,10 +20,12 @@ interface Props {
   dayMaster: string
   /** Slide the columns into place when they change (the 岁运盘) */
   animate?: boolean
+  /** With 纳音, 星运, 自坐, 空亡 and 神煞 (the 详细 view); without, the stars, the 干支 and 藏干 */
+  full?: boolean
 }
 
-/** 主星 / 天干 / 地支 / 藏干 / 纳音 / 星运 / 自坐 / 空亡 / 神煞 table for any set of pillars. */
-export function PillarTable({ pillars, schools, headerExtra, dividerAt, dayMaster, animate = false }: Props) {
+/** 主星 / 天干 / 地支 / 藏干 (/ 纳音 / 星运 / 自坐 / 空亡 / 神煞, when `full`) table for any set of pillars. */
+export function PillarTable({ pillars, schools, headerExtra, dividerAt, dayMaster, animate = false, full = true }: Props) {
   const term = useTerm()
   const ref = useRef<HTMLTableElement>(null)
   useColumnFlip(ref, animate)
@@ -97,7 +99,7 @@ export function PillarTable({ pillars, schools, headerExtra, dividerAt, dayMaste
             </td>
           ))}
         </tr>
-        {rows.map(([name, render]) => (
+        {full && rows.map(([name, render]) => (
           <tr key={name}>
             <th>
               <ConceptTip name={name} />
@@ -109,6 +111,7 @@ export function PillarTable({ pillars, schools, headerExtra, dividerAt, dayMaste
             ))}
           </tr>
         ))}
+        {full && (
         <tr className="row-shensha">
           <th>
             <ConceptTip name="神煞" />
@@ -124,6 +127,7 @@ export function PillarTable({ pillars, schools, headerExtra, dividerAt, dayMaste
             </td>
           ))}
         </tr>
+        )}
       </tbody>
     </table>
   )

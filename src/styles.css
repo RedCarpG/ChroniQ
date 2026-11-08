@@ -631,6 +631,13 @@ footer .about-badges { margin-left: 0; }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
 
 .chart-meta { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-bottom: 12px; font-size: 14px; }
+/* The chart's particulars wrap in their own column, so 简洁 / 详细 beside them is never covered */
+.natal-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.natal-head .chart-meta { flex: 1; min-width: 0; margin-bottom: 0; }
+.natal-view { flex: none; }
+.natal-view button { white-space: nowrap; }
+.natal-more { margin: 6px 0 0; font-size: 12px; }
+.detail .fold-toggle { display: block; margin: 2px 0 6px auto; }
 
 .pillars { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
 .pillars th, .pillars td { padding: 6px 4px; border-bottom: 1px solid var(--border); font-size: 14px; }

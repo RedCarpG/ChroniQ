@@ -42,6 +42,7 @@ import type { Settings } from '../lib/settings'
 import { play } from '../sound'
 import { onGrid, type ChartDay } from '../lib/chartDays'
 import { useChartDayText, useChartDays } from './useChartDays'
+import { useStoredFlag } from './useStoredFlag'
 import { SkyDayEvents, SkyForecast, useSkyEventText, useSkyEvents } from './SkyForecast'
 import type { SkyMoment } from './SkyView'
 import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
@@ -84,6 +85,8 @@ const notBeijing = new Date().getTimezoneOffset() !== -480
 
 export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onViewSky, onViewMoon }: Props) {
   const [selected, setSelected] = useState(todaySolar)
+  // The 黄历's 值神, 星宿 and 神煞, folded until asked for
+  const [almanacMore, toggleAlmanacMore] = useStoredFlag('chroniq-calendar-almanac-more', false)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
   const { weekStart, dayGanzhi, moonPhase, dipper, skyEvents: skyEventsShown, language } = useSettings()
@@ -753,6 +756,8 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
                 {term(detail.duty)}日
               </AlmanacTip>
             </dd>
+            {almanacMore && (
+              <>
             <dt>{term('值神')}</dt>
             <dd>
               <AlmanacTip title={`${term('值神')} · ${term(detail.twelveStar)}`} note={DAY_GOD_INFO[detail.twelveStar]}>
@@ -765,11 +770,21 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
                 {term(detail.twentyEightStar)}宿
               </AlmanacTip>
             </dd>
+              </>
+            )}
           </dl>
           <AlmanacTags title={term('宜')} kind="good" items={detail.recommends} info={ACTIVITY_INFO} />
           <AlmanacTags title={term('忌')} kind="bad" items={detail.avoids} info={ACTIVITY_INFO} />
-          <AlmanacTags title={term('吉神')} kind="neutral" items={detail.goodGods} />
-          <AlmanacTags title={term('凶煞')} kind="neutral" items={detail.badGods} />
+          {almanacMore && (
+            <>
+              <AlmanacTags title={term('吉神')} kind="neutral" items={detail.goodGods} />
+              <AlmanacTags title={term('凶煞')} kind="neutral" items={detail.badGods} />
+            </>
+          )}
+          {/* 值神, 星宿 and the 神煞 for those who read them; opened once, open on every day after */}
+          <button type="button" className="ghost fold-toggle almanac-more" aria-expanded={almanacMore} onClick={toggleAlmanacMore}>
+            {almanacMore ? t('收起') : `${[term('值神'), term('星宿'), term('吉神') + term('凶煞')].join(t('、'))} ›`}
+          </button>
           <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
           <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} onViewMoon={(time) => onViewMoon(time)} />
           {/* The Moon's phase at once; the rest when its code is in (CalendarStars, apart from the first screen) */}

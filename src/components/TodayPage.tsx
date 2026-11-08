@@ -20,6 +20,7 @@ import { dayKey, skyMomentOf, useSkyEventText, useSkyEvents } from './SkyForecas
 import type { SkyMoment } from './SkyView'
 import { useChartDayText, useChartDays } from './useChartDays'
 import { useLocate } from './useLocate'
+import { useStoredFlag } from './useStoredFlag'
 import { AiAnalysis } from './AiAnalysis'
 import { RightDrawer } from './RightDrawer'
 import { dayPrompt } from '../lib/ai/prompts'
@@ -83,21 +84,7 @@ export function TodayPage({
 
   const [place, setPlaceState] = useState<StarPlace>(() => loadSkyPlace(fallbackPlace))
   // 今晚的天空 in a line a body, or with when in the night each is up and where to look
-  const [tonightDetail, setTonightDetail] = useState(() => {
-    try {
-      return localStorage.getItem(TONIGHT_DETAIL_KEY) === 'on'
-    } catch {
-      return false
-    }
-  })
-  const toggleTonightDetail = () => {
-    setTonightDetail(!tonightDetail)
-    try {
-      localStorage.setItem(TONIGHT_DETAIL_KEY, tonightDetail ? 'off' : 'on')
-    } catch {
-      // storage unavailable: lasts for this visit
-    }
-  }
+  const [tonightDetail, toggleTonightDetail] = useStoredFlag(TONIGHT_DETAIL_KEY, false)
   const setPlace = (next: StarPlace) => {
     setPlaceState(next)
     saveSkyPlace(next)
