@@ -9,6 +9,8 @@ import { formatAzimuth } from '../lib/sky'
 import { loadSkyPlace, saveSkyPlace, type StarPlace } from '../lib/starPrefs'
 import { computeTonight, type TonightBody } from '../lib/tonight'
 import { useSettings, useT, useTerm } from '../settingsContext'
+import { AlmanacTags } from './AlmanacTags'
+import { ACTIVITY_INFO } from '../lib/almanacInfo'
 import { MoonGlyph } from './MoonGlyph'
 import { BODY_COLOUR } from './bodyColours'
 import type { SkyEvent } from '../lib/skyEvents'
@@ -183,14 +185,8 @@ export function TodayPage({
             </button>
           </dd>
         </dl>
-        <div className="tag-block">
-          <span className="tag-title good">{term('宜')}</span>
-          <p>{detail.recommends.slice(0, 8).map(term).join(' ') || '—'}</p>
-        </div>
-        <div className="tag-block">
-          <span className="tag-title bad">{term('忌')}</span>
-          <p>{detail.avoids.slice(0, 8).map(term).join(' ') || '—'}</p>
-        </div>
+        <AlmanacTags title={term('宜')} kind="good" items={detail.recommends.slice(0, 8)} info={ACTIVITY_INFO} />
+        <AlmanacTags title={term('忌')} kind="bad" items={detail.avoids.slice(0, 8)} info={ACTIVITY_INFO} />
       </section>
 
       <section className="card today-western">

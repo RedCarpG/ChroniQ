@@ -150,7 +150,16 @@ export const CALENDAR: Record<string, string> = {
   如何导入: 'How to import',
   辐射点: 'Radiant',
   '日月的大小是示意的；拖动时间可看食的过程。': 'The Sun and Moon are not to scale. Drag the time to watch the eclipse unfold.',
-  加入手机日历: 'Add to your phone’s calendar',
+  下载日历文件: 'Download a calendar file',
+  订阅日历: 'Subscribe to the calendar',
+  '节气、月相、流星雨、月食与行星冲日。订阅一次，手机日历会自己更新，不必每年重新导入。':
+    'Solar terms, Moon phases, meteor showers, lunar eclipses and planets at opposition. Subscribe once and your calendar keeps itself up to date, with nothing to import each year.',
+  订阅: 'Subscribe',
+  复制订阅地址: 'Copy the address',
+  订阅地址: 'Subscription address',
+  如何订阅: 'How to subscribe',
+  'iPhone、Mac 和 Outlook 点「订阅」即可。Google 日历请复制地址，在网页版「其他日历 → 通过网址添加」中粘贴。时刻按各地时间显示；行星冲日等天象各地都看得到，月食只在当时月亮已升起的地方可见。':
+    'On an iPhone, a Mac or Outlook, tap Subscribe. For Google Calendar, copy the address and paste it under Other calendars → From URL on the website. Times show in your own zone; a planet at opposition is seen everywhere, a lunar eclipse only where the Moon is up at the time.',
   '天象（提前 1 小时提醒）': 'Sky events (a reminder 1 hour before)',
   '「{name}」的日子': 'Dates for “{name}”',
   命盘的日子: 'A chart’s dates',
@@ -201,4 +210,6 @@ export const CALENDAR: Record<string, string> = {
   星盘行运: 'Transits',
   '观月 →': 'Moon →',
   '太阳系 →': 'Solar system →',
+  收起释义: 'Hide the meanings',
+  看每一项的意思: 'What each one means',
 }

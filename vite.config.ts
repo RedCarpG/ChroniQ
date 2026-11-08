@@ -1,10 +1,11 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { calendarFeed } from './scripts/feed'
 import { serviceWorker } from './scripts/pwa'
 
 export default defineConfig({
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), calendarFeed(), serviceWorker()],
   base: './',
   // The calendar needs tyme4ts; chart-page UI and iztro load on demand.
   // Keep the warning below the old 635 kB eager entry bundle.

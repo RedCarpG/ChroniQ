@@ -11,6 +11,7 @@ import type { SkyEvent } from '../lib/skyEvents'
 import { peekSkyEvents, skyEventsAsync } from '../lib/skyEventsClient'
 import type { StarPlace } from '../lib/starPrefs'
 import { useSettings, useT, useTerm, useZhOut } from '../settingsContext'
+import { FeedSubscribe } from './FeedSubscribe'
 import { PlacePicker } from './PlacePicker'
 import type { SkyMoment } from './SkyView'
 import { useDismiss } from './useDismiss'
@@ -392,8 +393,9 @@ export function SkyForecast({
                 {!loading && !failed && coming.length === 0 && <li className="muted">{t('未来一年此地没有可见的天象')}</li>}
               </ul>
               {/* Under the list, not at its end, so it is seen without scrolling */}
+              <FeedSubscribe />
               <section className="sky-forecast-file">
-                <h4>{t('加入手机日历')}</h4>
+                <h4>{t('下载日历文件')}</h4>
                 <div className="sky-forecast-choices">
                   <label>
                     <input type="checkbox" checked={withSky} onChange={() => setWithSky(!withSky)} />
