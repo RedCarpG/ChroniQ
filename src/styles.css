@@ -594,6 +594,14 @@ footer .about-badges { margin-left: 0; }
 
 .tag-block { display: flex; gap: 10px; font-size: 14px; }
 .tag-block p { margin: 0; }
+/* 宜 and 忌 whose title opens a line on each item (AlmanacTags) */
+.almanac-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tag-title.almanac-toggle { flex: none; height: 24px; margin: 0; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
+.tag-title.almanac-toggle[aria-expanded='true'] { text-decoration: underline dotted; text-underline-offset: 4px; }
+.almanac-notes { display: grid; gap: 3px; margin: 0; font-size: 12px; line-height: 1.55; animation: sky-info-in 0.2s ease; }
+.almanac-notes > div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.almanac-notes dt { color: var(--text); font-weight: 600; white-space: nowrap; }
+.almanac-notes dd { margin: 0; color: var(--muted); }
 .tag-title {
   flex: none; width: 36px; height: 24px; display: grid; place-items: center; border-radius: 6px;
   font-size: 13px; font-weight: 600; color: #fff;

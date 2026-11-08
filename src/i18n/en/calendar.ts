@@ -201,4 +201,6 @@ export const CALENDAR: Record<string, string> = {
   星盘行运: 'Transits',
   '观月 →': 'Moon →',
   '太阳系 →': 'Solar system →',
+  收起释义: 'Hide the meanings',
+  看每一项的意思: 'What each one means',
 }

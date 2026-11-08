@@ -2,6 +2,9 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { DipperDial } from './DipperDial'
+import { AlmanacTags, AlmanacTip } from './AlmanacTags'
+import { ACTIVITY_INFO, DAY_GOD_INFO, DUTY_INFO, type AlmanacNote } from '../lib/almanacInfo'
+import { MANSIONS, ZONES } from '../lib/mansions'
 import { MoonGlyph } from './MoonGlyph'
 import { MonthPicker } from './MonthPicker'
 import { WeekView, YearView, dayTone } from './CalendarViews'
@@ -46,6 +49,12 @@ import { useSettings, useT, useTerm } from '../settingsContext'
 
 /** 当日星象, with astronomy-engine, loaded apart from the first screen */
 const CalendarStars = lazy(() => import('./CalendarStars'))
+
+/** A 宿 on a day: its 七曜禽星, its quarter of the sky and its 距星 */
+const mansionNote = (char: string): AlmanacNote | undefined => {
+  const m = MANSIONS.find((x) => x.char === char)
+  return m && { zh: `${m.animal} · ${ZONES[m.zone].name} · 距星${m.star}（${m.starWest}）`, en: `${m.animal} · ${ZONES[m.zone].en} · determinative star ${m.starWestEn}` }
+}
 
 // tyme4ts handles far wider ranges; this keeps the dropdown a manageable length.
 const MIN_YEAR = 1900
@@ -739,16 +748,28 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
             <dt>{term('节气')}</dt>
             <dd>{t('{term}第{n}天', { term: term(detail.termName), n: detail.termDay })}</dd>
             <dt>{term('建除')}</dt>
-            <dd>{term(detail.duty)}日</dd>
+            <dd>
+              <AlmanacTip title={`${term('建除')} · ${term(detail.duty)}`} note={DUTY_INFO[detail.duty]}>
+                {term(detail.duty)}日
+              </AlmanacTip>
+            </dd>
             <dt>{term('值神')}</dt>
-            <dd>{term(detail.twelveStar)}</dd>
+            <dd>
+              <AlmanacTip title={`${term('值神')} · ${term(detail.twelveStar)}`} note={DAY_GOD_INFO[detail.twelveStar]}>
+                {term(detail.twelveStar)}
+              </AlmanacTip>
+            </dd>
             <dt>{term('星宿')}</dt>
-            <dd>{term(detail.twentyEightStar)}宿</dd>
+            <dd>
+              <AlmanacTip title={`${term('星宿')} · ${term(detail.twentyEightStar)}宿`} note={mansionNote(detail.twentyEightStar)}>
+                {term(detail.twentyEightStar)}宿
+              </AlmanacTip>
+            </dd>
           </dl>
-          <TagBlock title={term('宜')} kind="good" items={detail.recommends.map(term)} />
-          <TagBlock title={term('忌')} kind="bad" items={detail.avoids.map(term)} />
-          <TagBlock title={term('吉神')} kind="neutral" items={detail.goodGods.map(term)} />
-          <TagBlock title={term('凶煞')} kind="neutral" items={detail.badGods.map(term)} />
+          <AlmanacTags title={term('宜')} kind="good" items={detail.recommends} info={ACTIVITY_INFO} />
+          <AlmanacTags title={term('忌')} kind="bad" items={detail.avoids} info={ACTIVITY_INFO} />
+          <AlmanacTags title={term('吉神')} kind="neutral" items={detail.goodGods} />
+          <AlmanacTags title={term('凶煞')} kind="neutral" items={detail.badGods} />
           <h4 className="detail-section">{isToday ? t('今日星象') : t('当日星象')}</h4>
           <SkyDayEvents events={sky.of(selected)} place={place} onViewSky={onViewSky} onViewMoon={(time) => onViewMoon(time)} />
           {/* The Moon's phase at once; the rest when its code is in (CalendarStars, apart from the first screen) */}
@@ -788,12 +809,3 @@ const zoomOf = (el: HTMLElement) => (el.offsetWidth ? el.getBoundingClientRect()
 /** The branch of the 干支 year that most of a Gregorian year falls in (from 立春) */
 const yearBranch = (year: number) => SolarDay.fromYmd(year, 6, 1).getSixtyCycleDay().getYear().getEarthBranch().getName()
 
-function TagBlock({ title, kind, items }: { title: string; kind: string; items: string[] }) {
-  if (items.length === 0) return null
-  return (
-    <div className="tag-block">
-      <span className={`tag-title ${kind}`}>{title}</span>
-      <p>{items.join(' ')}</p>
-    </div>
-  )
-}
