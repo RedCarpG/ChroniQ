@@ -59,7 +59,7 @@ The app uses React 19, TypeScript and Vite. There is no backend or database, and
 
 ## Privacy and offline use
 
-Birth information, charts and preferences are stored in the current browser's local storage. There are no accounts or cloud synchronization. A shared link's `#` fragment contains birth information and an optional location, which recipients can read; the link is not encrypted storage.
+Birth information, charts and preferences are stored in the current browser's local storage. There are no accounts or cloud synchronization; the charts drawer can export a backup file and import it in another browser. A shared link's `#` fragment contains birth information and an optional location, which recipients can read; the link is not encrypted storage.
 
 The production Service Worker caches app resources for offline use after the initial online load and successful caching. Some font subsets and the high-resolution lunar texture are cached on demand; unavailable resources use fallback fonts or a lower-resolution texture. Updates activate after all pages controlled by the old version are closed.
 
