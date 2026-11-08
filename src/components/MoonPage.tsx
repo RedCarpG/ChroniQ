@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { SolarDay } from 'tyme4ts'
 import { enDate } from '../lib/calendar'
 import { mansionOf } from '../lib/mansions'
@@ -15,6 +15,8 @@ import { Immersive, useNarrow, WhenButton } from './Immersive'
 import { fovFor, MOON_FOV_MAX, moonFovMin, MoonSky } from './MoonSky'
 
 const DAY = 86_400_000
+/** 月相海报, loaded only when asked for */
+const MoonPoster = lazy(() => import('./MoonPoster'))
 const HOUR = 3_600_000
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -133,6 +135,7 @@ export function MoonPage({
   const shownFov = fov ?? fovFor(moon.diameter, narrow ? 0.72 : 0.62)
   const zoomBy = (k: number) => setFov(Math.max(fovMin, Math.min(MOON_FOV_MAX, shownFov * k)))
   const [features, setFeatures] = useState(true)
+  const [poster, setPoster] = useState(false)
   const phaseName = t(moonPhaseName(moon.phase))
   const lunar = lunarText(wall.year, wall.month, wall.day)
   const where = `${formatAzimuth(moon.az, language)} · ${up ? t('高 {altitude}°', { altitude: moon.alt.toFixed(1) }) : t('地平线下')}`
@@ -315,6 +318,21 @@ export function MoonPage({
         </ol>
         {narrow && days}
       </div>
+      <button type="button" className="ghost moon-poster-button" data-sound="gong" onClick={() => setPoster(true)}>
+        {t('生成月相海报')}
+      </button>
+      {poster && (
+        <Suspense fallback={null}>
+          <MoonPoster
+            moon={moon}
+            date={en ? dateText(utc) : `${wall.year}年${wall.month}月${wall.day}日`}
+            time={`${pad(wall.hour)}:${pad(wall.minute)}`}
+            phase={`${phaseName} · ${lunar} · ${t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })}`}
+            place={t(place.name)}
+            onClose={() => setPoster(false)}
+          />
+        </Suspense>
+      )}
       <div className="sky-switches">
         <button type="button" role="switch" aria-checked={features} className={`sky-switch${features ? ' on' : ''}`} onClick={() => setFeatures((f) => !f)}>
           {t('月海与环形山的名字')}

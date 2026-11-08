@@ -45,4 +45,11 @@ export const MOON: Record<string, string> = {
   '初亏 {a} · 复圆 {b}': 'partial {a}–{b}',
   '食既 {a} · 生光 {b}': 'total {a}–{b}',
   '看食甚 →': 'Go to greatest →',
+  生成月相海报: 'Make a Moon poster',
+  '{date}的月亮': 'The Moon on {date}',
+  月相海报: 'Moon poster',
+  月相海报预览: 'Moon poster preview',
+  显示时刻: 'Show the time',
+  显示观测地: 'Show the place',
+  '海报只在本机生成：月亮按此时此地所见画出，天顶在上。': 'The poster is made on this device: the Moon as seen from this place at this moment, the zenith up.',
 }

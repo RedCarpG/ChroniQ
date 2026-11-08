@@ -5,6 +5,7 @@ credit "NASA's Scientific Visualization Studio". Equirectangular, longitude 0 at
 east to the right, north up.
 
 - `lroc_color_2k.jpg`: the 2025 colour map, 2048×1024 (from LRO's LROC WAC)
+- `lroc_color_4k.jpg`: the same map at 4096×2048, from `lroc_color_16bit_srgb_4k.tif` saved as JPEG (quality 82); fetched only when the Moon is zoomed in close
 - `lroc_color_poles_1k.jpg`: the 2019 colour map with the poles, 1024×512
 - `ldem_3_8bit.jpg`: heights (LRO's LOLA), 1024×512, 8-bit
 
