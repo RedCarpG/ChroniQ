@@ -133,7 +133,13 @@ export const COMMON: Record<string, string> = {
   '删除{name}': 'Delete {name}',
   '还没有保存的命盘。填好出生信息后，在上面命名并保存。':
     'No saved charts yet. Fill in the birth details, then name and save the chart above.',
-  '命盘只保存在本机浏览器中，不会上传。': 'Charts are kept only in this browser and never uploaded.',
+  '命盘只保存在本机浏览器中，不会上传。清除浏览器数据或换设备前，可以先导出备份。':
+    'Charts are kept only in this browser and never uploaded. Before clearing the browser’s data or changing devices, export a backup.',
+  导出备份: 'Export backup',
+  导入备份: 'Import backup',
+  '已导出 {n} 张命盘': '{n} charts exported',
+  这不是星曆的命盘备份文件: 'This is not a ChroniQ chart backup',
+  '导入 {added} 张，跳过 {skipped} 张已有的': '{added} imported, {skipped} already saved',
   命盘: 'Charts',
   '命盘{n}': 'Chart {n}',
   男: 'Male',
