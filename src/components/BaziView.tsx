@@ -41,11 +41,9 @@ interface Props {
   onChange: (input: BaziInput) => void
   schools: SchoolSettings
   onSchoolsChange: (schools: SchoolSettings) => void
-  /** Open 观月 at the moment of birth */
-  onViewBirthMoon?: () => void
 }
 
-export function BaziView({ input, onChange, schools, onSchoolsChange, onViewBirthMoon }: Props) {
+export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
   const chart = useMemo(() => buildBazi(input, schools), [input, schools])
   const aiPrompt = useMemo(() => baziPrompt(chart), [chart])
   const term = useTerm()
@@ -228,11 +226,6 @@ export function BaziView({ input, onChange, schools, onSchoolsChange, onViewBirt
           <div className="muted">
             {term('农历')} {term(chart.lunarText)}
           </div>
-          {onViewBirthMoon && (
-            <button type="button" className="ghost view-more birth-moon" data-sound="gong" onClick={onViewBirthMoon}>
-              {t('出生时的月亮 →')}
-            </button>
-          )}
         </div>
 
         <HighlightScope pillars={chart.pillars} relations={chart.relations}>

@@ -5,6 +5,7 @@ import { useDismiss } from './useDismiss'
 
 // The poster brings the star catalogue and astronomy-engine: loaded when it is first asked for
 const BirthPoster = lazy(() => import('./BirthPoster'))
+const BirthMoonPoster = lazy(() => import('./BirthMoonPoster'))
 
 /** The card each chart page saves as its image */
 const TARGET = { bazi: 'bazi-natal', ziwei: 'ziwei-board', star: 'star-natal' } as const
@@ -32,12 +33,12 @@ function controlsHeight(card: HTMLElement) {
  * @media print leaves out the controls and prints in the light palette).
  * The image library loads only when an image is first saved.
  */
-export function ExportButton({ chart }: { chart: SharedChart }) {
+export function ExportButton({ chart, onViewMoon }: { chart: SharedChart; /** Look at the Moon of birth in 观月 */ onViewMoon?: () => void }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
-  const [poster, setPoster] = useState(false)
+  const [poster, setPoster] = useState<'sky' | 'moon' | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
@@ -126,10 +127,20 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
             role="menuitem"
             onClick={() => {
               close()
-              setPoster(true)
+              setPoster('sky')
             }}
           >
             {t('生辰星空海报')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              close()
+              setPoster('moon')
+            }}
+          >
+            {t('生辰月相海报')}
           </button>
           <button type="button" role="menuitem" onClick={print}>
             {t('打印')}
@@ -138,7 +149,21 @@ export function ExportButton({ chart }: { chart: SharedChart }) {
       )}
       {poster && (
         <Suspense fallback={null}>
-          <BirthPoster input={chart.input} onClose={() => setPoster(false)} />
+          {poster === 'sky' ? (
+            <BirthPoster input={chart.input} onClose={() => setPoster(null)} />
+          ) : (
+            <BirthMoonPoster
+              input={chart.input}
+              onClose={() => setPoster(null)}
+              onViewMoon={
+                onViewMoon &&
+                (() => {
+                  setPoster(null)
+                  onViewMoon()
+                })
+              }
+            />
+          )}
         </Suspense>
       )}
       {note && (
