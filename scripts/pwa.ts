@@ -35,7 +35,8 @@ export function serviceWorker(): Plugin {
         const template = readFileSync(join(process.cwd(), 'scripts/sw-template.js'), 'utf8')
         hash.update(template)
         for (const f of publicFiles) hash.update(f).update(readFileSync(join(publicDir, f)))
-        const precache = ['./', ...built.filter((f) => f !== 'index.html' && !ON_DEMAND.some((re) => re.test(f))), ...publicFiles]
+        // og.jpg is the picture a shared link's preview shows: only link scrapers fetch it
+        const precache = ['./', ...built.filter((f) => f !== 'index.html' && !ON_DEMAND.some((re) => re.test(f))), ...publicFiles.filter((f) => f !== 'og.jpg')]
         const source = template
           .replace('__CACHE__', `chroniq-${hash.digest('hex').slice(0, 12)}`)
           .replace('__PRECACHE__', JSON.stringify(precache, null, 2))
