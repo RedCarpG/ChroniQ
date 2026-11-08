@@ -77,7 +77,7 @@ export function App() {
   // Opened from a day's Moon (日历, 今日): the day 观月 starts at; from a planet (今日): the one 太阳系 picks
   const [moonDay, setMoonDay] = useState<{ year: number; month: number; day: number } | number | null>(null)
   const [solarPlanet, setSolarPlanet] = useState<string | null>(null)
-  // From a chart (八字, 星盘): the Moon at the moment of birth, seen from the birthplace, its poster open
+  // From a chart's 生辰月相海报: the Moon at the moment of birth, seen from the birthplace
   const [moonBirth, setMoonBirth] = useState<Place | null>(null)
   const viewMoon = (day: { year: number; month: number; day: number } | number | null) => {
     setMoonDay(day)
@@ -343,7 +343,7 @@ export function App() {
           <div className="topbar-right">
             {tab !== 'today' && tab !== 'timeline' && tab !== 'calendar' && tab !== 'sky' && tab !== 'moon' && tab !== 'solar' && (
               <>
-                <ExportButton chart={{ tab, input: baziInput }} />
+                <ExportButton chart={{ tab, input: baziInput }} onViewMoon={() => viewBirthMoon(baziInput)} />
                 <ShareButton chart={{ tab, input: baziInput }} />
               </>
             )}
@@ -395,7 +395,6 @@ export function App() {
                 onChange={setBaziInput}
                 schools={schools}
                 onSchoolsChange={changeSchools}
-                onViewBirthMoon={() => viewBirthMoon(baziInput)}
               />
             </Suspense>
           ) : tab === 'sky' ? (
@@ -418,7 +417,6 @@ export function App() {
                 onChange={setBaziInput}
                 settings={starSettings}
                 onSettingsChange={changeStarSettings}
-                onViewBirthMoon={() => viewBirthMoon(baziInput)}
               />
             </Suspense>
           ) : (

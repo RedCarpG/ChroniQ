@@ -29,6 +29,8 @@ export default function MoonPoster({
   phase,
   place,
   defaultTitle,
+  title: heading,
+  action,
   onClose,
 }: {
   moon: MoonView
@@ -40,6 +42,10 @@ export default function MoonPoster({
   place: string
   /** The title when none is typed (else the date's Moon) */
   defaultTitle?: string
+  /** The dialog's own name (else 月相海报) */
+  title?: string
+  /** A further step beside saving, e.g. to look at this Moon in 观月 */
+  action?: { label: string; onClick: () => void }
   onClose: () => void
 }) {
   const t = useT()
@@ -125,10 +131,10 @@ export default function MoonPoster({
 
   return createPortal(
     <div className="poster-veil">
-      <div className="poster-panel" role="dialog" aria-modal="true" aria-label={t('月相海报')} ref={panel}>
+      <div className="poster-panel" role="dialog" aria-modal="true" aria-label={heading ?? t('月相海报')} ref={panel}>
         <canvas ref={canvas} className="poster-canvas" width={W} height={H} role="img" aria-label={t('月相海报预览')} />
         <div className="poster-options">
-          <h3>{t('月相海报')}</h3>
+          <h3>{heading ?? t('月相海报')}</h3>
           <button type="button" className="ghost poster-close" aria-label={t('关闭')} title={t('关闭')} onClick={onClose}>
             ✕
           </button>
@@ -155,6 +161,11 @@ export default function MoonPoster({
               </button>
             )}
           </div>
+          {action && (
+            <button type="button" className="ghost poster-more" onClick={action.onClick}>
+              {action.label}
+            </button>
+          )}
           {note && <small role="status">{note}</small>}
         </div>
       </div>

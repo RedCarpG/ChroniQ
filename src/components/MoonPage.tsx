@@ -34,7 +34,7 @@ export function MoonPage({
   fallbackPlace: StarPlace
   /** Opened from a day's Moon (日历): that day, in the evening (or now, for today); or an instant (a lunar eclipse) */
   day?: { year: number; month: number; day: number } | number | null
-  /** Opened from a chart (八字, 星盘): the birthplace to look from, for this visit, and the poster opened at once */
+  /** Opened from a chart's 生辰月相海报: the birthplace to look from, for this visit */
   birthPlace?: StarPlace | null
 }) {
   const t = useT()
@@ -139,7 +139,7 @@ export function MoonPage({
   const shownFov = fov ?? fovFor(moon.diameter, narrow ? 0.72 : 0.62)
   const zoomBy = (k: number) => setFov(Math.max(fovMin, Math.min(MOON_FOV_MAX, shownFov * k)))
   const [features, setFeatures] = useState(true)
-  const [poster, setPoster] = useState(!!birthPlace)
+  const [poster, setPoster] = useState(false)
   const phaseName = t(moonPhaseName(moon.phase))
   const lunar = lunarText(wall.year, wall.month, wall.day)
   const where = `${formatAzimuth(moon.az, language)} · ${up ? t('高 {altitude}°', { altitude: moon.alt.toFixed(1) }) : t('地平线下')}`
@@ -333,7 +333,7 @@ export function MoonPage({
             time={`${pad(wall.hour)}:${pad(wall.minute)}`}
             phase={`${phaseName} · ${lunar} · ${t('照亮 {pct}%', { pct: Math.round(moon.lit * 100) })}`}
             place={t(place.name)}
-            defaultTitle={birthPlace ? t('出生时的月亮') : undefined}
+            defaultTitle={birthPlace ? t('生辰月相') : undefined}
             onClose={() => setPoster(false)}
           />
         </Suspense>
