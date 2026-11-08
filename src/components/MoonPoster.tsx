@@ -28,6 +28,7 @@ export default function MoonPoster({
   time,
   phase,
   place,
+  defaultTitle,
   onClose,
 }: {
   moon: MoonView
@@ -37,6 +38,8 @@ export default function MoonPoster({
   /** Phase, 农历 day and how much is lit, one line */
   phase: string
   place: string
+  /** The title when none is typed (else the date's Moon) */
+  defaultTitle?: string
   onClose: () => void
 }) {
   const t = useT()
@@ -64,10 +67,10 @@ export default function MoonPoster({
 
   const words: Words = useMemo(
     () => ({
-      title: zh(title.trim() || t('{date}的月亮', { date })),
+      title: zh(title.trim() || defaultTitle || t('{date}的月亮', { date })),
       lines: [withTime ? `${date} ${time}` : date, phase, withPlace ? place : ''].filter(Boolean).map(zh),
     }),
-    [title, date, time, phase, place, withTime, withPlace, zh],
+    [title, defaultTitle, date, time, phase, place, withTime, withPlace, zh],
   )
 
   useEffect(() => {
@@ -76,7 +79,9 @@ export default function MoonPoster({
       if (active && canvas.current) drawMoonPoster(canvas.current, disc === 'none' ? null : disc, moon, words)
     }
     draw()
-    Promise.allSettled([document.fonts.load(`600 40px "Noto Serif SC"`, words.title + words.lines.join('') + '星曆'), document.fonts.load(`600 40px "Cormorant Garamond"`, 'ChroniQ')]).then(draw)
+    // Drawn again once its fonts are in (where the browser can say when)
+    if (document.fonts?.load)
+      Promise.allSettled([document.fonts.load(`600 40px "Noto Serif SC"`, words.title + words.lines.join('') + '星曆'), document.fonts.load(`600 40px "Cormorant Garamond"`, 'ChroniQ')]).then(draw)
     return () => {
       active = false
     }
@@ -129,7 +134,7 @@ export default function MoonPoster({
           </button>
           <label className="poster-title">
             {t('标题')}
-            <input type="text" maxLength={16} value={title} placeholder={t('{date}的月亮', { date })} onChange={(e) => setTitle(e.target.value)} />
+            <input type="text" maxLength={16} value={title} placeholder={defaultTitle || t('{date}的月亮', { date })} onChange={(e) => setTitle(e.target.value)} />
           </label>
           <label>
             <input type="checkbox" checked={withTime} onChange={() => setWithTime(!withTime)} />

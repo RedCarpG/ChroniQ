@@ -52,4 +52,6 @@ export const MOON: Record<string, string> = {
   显示时刻: 'Show the time',
   显示观测地: 'Show the place',
   '海报只在本机生成：月亮按此时此地所见画出，天顶在上。': 'The poster is made on this device: the Moon as seen from this place at this moment, the zenith up.',
+  '出生时的月亮 →': 'The Moon at birth →',
+  出生时的月亮: 'The Moon at birth',
 }

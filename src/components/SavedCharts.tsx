@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { createPortal } from 'react-dom'
 import { useCalendarChart, useSavedCharts } from './chartStore'
 import type { BaziInput } from '../lib/bazi'
-import { sameInput, upsertChart } from '../lib/savedCharts'
+import { chartsBackup, mergeCharts, readBackup, sameInput, upsertChart } from '../lib/savedCharts'
 import { translate, type Lang } from '../i18n'
 import { useSettings, useT } from '../settingsContext'
 import { useDismiss } from './useDismiss'
@@ -115,6 +115,27 @@ export function SavedChartsDrawer({
   const close = useCallback(() => setTab(null), [setTab])
   useDismiss(ref, open, close)
 
+  // A backup of the saved charts: a file to keep, or to bring them into another browser
+  const [backupNote, setBackupNote] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const exportBackup = () => {
+    const d = new Date()
+    const url = URL.createObjectURL(new Blob([chartsBackup(charts, d)], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `星曆-命盘备份-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    setBackupNote(t('已导出 {n} 张命盘', { n: charts.length }))
+  }
+  const importBackup = async (file: File) => {
+    const found = readBackup(await file.text())
+    if (!found) return setBackupNote(t('这不是星曆的命盘备份文件'))
+    const merged = mergeCharts(charts, found)
+    update(merged.charts)
+    setBackupNote(t('导入 {added} 张，跳过 {skipped} 张已有的', { added: merged.added, skipped: merged.skipped }))
+  }
+
   const save = () => {
     const finalName = name.trim() || active?.name || t('命盘{n}', { n: charts.length + 1 })
     update(upsertChart(charts, finalName, input))
@@ -187,7 +208,31 @@ export function SavedChartsDrawer({
         ) : (
           <p className="muted saved-empty">{t('还没有保存的命盘。填好出生信息后，在上面命名并保存。')}</p>
         )}
-        <small className="muted">{t('命盘只保存在本机浏览器中，不会上传。')}</small>
+        <small className="muted">{t('命盘只保存在本机浏览器中，不会上传。清除浏览器数据或换设备前，可以先导出备份。')}</small>
+        <div className="saved-backup">
+          <button type="button" className="ghost" disabled={charts.length === 0} onClick={exportBackup}>
+            {t('导出备份')}
+          </button>
+          <button type="button" className="ghost" onClick={() => fileRef.current?.click()}>
+            {t('导入备份')}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) importBackup(file)
+            }}
+          />
+        </div>
+        {backupNote && (
+          <small className="saved-backup-note" role="status">
+            {backupNote}
+          </small>
+        )}
         </div>
         {/* A page's own tab shows here (DrawerPageTab) */}
         <div id={DRAWER_PAGE_PANEL} className="drawer-section" hidden={tab !== 'page'} />

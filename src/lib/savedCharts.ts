@@ -103,3 +103,53 @@ export function upsertChart(charts: SavedChart[], name: string, input: BaziInput
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
   return [...charts, { id, name, input }]
 }
+
+/** What a backup file of the saved charts says it is */
+const BACKUP_KIND = 'chroniq-charts'
+
+/** The saved charts as a backup file's text (JSON), to keep or move to another browser */
+export function chartsBackup(charts: SavedChart[], now = new Date()): string {
+  return JSON.stringify({ kind: BACKUP_KIND, version: 1, exported: now.toISOString(), charts: charts.map(({ name, input }) => ({ name, input })) }, null, 2)
+}
+
+/**
+ * The charts in a backup file's text: each checked as stored charts are (toBaziInput), the rest left
+ * out. Null when the text is not a backup at all. A bare list of charts is taken too.
+ */
+export function readBackup(text: string): { name: string; input: BaziInput }[] | null {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return null
+  }
+  const list = Array.isArray(data) ? data : data && typeof data === 'object' && (data as { kind?: unknown }).kind === BACKUP_KIND ? (data as { charts?: unknown }).charts : null
+  if (!Array.isArray(list)) return null
+  return list.flatMap((c) => {
+    const input = toBaziInput(c?.input)
+    const name = typeof c?.name === 'string' ? c.name.trim().slice(0, 20) : ''
+    return input && name ? [{ name, input }] : []
+  })
+}
+
+/**
+ * Charts from a backup added to those saved: one the same as a saved chart (whatever its name) is
+ * skipped; one whose name is taken by a different chart keeps both, the new one's name numbered.
+ * Nothing saved is ever replaced.
+ */
+export function mergeCharts(charts: SavedChart[], incoming: { name: string; input: BaziInput }[]): { charts: SavedChart[]; added: number; skipped: number } {
+  let out = charts
+  let added = 0
+  let skipped = 0
+  for (const c of incoming) {
+    if (out.some((x) => sameInput(x.input, c.input))) {
+      skipped++
+      continue
+    }
+    let name = c.name
+    for (let n = 2; out.some((x) => x.name === name); n++) name = `${c.name.slice(0, 16)} (${n})`
+    out = upsertChart(out, name, c.input)
+    added++
+  }
+  return { charts: out, added, skipped }
+}
