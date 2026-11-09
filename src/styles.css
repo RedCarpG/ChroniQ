@@ -314,10 +314,13 @@ footer .about-badges { margin-left: 0; }
   display: grid; gap: 8px; padding: 16px; text-align: left; color: var(--text); font-size: 13px; line-height: 1.6;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: 0 8px 28px rgb(0 0 0 / 0.16); animation: tip-in 0.15s ease-out;
+  /* every page is listed: on a short screen it scrolls */
+  max-height: calc(100vh - 96px); overflow-y: auto;
 }
 .about-panel p, .about-panel ul { margin: 0; }
 .about-panel ul { padding-left: 18px; }
 .about-panel li b { font-weight: 600; }
+.about-group h4 { margin: 0 0 4px; font-family: var(--font-title); font-size: 13px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent); }
 .about-title { font-size: 16px; }
 .about-title .muted { font-size: 13px; font-weight: 500; }
 .about-links { display: flex; flex-wrap: wrap; gap: 6px 14px; }
