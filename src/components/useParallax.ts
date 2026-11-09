@@ -31,6 +31,9 @@ export function useParallax(on: boolean) {
         document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
           el.style.translate = `${(x * depth * REACH).toFixed(2)}px ${(y * depth * REACH).toFixed(2)}px`
         })
+      // ⑧ The candle-light under the pointer, following it in the same eased steps, so it lags a little
+      const glow = document.querySelector<HTMLElement>('.ts-glow')
+      if (glow) glow.style.translate = `${(((x + 1) / 2) * window.innerWidth).toFixed(1)}px ${(((y + 1) / 2) * window.innerHeight).toFixed(1)}px`
       frame = Math.abs(toX - x) + Math.abs(toY - y) > 0.002 ? requestAnimationFrame(step) : 0
     }
     const aim = (nx: number, ny: number) => {
@@ -38,7 +41,13 @@ export function useParallax(on: boolean) {
       if (!frame) frame = requestAnimationFrame(step)
     }
     // The mouse: where it is on the screen, from -1 to 1 each way
-    const onMove = (e: PointerEvent) => e.pointerType === 'mouse' && aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1)
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
+      document.querySelector('.ts-glow')?.classList.add('on')
+      aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1)
+    }
+    // the glow goes out when the mouse leaves the window
+    const onLeave = () => document.querySelector('.ts-glow')?.classList.remove('on')
     // A phone: its tilt, side to side, and forward and back from how it was first held
     let level: number | null = null
     const onTilt = (e: DeviceOrientationEvent) => {
@@ -48,8 +57,10 @@ export function useParallax(on: boolean) {
     }
     window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('deviceorientation', onTilt)
+    document.documentElement.addEventListener('pointerleave', onLeave)
     return () => {
       window.removeEventListener('pointermove', onMove)
+      document.documentElement.removeEventListener('pointerleave', onLeave)
       window.removeEventListener('deviceorientation', onTilt)
       cancelAnimationFrame(frame)
       for (const [selector] of LAYERS) document.querySelectorAll<HTMLElement>(selector).forEach((el) => (el.style.translate = ''))

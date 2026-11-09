@@ -3,7 +3,7 @@
 // violet for 星盘; drifting motes of light and a fine grain, as on old paper or a rubbing. On 八字 the
 // mist all but lifts: the sky of the birth behind it is the scene there (tianshu.css .ts-page-bazi),
 // with a thin fog drifting over it, as smoke over an old plate.
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParallax } from './useParallax'
 
 const W = 1200
@@ -20,7 +20,9 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
   // The page's layers moving against one another with the pointer: depth (useParallax)
   useParallax(true)
   const dots = useMemo(() => (realm === 'east' ? motes(7, ['#f2d6a8', '#e0503a', '#ebe3cf'], 110) : motes(13, ['#ffffff', '#c8d6ff', '#ffe2bd'], 150)), [realm])
+  const meteor = useMeteors()
   return (
+    <>
     <div className={`ts-atmos ts-${realm} ts-page-${page}`} aria-hidden="true">
       <div className="ts-mist" />
       {/* 八字, 紫微 and the 历法 pages (今日, 日历): a thin fog, in drifts, moving slowly across */}
@@ -47,5 +49,39 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
         <rect width="100%" height="100%" filter="url(#ts-grain)" />
       </svg>
     </div>
+    {/* over the night, under the page */}
+    {/* ⑧ a soft light under the pointer, as a candle over the page (moved by useParallax) */}
+    <div className="ts-glow" aria-hidden="true" />
+    {/* ⑨ now and then, a shooting star */}
+    {meteor && (
+      <i
+        key={meteor.id}
+        className="ts-meteor"
+        aria-hidden="true"
+        style={{ left: `${meteor.x}%`, top: `${meteor.y}%` }}
+      />
+    )}
+    </>
   )
+}
+
+/** ⑨ A shooting star every 30 to 60 seconds, somewhere in the upper sky: none while the tab is hidden or
+ * with 减少动态效果. Each is an element with a CSS animation, there only while it flies */
+function useMeteors() {
+  const [meteor, setMeteor] = useState<{ id: number; x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let timer = 0
+    let id = 0
+    const next = (first = false) => {
+      timer = window.setTimeout(() => {
+        if (!document.hidden) setMeteor({ id: ++id, x: 8 + Math.random() * 60, y: 3 + Math.random() * 30 })
+        window.setTimeout(() => setMeteor(null), 1400)
+        next()
+      }, first ? 6000 + Math.random() * 6000 : 30000 + Math.random() * 30000)
+    }
+    next(true)
+    return () => clearTimeout(timer)
+  }, [])
+  return meteor
 }

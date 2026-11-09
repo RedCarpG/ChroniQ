@@ -109,8 +109,9 @@ export function ZiweiWheel({
       ))}
       {/* 三方四正 as light: the triangle of the 三合, the 对宫 dashed */}
       {sf && from && (
-        <g className="zw-sf cast-l2" aria-hidden="true">
-          <polygon points={[from, ...sf.trines].map((b) => point(b).map(f).join(',')).join(' ')} />
+        // keyed by the palace, so a new one's lines draw themselves (⑥, tianshu.css)
+        <g key={from} className="zw-sf cast-l2" aria-hidden="true">
+          <polygon pathLength={1} points={[from, ...sf.trines].map((b) => point(b).map(f).join(',')).join(' ')} />
           <line x1={f(point(from)[0])} y1={f(point(from)[1])} x2={f(point(sf.opposite)[0])} y2={f(point(sf.opposite)[1])} />
         </g>
       )}

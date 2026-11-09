@@ -109,7 +109,16 @@
 :root[data-style] .page-nav-group.open > .page-nav-group-btn { color: var(--text); }
 :root[data-style] .page-nav-item { font-size: 14px; letter-spacing: 0.24em; }
 :root[data-style] .page-nav-item.on { font-weight: 500; }
-:root[data-style] .page-nav-item.on::before { content: '◆'; display: inline-block; margin-right: 6px; font-size: 7px; vertical-align: 2px; }
+.page-nav { position: relative; }
+.page-nav-mark { display: none; }
+/* ① The ◆ by the current page: one mark gliding from page to page (PageNav sets where) */
+:root[data-style] .page-nav-mark {
+  display: block; position: absolute; left: -2px; top: 0; z-index: 1; width: 5px; height: 5px; margin-top: -2.5px; pointer-events: none;
+  rotate: 45deg; background: var(--accent); box-shadow: 0 0 8px var(--accent); opacity: 0;
+  transition: translate 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.3s;
+}
+:root[data-style] .page-nav-mark.shown { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { :root[data-style] .page-nav-mark { transition: none; } }
 :root[data-style] .topbar-right { --tool-rest: 0.75; }
 /* The bar's tools quieter than the page names: the buttons, not the group, so what they open (设置, the
    export menu) stays solid and readable over the page */
@@ -629,3 +638,78 @@
 :root[data-style] .day-pillar { background: none; padding: 2px 0; }
 :root[data-style] .day-pillar .char { font-family: var(--font-lunar); font-size: 36px; font-weight: 400; line-height: 1.12; text-shadow: 0 0 14px currentColor; }
 :root[data-style] .detail-hero .big { font-family: 'Cormorant Garamond', serif; font-weight: 400; font-variant-numeric: lining-nums; }
+
+/* ---------- Motion: only position, scale and opacity, so nothing is drawn again; none with 减少动态效果 ---------- */
+@keyframes ts-rise { from { opacity: 0; translate: 0 16px; } }
+@keyframes ts-sink { to { opacity: 0; translate: 0 -8px; } }
+/* ① A new page rises in, as ink coming up on the paper, where the classic look slides it across */
+:root[data-ui='tianshu'][data-vt='page']::view-transition-old(page) { animation: ts-sink 0.22s ease-in both; }
+:root[data-ui='tianshu'][data-vt='page']::view-transition-new(page) { animation: ts-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.06s both; }
+/* ② Each section rises a little as it comes into view: the browser's own scroll-driven animation, no script;
+   one already in view is simply there, and a browser without it shows them all */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    :root[data-style] main section.card:not(.scene) { animation: ts-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
+  }
+}
+/* ⑦ A light runs once along the gold lines of the main action when pointed at */
+:root[data-ui='tianshu'] .primary::after {
+  background: linear-gradient(90deg, transparent 35%, rgb(255 243 214 / 0.95) 50%, transparent 65%) no-repeat, var(--quiet-line);
+  background-size: 300% 100%, 100% 100%; background-position: 100% 0, 0 0;
+}
+@keyframes ts-glint { from { background-position: 100% 0, 0 0; } to { background-position: 0% 0, 0 0; } }
+@media (prefers-reduced-motion: no-preference) { :root[data-ui='tianshu'] .primary:hover::after { animation: ts-glint 0.9s ease-out; } }
+/* ③ 今日, the first time it is seen each day (TodayScene .stamping): the day fades in, then the 宜 and the 忌
+   are stamped down one after the other, their words following */
+@keyframes ts-stamp { from { opacity: 0; scale: 1.8; } 60% { opacity: 1; } }
+@keyframes ts-date-in { from { opacity: 0; scale: 0.96; } }
+@media (prefers-reduced-motion: no-preference) {
+  .today-scene.stamping .td-num b { animation: ts-date-in 1s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .today-scene.stamping .td-yiji i { animation: ts-stamp 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.7s both; }
+  .today-scene.stamping .td-yiji .td-ji i { animation-delay: 1.05s; }
+  .today-scene.stamping .td-yiji span { animation: ts-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.95s both; }
+  .today-scene.stamping .td-yiji .td-ji span { animation-delay: 1.3s; }
+}
+/* ④ 日历: a new month's days ripple in from the top left, across and down, in place of the slide */
+@keyframes ts-day-in { from { opacity: 0; translate: 0 8px; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-style] .cal-slide:is(.next, .back) { animation: none; }
+  :root[data-style] .cal-slide:is(.next, .back) .grid.days .day { animation: ts-day-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 24ms); }
+}
+/* ⑤ The day picked: one frame of gold light over it, gliding to the day picked next (CalendarView sets where) */
+.day-frame { display: none; }
+:root[data-style] .day-frame {
+  display: block; position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; opacity: 0;
+  box-shadow: inset 0 0 0 1px rgb(220 188 124 / 0.75), inset 0 0 16px rgb(220 188 124 / 0.18), 0 0 16px rgb(220 188 124 / 0.3);
+  background: radial-gradient(circle at 50% 45%, rgb(220 188 124 / 0.14), transparent 72%);
+}
+:root[data-style] .day-frame.shown { opacity: 1; }
+:root[data-style] .day-frame.placed { transition: translate 0.4s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.2s; }
+@media (prefers-reduced-motion: reduce) { :root[data-style] .day-frame.placed { transition: none; } }
+/* the day's own frame and wash give way to it */
+:root[data-style] .grid.days .day.selected { background: none; box-shadow: inset -1px -1px 0 rgb(220 188 124 / 0.1); }
+/* ⑥ 紫微: a palace's 三方四正 drawn when it is pointed at, the 三合's triangle in one stroke, the 对宫's
+   line fading in (keyed by the palace, so only a change draws; nothing moves while it is held) */
+@keyframes ts-draw { from { stroke-dashoffset: 1; } }
+@keyframes ts-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-style] :is(.zw-sf, .sf-lines) polygon { stroke-dasharray: 1; animation: ts-draw 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  :root[data-style] :is(.zw-sf, .sf-lines) line { animation: ts-fade 0.45s ease 0.1s both; }
+}
+/* ⑧ The candle-light under the pointer: one soft disc behind the page, moved (never drawn again) by
+   useParallax with the pointer, eased; mouse only, and gone when the mouse leaves */
+.ts-glow {
+  position: fixed; left: 0; top: 0; z-index: -1; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%;
+  pointer-events: none; opacity: 0; transition: opacity 0.6s;
+  background: radial-gradient(circle, rgb(220 188 124 / 0.085), rgb(220 188 124 / 0.03) 35%, transparent 65%);
+}
+.ts-glow.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce), (hover: none) { .ts-glow { display: none; } }
+/* ⑨ A shooting star: a short streak of light crossing the upper sky once */
+.ts-meteor {
+  position: fixed; z-index: -1; width: 140px; height: 1.5px; border-radius: 2px; pointer-events: none; opacity: 0; rotate: 21deg;
+  background: linear-gradient(90deg, transparent, rgb(255 243 214 / 0.9)); filter: drop-shadow(0 0 4px #fff3d6);
+  animation: ts-meteor 1.1s ease-out forwards;
+}
+@keyframes ts-meteor { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: 380px 150px; } }
+@media print { .ts-glow, .ts-meteor { display: none; } }

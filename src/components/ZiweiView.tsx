@@ -536,7 +536,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                 castLayer={tianshu ? castLayer(p.branch) : undefined}
               />
             ))}
-            {sfFrom && mode === 'sanfang' && !litPattern && <SanFangLines branch={sfFrom} />}
+            {sfFrom && mode === 'sanfang' && !litPattern && <SanFangLines key={sfFrom} branch={sfFrom} />}
             {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
             {/* 天书: a palace picked, its 三方四正 takes the ring's place (on a phone, the palace's detail does) */}
             <div className={`ziwei-center cast-l3${tianshu && active ? ' sf-open' : ''}`}>
@@ -756,7 +756,7 @@ function SanFangLines({ branch }: { branch: string }) {
   const [self, opp, t1, t2] = [branch, opposite, ...trines].map(anchor)
   return (
     <svg className="sf-lines cast-l2" viewBox="0 0 4 4" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points={[self, t1, t2].map((p) => p.join(',')).join(' ')} />
+      <polygon pathLength={1} points={[self, t1, t2].map((p) => p.join(',')).join(' ')} />
       <line x1={self[0]} y1={self[1]} x2={opp[0]} y2={opp[1]} />
     </svg>
   )
