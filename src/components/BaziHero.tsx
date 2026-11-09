@@ -1,9 +1,8 @@
 // 天书's 八字, the top of the chart. 简洁 is a scene, laid out as an old star plate is: the gold 罗盘
 // (BaziDial) in the middle; the 日主 written down the right in columns (who it is, its image and the
 // month it was born in, what the five elements come to); down the left, who was born and the moment of
-// it (MomentNote); the four pillars at the foot on the left, the 刑冲合会 on the right.
-// 详细 keeps the dial with a title over the full table instead; moving between them, the dial goes to
-// its place (BaziView's smoothUpdate).
+// it (MomentNote); the four pillars at the foot on the left, the 刑冲合会 on the right. Only in 简洁:
+// 详细 is the full table, without the scene.
 // 起盘 (useCasting): a chart newly shown comes in a layer at a time — the 日主 alone (written stroke by
 // stroke), then the month it was born in, then the four pillars, then the 刑冲合会 between them — a line
 // under the dial saying each. On the dial, where today stands in the year (此刻).
@@ -32,7 +31,7 @@ function today() {
   return { branch: month.name, into: span > 0 ? day.subtract(month.from.day) / span : 0, term: day.getTermDay().getSolarTerm().getName() }
 }
 
-export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; full: boolean; moment?: ReactNode; place: string }) {
+export function BaziHero({ chart, moment, place }: { chart: BaziChart; moment?: ReactNode; place: string }) {
   const t = useT()
   const term = useTerm()
   const { language } = useSettings()
@@ -64,76 +63,51 @@ export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; ful
     gap +
     (reading.missing.length ? t('无{elements}', { elements: list(reading.missing.map((e) => t(e))) }) : t('五行俱全'))
 
-  if (!full)
-    return (
-      <div className="bazi-hero bazi-scene" data-stage={cast.stageAttr}>
-        {/* Down the right: the 日主, its image and month, what the elements come to; the birth, small */}
-        <div className="bz-verse">
-          <b className="cast-l1">{t('{stem}{element}日主', { stem: dm.char, element: t(dm.element) })}</b>
-          <span className="cast-l2">
-            {t(DAY_MASTER_IMAGE[dm.char]).split(/[：:]/)[0]}
-            {gap}
-            {t('生于{branch}月', { branch: term(month) })}
-          </span>
-          <span className="cast-l4">
-            {most}
-            {gap}
-            {tendency}
-          </span>
-          <small>
-            {term(chart.lunarText)}
-            {gap}
-            {t(place)}
-          </small>
-        </div>
-        {/* Down the left: who was born, and the moment of it */}
-        <div className="bz-margin">
-          <span>
-            {chart.gender === '男' ? term('乾造') : term('坤造')}
-            {gap}
-            {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
-          </span>
-          {moment}
-        </div>
-        {dial}
-        <CastLine cast={cast} captions={captions} />
-        <div className="bz-pillars cast-l3" aria-label={t('四柱')}>
-          {chart.pillars.map((p, i) => (
-            <div key={p.label} className={i === 2 ? 'dm' : undefined}>
-              <small>{term(p.label)}</small>
-              <b style={{ color: EL_VAR[p.stem.element] }}>{p.stem.char}</b>
-              <b style={{ color: EL_VAR[p.branch.element] }}>{p.branch.char}</b>
-            </div>
-          ))}
-        </div>
-        <div className="bz-links cast-l4">
-          <span>{linked ? t('刑冲合会{count}道', { count: num(linked) }) : t('原局没有刑冲合会')}</span>
-          {linked > 0 && <span>{chart.relations.map((r) => term(r.text)).join(' · ')}</span>}
-        </div>
-      </div>
-    )
-
   return (
-    <div className="bazi-hero" data-stage={cast.stageAttr}>
-      {dial}
-      <div className="bazi-hero-title">
-        <span className="ts-kicker" aria-hidden="true">
-          Day Master
+    <div className="bazi-hero bazi-scene" data-stage={cast.stageAttr}>
+      {/* Down the right: the 日主, its image and month, what the elements come to; the birth, small */}
+      <div className="bz-verse">
+        <b className="cast-l1">{t('{stem}{element}日主', { stem: dm.char, element: t(dm.element) })}</b>
+        <span className="cast-l2">
+          {t(DAY_MASTER_IMAGE[dm.char]).split(/[：:]/)[0]}
+          {gap}
+          {t('生于{branch}月', { branch: term(month) })}
         </span>
-        <h3>
-          {t('{stem}{element} · 生于{branch}月', { stem: dm.char, element: t(dm.element), branch: term(month) })}
-        </h3>
-        <CastLine cast={cast} captions={captions} />
+        <span className="cast-l4">
+          {most}
+          {gap}
+          {tendency}
+        </span>
+        <small>
+          {term(chart.lunarText)}
+          {gap}
+          {t(place)}
+        </small>
       </div>
-      {moment}
-      <p className="bazi-hero-lede cast-l4">
-        {reading.most.length > 1
-          ? t('{elements}最多（各 {count} 个）', { elements: list(reading.most.map((m) => t(m.element))), count: reading.most[0].count })
-          : t('{element}最多（{count} 个）', { element: t(reading.most[0].element), count: reading.most[0].count })}
-        {reading.missing.length > 0 ? t('，没有{elements}', { elements: list(reading.missing.map((e) => t(e))) }) : t('，五行都有')}
-        {t('；')}
-        <b>{tendency}</b>
-      </p>
+      {/* Down the left: who was born, and the moment of it */}
+      <div className="bz-margin">
+        <span>
+          {chart.gender === '男' ? term('乾造') : term('坤造')}
+          {gap}
+          {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
+        </span>
+        {moment}
+      </div>
+      {dial}
+      <CastLine cast={cast} captions={captions} />
+      <div className="bz-pillars cast-l3" aria-label={t('四柱')}>
+        {chart.pillars.map((p, i) => (
+          <div key={p.label} className={i === 2 ? 'dm' : undefined}>
+            <small>{term(p.label)}</small>
+            <b style={{ color: EL_VAR[p.stem.element] }}>{p.stem.char}</b>
+            <b style={{ color: EL_VAR[p.branch.element] }}>{p.branch.char}</b>
+          </div>
+        ))}
+      </div>
+      <div className="bz-links cast-l4">
+        <span>{linked ? t('刑冲合会{count}道', { count: num(linked) }) : t('原局没有刑冲合会')}</span>
+        {linked > 0 && <span>{chart.relations.map((r) => term(r.text)).join(' · ')}</span>}
+      </div>
     </div>
   )
 }

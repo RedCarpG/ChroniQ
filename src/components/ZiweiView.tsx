@@ -24,6 +24,7 @@ import { ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../lib/ziweiSchools'
 import { usePick } from './usePick'
 import { useSettings, useT, useTerm } from '../settingsContext'
 import { BirthForm } from './BirthForm'
+import { DrawerBirth } from './SavedCharts'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
@@ -452,13 +453,19 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
     // The handlers read only these (and state setters)
     [chart, decadeIndex, year, month, day, hour, depth, open, today, currentDecade, isThisMonth, isToday, language, script, schools],
   )
+  // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
+  const birthForm = (
+    <BirthForm
+      folding={!tianshu}
+      input={input}
+      onChange={update}
+      schoolsPanel={<SchoolSettingsPanel registry={ZIWEI_SCHOOLS} settings={schools} onChange={onSchoolsChange} />}
+    />
+  )
   return (
     <div className="bazi-layout">
-      <BirthForm
-        input={input}
-        onChange={update}
-        schoolsPanel={<SchoolSettingsPanel registry={ZIWEI_SCHOOLS} settings={schools} onChange={onSchoolsChange} />}
-      />
+      {/* 天书: the birth is chosen in the 命盘 drawer, the chart being the scene here */}
+      {tianshu ? <DrawerBirth>{birthForm}</DrawerBirth> : birthForm}
       <SectionNav
         items={[
           ['ziwei-board', t('盘面')],

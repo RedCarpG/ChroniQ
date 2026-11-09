@@ -14,6 +14,8 @@ interface Props {
   schoolsPanel: ReactNode
   /** Show the 真太阳时 option (not used by 星盘, which works in UTC) */
   trueSolar?: boolean
+  /** Whether it may fold to one line (on a phone): not in the 命盘 drawer, where it is shown whole */
+  folding?: boolean
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -109,7 +111,7 @@ function YearInput({ year, onChange }: { year: number; onChange: (year: number) 
 }
 
 /** Birth date/time, gender, birthplace, 真太阳时 and 流派设置 — shared by 八字, 紫微 and 星盘. */
-export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: Props) {
+export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, folding = true }: Props) {
   const t = useT()
   const [showSchools, setShowSchools] = useState(false)
   // On a phone the form folds to one line (the birth in short, and 修改), so the chart is what the page
@@ -132,11 +134,13 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true }: P
   }
 
   return (
-    <section className={`card bazi-form${folded ? ' folded' : ''}`}>
-      <button type="button" className="bazi-form-summary" aria-expanded={!folded} onClick={() => setFolded((f) => !f)}>
-        <span>{summary}</span>
-        <span className="bazi-form-edit">{folded ? t('修改') : t('收起')}</span>
-      </button>
+    <section className={`card bazi-form${folding && folded ? ' folded' : ''}`}>
+      {folding && (
+        <button type="button" className="bazi-form-summary" aria-expanded={!folded} onClick={() => setFolded((f) => !f)}>
+          <span>{summary}</span>
+          <span className="bazi-form-edit">{folded ? t('修改') : t('收起')}</span>
+        </button>
+      )}
       <DateParts label={t('出生日期')} value={input} onChange={(d) => change(d)} />
       <label>
         {t('出生时间')}

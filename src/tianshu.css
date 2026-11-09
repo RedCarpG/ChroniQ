@@ -122,6 +122,24 @@
 :root[data-style] .topbar-fold { background: color-mix(in srgb, var(--bg) 88%, transparent); border-color: var(--edge); }
 @media (prefers-reduced-motion: reduce) { :root[data-style] .app.fold-bar .topbar { transition: none; } }
 
+/* The birth form in the 命盘 drawer (DrawerBirth): shown whole, its fields one under another */
+.drawer-sub { margin: 4px 0 0; font-family: var(--font-title); font-size: 13px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent); }
+.drawer-birth:empty { display: none; }
+.drawer-birth { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.drawer-birth .bazi-form { flex-direction: column; align-items: stretch; gap: 12px; margin: 0; padding: 0; }
+.drawer-birth .bazi-form > * { width: 100%; }
+.drawer-birth .bazi-form .seg { width: auto; align-self: flex-start; }
+.drawer-birth .bazi-form .ghost { align-self: flex-start; }
+/* The drawer nearly solid over the scene, whose lit words would read through it */
+:root[data-style] .drawer:not(.bare) .drawer-panel { background: color-mix(in srgb, var(--surface) 95%, transparent); }
+
+/* The 命理 pages' sections snap into place as the page is scrolled: when it comes to rest near the top of
+   one (原局, 解读, 岁运 …), it settles there; in the middle of a long one it stays where it is */
+:root[data-style] { scroll-snap-type: y proximity; }
+:root[data-style] main section.card[id] { scroll-snap-align: start; scroll-margin-top: 12px; }
+/* The page's very top is a resting place too, so opening it does not pull the page down to the first */
+:root[data-style] .app { scroll-snap-align: start; }
+
 /* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
 :root[data-style] .bazi-form-summary {
   display: flex; flex: 1 0 100%; align-items: baseline; justify-content: center; gap: 14px; margin: -4px 0; padding: 4px 0;
@@ -202,18 +220,15 @@
 @keyframes bd-write { from { stroke-dashoffset: 320; fill-opacity: 0; } 55% { fill-opacity: 0; } to { stroke-dashoffset: 0; fill-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .bazi-dial .bd-turn, .bazi-dial .bd-now circle { animation: none; } }
 
-/* 出生那一刻 (详细): under the title, or beside the dial on a wide screen */
+/* 出生那一刻, in the scene's left margin (below) */
 .bazi-moment { margin-top: 14px; text-align: center; }
 .bazi-moment ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 8px 0 0; padding: 0 16px; list-style: none; font-family: var(--font-title); font-size: 13px; letter-spacing: 0.12em; color: var(--muted); }
-@media (min-width: 900px) {
-  .bazi-hero:not(.bazi-scene) .bazi-moment { position: absolute; right: 6%; top: 34%; margin: 0; text-align: right; }
-  .bazi-hero:not(.bazi-scene) .bazi-moment ul { display: grid; justify-items: end; gap: 10px; padding: 0; font-size: 14px; }
-  .bazi-hero:not(.bazi-scene) .bazi-moment .ts-kicker { white-space: nowrap; margin-right: -0.5em; }
-}
 
 /* ---------- 简洁: the scene, as an old star plate is laid out ---------- */
 #bazi-natal.scene .natal-head { justify-content: flex-end; }
 #bazi-natal.scene .natal-head .chart-meta { display: none; }
+/* 简洁 is the scene and its reading: the 岁运 come with 详细 */
+#bazi-natal.scene ~ #bazi-fortune { display: none; }
 .bazi-scene { padding: 4px 0 12px; }
 .bazi-scene .bazi-hero-dial { width: min(600px, 100%); margin: 0; }
 /* Words set down the page in columns, right to left */
@@ -248,9 +263,7 @@
   .bz-links { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; max-width: 260px; text-align: right; }
 }
 
-/* 简洁 ↔ 详细 (smoothUpdate 'bazi'): the dial goes to its place, the rest crossfades */
-:root[data-vt='bazi'] .bazi-hero-dial { view-transition-name: bazi-dial; }
-:root[data-vt='bazi']::view-transition-group(*) { animation-duration: 0.6s; animation-timing-function: var(--vt-ease); }
+/* 简洁 ↔ 详细 (smoothUpdate 'bazi'): the scene and the table crossfade */
 :root[data-vt='bazi']::view-transition-old(root) { animation: ts-fade-out 0.3s ease both; }
 :root[data-vt='bazi']::view-transition-new(root) { animation: ts-fade-in 0.45s ease 0.15s both; }
 @keyframes ts-fade-out { to { opacity: 0; } }
@@ -270,10 +283,6 @@
 @media print { .ts-cast { display: none; } }
 
 .ts-kicker { font-family: 'Cormorant Garamond', var(--font-title); font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); margin-left: 0.5em; }
-.bazi-hero-title { text-align: center; }
-.bazi-hero-title h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(24px, 6vw, 32px); font-weight: 400; letter-spacing: 0.26em; }
-.bazi-hero-lede { max-width: 30em; margin: 26px 24px 0; text-align: center; font-size: 13.5px; line-height: 2; color: var(--muted); }
-.bazi-hero-lede b { color: var(--text); font-weight: 400; }
 
 /* ---------- 紫微 ---------- */
 /* Lettered in 站酷小薇, as 八字's scene is (ZiweiView imports it); one weight, so nothing set bold */

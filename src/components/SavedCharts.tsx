@@ -12,6 +12,8 @@ import { TitleMark } from './Logo'
 export const DRAWER_RAIL_SLOT = 'drawer-rail-slot'
 /** id of the drawer's panel for a page's own tab (DrawerPageTab) */
 const DRAWER_PAGE_PANEL = 'drawer-page-panel'
+/** id of the spot at the top of the 命盘 panel where a 命理 page puts its birth form (天书, DrawerBirth) */
+const DRAWER_BIRTH_SLOT = 'drawer-birth-slot'
 
 // Which of the drawer's tabs is open, if any: its own 命盘, or the page's (shared with DrawerPageTab)
 type DrawerTab = 'charts' | 'page' | null
@@ -80,6 +82,24 @@ export function DrawerPageTab({ label, title, count, children }: { label: string
         slots.panel,
       )}
     </>
+  )
+}
+
+/**
+ * A 命理 page's birth form, in the 命盘 drawer rather than over the page (天书, where the chart is the
+ * scene): the birth is chosen where the charts are kept, above them.
+ */
+export function DrawerBirth({ children }: { children: ReactNode }) {
+  const t = useT()
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => setSlot(document.getElementById(DRAWER_BIRTH_SLOT)), [])
+  if (!slot) return null
+  return createPortal(
+    <>
+      <h4 className="drawer-sub">{t('出生信息')}</h4>
+      {children}
+    </>,
+    slot,
   )
 }
 
@@ -155,6 +175,8 @@ export function SavedChartsDrawer({
             ×
           </button>
         </div>
+        {/* A 命理 page's birth form, in 天书 (DrawerBirth) */}
+        <div id={DRAWER_BIRTH_SLOT} className="drawer-birth" />
         <form
           className="saved-form"
           onSubmit={(e) => {

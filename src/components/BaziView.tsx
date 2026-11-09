@@ -25,6 +25,7 @@ import type { Relation } from '../lib/relations'
 import type { SchoolSettings } from '../lib/schools'
 import { Char } from './Char'
 import { BirthForm, dateText, dateTimeText, monthDayText } from './BirthForm'
+import { DrawerBirth } from './SavedCharts'
 import { SchoolMark, SchoolSettingsPanel } from './Schools'
 import { HighlightScope, useHighlight, useTrigger } from './highlight'
 import { ConceptTip } from './GlossaryTips'
@@ -194,6 +195,15 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     onChange({ ...input, ...patch })
   }
 
+  // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
+  const birthForm = (
+    <BirthForm
+      folding={!tianshu}
+      input={input}
+      onChange={update}
+      schoolsPanel={<SchoolSettingsPanel settings={schools} onChange={onSchoolsChange} />}
+    />
+  )
   return (
     <div className="bazi-layout">
       {birthSky === 'show' && (
@@ -201,17 +211,15 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           <BirthSky moment={moment} focus={skyFocus} />
         </Suspense>
       )}
-      <BirthForm
-        input={input}
-        onChange={update}
-        schoolsPanel={<SchoolSettingsPanel settings={schools} onChange={onSchoolsChange} />}
-      />
+      {/* 天书: the birth is chosen in the 命盘 drawer, the chart being the scene here */}
+      {tianshu ? <DrawerBirth>{birthForm}</DrawerBirth> : birthForm}
 
+      {/* 天书's 简洁 is the scene and its reading; the 岁运 come with 详细 */}
       <SectionNav
         items={[
           ['bazi-natal', term('原局')],
           ['bazi-reading', t('解读')],
-          ['bazi-fortune', term('岁运')],
+          ...(tianshu && !fullChart ? [] : [['bazi-fortune', term('岁运')] as [string, string]]),
         ]}
       />
 
@@ -245,10 +253,10 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
         </div>
 
         {/* 天书: the dial and the pillars as a scene; the table under it in 详细 */}
-        {tianshu && (
+        {/* 天书: 简洁 is the scene (BaziHero); 详细, the table, without it */}
+        {tianshu && !fullChart && (
           <BaziHero
             chart={chart}
-            full={fullChart}
             place={(input.place ?? DEFAULT_PLACE).name}
             moment={
               <Suspense fallback={null}>
