@@ -182,6 +182,8 @@ export const TIANSHU_REALM: Partial<Record<string, 'east' | 'west'>> = { today: 
 export function applyStyle(style: Settings['uiStyle'], page: string, theme: Settings['theme']): void {
   const root = document.documentElement
   const realm = style === 'tianshu' ? TIANSHU_REALM[page] : undefined
+  // data-ui on every page (the top bar and the page change are 天书's everywhere); data-style on its realm
+  root.dataset.ui = style
   if (realm) root.dataset.style = realm
   else delete root.dataset.style
   applyTheme(realm ? 'dark' : theme)

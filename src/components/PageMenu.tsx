@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useT, useTerm } from '../settingsContext'
 import { useDismiss } from './useDismiss'
 
@@ -43,6 +43,32 @@ export function PageNav({ page, onPick, className }: { page: Page; onPick: (page
   useDismiss(ref, peek !== null, close)
   const home = PAGE_GROUPS.find((g) => g.pages.some((p) => p.page === page))?.title
   const open = peek ?? home
+  // 天书's ◆ by the current page: one mark that glides from page to page (tianshu.css .page-nav-mark), set
+  // where the current page's name is, again while a group opens or folds (its width slides) and on resize
+  const mark = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const nav = ref.current
+    const m = mark.current
+    if (!nav || !m) return
+    const place = () => {
+      const on = nav.querySelector<HTMLElement>('.page-nav-item.on')
+      const shown = on && on.closest('.page-nav-group.open')
+      m.classList.toggle('shown', !!shown)
+      if (!on || !shown) return
+      const a = nav.getBoundingClientRect()
+      const b = on.getBoundingClientRect()
+      const zoom = a.width / (nav.offsetWidth || a.width) || 1
+      m.style.translate = `${((b.left - a.left) / zoom).toFixed(1)}px ${((b.top + b.height / 2 - a.top) / zoom).toFixed(1)}px`
+    }
+    place()
+    // the group's width slides for 0.28 s: follow it, then settle
+    const timers = [80, 160, 300].map((ms) => window.setTimeout(place, ms))
+    window.addEventListener('resize', place)
+    return () => {
+      timers.forEach(clearTimeout)
+      window.removeEventListener('resize', place)
+    }
+  }, [page, open])
   return (
     <nav
       ref={ref}
@@ -54,6 +80,7 @@ export function PageNav({ page, onPick, className }: { page: Page; onPick: (page
         if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) close()
       }}
     >
+      <span ref={mark} className="page-nav-mark" aria-hidden="true" />
       {PAGE_GROUPS.map((g) => {
         const isOpen = g.title === open
         return (

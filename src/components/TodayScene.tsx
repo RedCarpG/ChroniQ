@@ -4,6 +4,7 @@
 // it, the 建除, the festivals, the Moon's phase; down the right, the 宜 and the 忌. What is in the sky today
 // and tonight, and what is coming, follow under the scene (TodayPage's own sections).
 import '@fontsource/zcool-xiaowei/400.css'
+import { useState } from 'react'
 import type { DayDetail } from '../lib/calendar'
 import { enDate } from '../lib/calendar'
 import type { ElementName } from '../lib/bazi'
@@ -15,6 +16,22 @@ import { MoonGlyph } from './MoonGlyph'
 const EL_VAR: Record<ElementName, string> = { 木: 'var(--wood)', 火: 'var(--fire)', 土: 'var(--earth)', 金: 'var(--metal)', 水: 'var(--water)' }
 /** How many of the 宜 and the 忌 the scene names: the rest are in the 日历's detail */
 const SHOWN = 6
+/** The day the scene last came in with its seals: they are stamped once a day, the first time it is seen */
+const STAMPED_KEY = 'chroniq-today-stamped'
+
+/** ③ Whether the day comes in with its seals stamped (tianshu.css .stamping): once a day */
+function useStamp(day: string) {
+  const [stamp] = useState(() => {
+    try {
+      if (localStorage.getItem(STAMPED_KEY) === day) return false
+      localStorage.setItem(STAMPED_KEY, day)
+    } catch {
+      // Storage unavailable: stamped each time the page is opened
+    }
+    return true
+  })
+  return stamp
+}
 
 export function TodayScene({
   date,
@@ -46,8 +63,9 @@ export function TodayScene({
   const [y] = detail.pillars
   const yi = detail.recommends.slice(0, SHOWN)
   const ji = detail.avoids.slice(0, SHOWN)
+  const stamp = useStamp(`${year}-${month}-${day}`)
   return (
-    <section className="today-scene" aria-label={t('今日')}>
+    <section className={`today-scene${stamp ? ' stamping' : ''}`} aria-label={t('今日')}>
       {/* Down the left: the 节气 and the day of it, the 建除, the festivals, the Moon */}
       <div className="td-margin">
         <span className="ts-kicker" aria-hidden="true">

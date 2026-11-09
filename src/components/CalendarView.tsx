@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 // 站酷小薇, 天书's lettering for the lunar dates (tianshu.css); cut by character ranges, only what is shown is fetched
 import '@fontsource/zcool-xiaowei/400.css'
 import { SolarDay } from 'tyme4ts'
@@ -91,7 +91,10 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
   const [almanacMore, toggleAlmanacMore] = useStoredFlag('chroniq-calendar-almanac-more', false)
   const [view, setView] = useState(() => ({ year: selected.getYear(), month: selected.getMonth() }))
 
-  const { weekStart, dayGanzhi, moonPhase, dipper, skyEvents: skyEventsShown, language } = useSettings()
+  const { weekStart, dayGanzhi, moonPhase, dipper, skyEvents: skyEventsShown, language, uiStyle } = useSettings()
+  // 天书: a new month's days ripple in (④) where the classic grid scrolls, and the day picked has a frame of
+  // light that glides to it (⑤)
+  const tianshu = uiStyle === 'tianshu'
   const term = useTerm()
   const t = useT()
   const en = language === 'en'
@@ -174,7 +177,7 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
     scroll.current = null
     viewKey.current = `${mode}-${order}`
   } else if (last.current.order !== order) {
-    if (mode === 'month' && Math.abs(order - last.current.order) === 1 && !reduceMotion) {
+    if (mode === 'month' && Math.abs(order - last.current.order) === 1 && !reduceMotion && !tianshu) {
       const from = { year: Math.floor((last.current.order - 1) / 12), month: ((last.current.order - 1) % 12) + 1 }
       scroll.current = { ...buildMonthStrip(from, view, weekStart), id: order }
       slide.current = ''
@@ -195,6 +198,28 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
   // set here, so the plain grid already has its own layout when the month outline (a child,
   // whose layout effect runs first) measures it.
   const windowRef = useRef<HTMLDivElement>(null)
+  // ⑤ The frame of light (天书): set over the day picked after each render; it glides only once placed, so a
+  // new month's grid has it at its day at once
+  const frameRef = useRef<HTMLSpanElement>(null)
+  const placeFrame = () => {
+    const frame = frameRef.current
+    if (!frame) return
+    const day = frame.parentElement?.querySelector<HTMLElement>('.day.selected')
+    frame.classList.toggle('shown', !!day)
+    if (!day) return
+    frame.style.translate = `${day.offsetLeft}px ${day.offsetTop}px`
+    frame.style.width = `${day.offsetWidth}px`
+    frame.style.height = `${day.offsetHeight}px`
+    if (!frame.classList.contains('placed')) requestAnimationFrame(() => frame.classList.add('placed'))
+  }
+  useLayoutEffect(placeFrame)
+  // and when the window's size changes the days' sizes
+  useEffect(() => {
+    if (!tianshu) return
+    const onResize = () => placeFrame()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [tianshu])
   const gridHeight = useRef(0)
   // The plain grid's row height: the strip keeps it, also where the grid is stretched to fill the window
   const rowHeight = useRef(0)
@@ -516,7 +541,9 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
                   key={`${view.year}-${view.month}`}
                   layoutKey={`${view.year}-${view.month}-${weekStart}-${scroll.current ? 'strip' : 'grid'}`}
                 />
-                {monthCells.map((c) => {
+                {/* ⑤ 天书's frame of light round the day picked, gliding from day to day */}
+                {tianshu && <span ref={frameRef} className="day-frame" aria-hidden="true" />}
+                {monthCells.map((c, i) => {
                   const rd = regionOf(c.solar)
                   // A Chinese festival keeps the line; else the country's day, unless it is only notable and a 节气 starts
                   const regionSub = c.subKind !== 'festival' && rd[0] && (rd[0].kind !== 'observance' || c.subKind !== 'term') ? rd[0] : undefined
@@ -538,6 +565,8 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
                       .join(' ')}
                     title={[...stars.map(skyText.title), ...mine.map(chartText)].join('\n') || undefined}
                     data-sound="shang"
+                    // ④ its place in the ripple: across, then down
+                    style={{ '--i': (i % 7) + Math.floor(i / 7) } as CSSProperties}
                     onClick={() => select(c.solar)}
                   >
                     {(c.holiday || offTags(rd).length > 0) && (
