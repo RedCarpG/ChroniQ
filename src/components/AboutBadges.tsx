@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useT, useTerm } from '../settingsContext'
 import { install, useInstallState } from '../pwa'
 import { useDismiss } from './useDismiss'
+import { PAGE_GROUPS } from './PageMenu'
 
 const REPO = 'https://github.com/RedCarpG/ChroniQ'
 const CREDIT_LINKS: Record<string, [string, string]> = {
@@ -57,33 +58,21 @@ export function AboutBadges() {
           <strong className="about-title">
             星曆 <span className="muted">ChroniQ</span>
           </strong>
-          <p>{t('中国传统历法与命理排盘的网页工具，打开即用，不需要注册。')}</p>
-          <ul>
-            <li>
-              <b>{page('日历')}</b>
-              {t('：公历、农历、节气、干支，月 / 周 / 年视图')}
-            </li>
-            <li>
-              <b>{page('天象')}</b>
-              {t('：此刻天空的星图，星座与星官，可拖动转动时间')}
-            </li>
-            <li>
-              <b>{page('太阳系')}</b>
-              {t('：行星在轨道上的位置与运行')}
-            </li>
-            <li>
-              <b>{page('八字排盘')}</b>
-              {t('：四柱、十神、神煞、刑冲合会、{dayun}流年流月流日', { dayun: term('大运') })}
-            </li>
-            <li>
-              <b>{page('紫微斗数')}</b>
-              {t('：十二宫命盘、{sanfang}、星曜解释、大限至流时', { sanfang: term('三方四正') })}
-            </li>
-            <li>
-              <b>{page('星盘')}</b>
-              {t('：西洋占星本命盘，行星、宫位与相位，行运、推运、合盘与组合盘')}
-            </li>
-          </ul>
+          <p>{t('历法、天象与命理的网页工具：农历黄历和真实的星空，八字、紫微与星盘排盘。打开即用，不需要注册，全部在浏览器里计算。')}</p>
+          {/* Every page, in the menu's groups, from the menu's own list, so a new page is here too */}
+          {PAGE_GROUPS.map((g) => (
+            <div key={g.title} className="about-group">
+              <h4>{page(g.title)}</h4>
+              <ul>
+                {g.pages.map((p) => (
+                  <li key={p.page}>
+                    <b>{page(p.name)}</b>
+                    {t('：{note}', { note: page(p.desc) })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
           <p className="muted">
             {t('不同流派的取法可在「流派设置」中切换，并注明出处。命盘只保存在你自己的浏览器里，不会上传。结果仅供参考。')}
           </p>

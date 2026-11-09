@@ -164,8 +164,8 @@ export const COMMON: Record<string, string> = {
   // Footer and About panel
   '离线中 · 排盘与天象照常可用': 'Offline · charts and the sky still work',
   '历法数据由 {lib} 提供 · 仅供参考': 'Calendar data from {lib} · for reference only',
-  '中国传统历法与命理排盘的网页工具，打开即用，不需要注册。':
-    'A web tool for the traditional Chinese calendar and destiny charts. Just open it and go: no sign-up.',
+  '历法、天象与命理的网页工具：农历黄历和真实的星空，八字、紫微与星盘排盘。打开即用，不需要注册，全部在浏览器里计算。':
+    'A web tool for the Chinese calendar, the sky and astrology: the almanac and the real sky, and 八字, 紫微 and natal charts. Opens at once with no sign-up, and everything is worked out in your browser.',
   '：公历、农历、节气、干支，月 / 周 / 年视图': ': Gregorian and lunar dates, 节气 and 干支, in month, week and year views',
   '：此刻天空的星图，星座与星官，可拖动转动时间': ': a map of the sky right now, with its constellations and 星官; drag it to turn time',
   '：行星在轨道上的位置与运行': ': the planets moving on their orbits',
