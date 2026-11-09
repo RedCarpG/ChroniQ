@@ -1,7 +1,8 @@
 // 天书: the night the 命理 pages are drawn in, laid over the stars behind the page (starfield.ts, or
 // the sky of the birth, BirthSky): the east's warm ink-mist for 八字 and 紫微, the west's indigo and
 // violet for 星盘; drifting motes of light and a fine grain, as on old paper or a rubbing. On 八字 the
-// mist all but lifts: the sky of the birth behind it is the scene there (tianshu.css .ts-page-bazi).
+// mist all but lifts: the sky of the birth behind it is the scene there (tianshu.css .ts-page-bazi),
+// with a thin fog drifting over it, as smoke over an old plate.
 import { useMemo } from 'react'
 
 const W = 1200
@@ -19,6 +20,17 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
   return (
     <div className={`ts-atmos ts-${realm} ts-page-${page}`} aria-hidden="true">
       <div className="ts-mist" />
+      {/* 八字: a thin fog, in drifts, moving slowly across */}
+      {page === 'bazi' && (
+        <svg className="ts-fog">
+          <filter id="ts-fog" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0055" numOctaves="4" seed="11" />
+            {/* warm grey, there only where the noise is thick */}
+            <feColorMatrix values="0 0 0 0 0.66  0 0 0 0 0.6  0 0 0 0 0.5  1.6 0 0 0 -0.62" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#ts-fog)" />
+        </svg>
+      )}
       <svg className="ts-motes" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice">
         {dots.map((d) => (
           <circle key={d.key} cx={d.cx} cy={d.cy} r={d.r} fill={d.fill} opacity={d.opacity} style={{ animationDelay: `${-d.delay}s` }} />

@@ -1,11 +1,12 @@
-// 天书's 八字: the chart as a gold 罗盘, south up, its rings engraved as on a bronze plate. Outermost the
+// 天书's 八字: the chart as a gold 罗盘, south up, its rings engraved as on a dark plate. Outermost the
 // 六十甲子, laid out as a 罗盘's 透地六十龙: each 地支's sector holds the five 甲子 of that branch (the 午
 // sector 甲午 丙午 戊午 庚午 壬午), so each pillar is lit where it stands among the sixty, its name
 // outside the rim, a dashed line running from it to the heart. Inside, the twelve 地支 in their boxes
 // between the spokes, those the pillars stand on edged in vermilion; the month of birth (月令) marked on
 // its ring; the chart's 刑冲合会 between the branches (合 and 会 arcs, 冲 straight across, 刑 害 破
-// dashed); the 日主 at the heart; and on the rim, where today stands in the year (此刻). Everything it
-// shows is in the chart; nothing is there for show.
+// dashed); the 日主 at the heart; and on the rim, where today stands in the year (此刻). What the chart
+// does not use (the other 甲子 and 地支) is dimmed, so its own stand out. Everything it shows is in the
+// chart; nothing is there for show.
 // Each part is marked with the layer it comes in on when the chart is cast (BaziHero): cast-l1 the 日主
 // and its own pillar, cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会 and 此刻.
 import type { ElementName, Pillar } from '../lib/bazi'
@@ -84,20 +85,6 @@ export function BaziDial({
   return (
     <svg className="bazi-dial" viewBox="-24 -24 648 648" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
       <defs>
-        {/* Gold, lit from the upper left */}
-        <linearGradient id="bd-metal" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f7e3ad" />
-          <stop offset="0.3" stopColor="#c99a52" />
-          <stop offset="0.5" stopColor="#f0d592" />
-          <stop offset="0.75" stopColor="#9a7238" />
-          <stop offset="1" stopColor="#e5c784" />
-        </linearGradient>
-        {/* The plate: bronze, warmer where the light falls */}
-        <radialGradient id="bd-plate" cx="0.38" cy="0.32" r="0.75">
-          <stop offset="0" stopColor="#4a3720" stopOpacity="0.9" />
-          <stop offset="0.6" stopColor="#1f160c" stopOpacity="0.92" />
-          <stop offset="1" stopColor="#0c0905" stopOpacity="0.95" />
-        </radialGradient>
         {/* Cut into the metal: a dark edge under every line */}
         <filter id="bd-engrave" x="-5%" y="-5%" width="110%" height="110%">
           <feDropShadow dx="0.7" dy="0.9" stdDeviation="0.35" floodColor="#000" floodOpacity="0.9" />
