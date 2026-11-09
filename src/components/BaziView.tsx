@@ -255,7 +255,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           {tianshu && <SchoolsMenu panel={schoolsPanel} />}
           <ChartViewSwitch
             full={fullChart}
-            onToggle={() => (tianshu ? smoothUpdate('bazi', toggleFullChart) : toggleFullChart())}
+            onToggle={() => (tianshu ? smoothUpdate('chart-view', toggleFullChart) : toggleFullChart())}
             className="natal-view"
           />
         </div>
