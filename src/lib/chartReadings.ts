@@ -49,8 +49,11 @@ export function ziweiReading(chart: ZiweiChart, year: number): ZiweiReading {
   }
 }
 
-/** The seven classical planets, whose signs say most of a person (the outer three stay long in a sign) */
+/** The seven classical planets, whose houses say most of a person (the outer three stay long in a sign) */
 const PERSONAL = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn']
+/** The ten planets, Sun to Pluto: the elements and modalities are counted over these, as the chart's own
+ * element tally (StarChartView's SignBalance) counts them, so the two never say different numbers */
+const TEN = [...PERSONAL, 'uranus', 'neptune', 'pluto']
 const MODALITY = ['基本', '固定', '变动'] as const
 const BIG_THREE = ['sun', 'moon', 'asc']
 
@@ -58,7 +61,7 @@ export interface StarReading {
   sun: ChartPoint
   moon: ChartPoint
   ascSign: number
-  /** Most common element and modality among the seven planets, with how many there */
+  /** Most common element and modality among the ten planets, with how many there */
   elements: { key: string; count: number }[]
   modalities: { key: (typeof MODALITY)[number]; count: number }[]
   /** Houses holding three or more of the seven */
@@ -80,14 +83,15 @@ const tally = <K,>(keys: K[]) => {
 export function starReading(chart: StarChart): StarReading {
   const of = (key: string) => chart.points.find((p) => p.key === key)!
   const planets = chart.points.filter((p) => PERSONAL.includes(p.key))
+  const ten = chart.points.filter((p) => TEN.includes(p.key))
   const houses = new Map<number, ChartPoint[]>()
   for (const p of planets) houses.set(p.house, [...(houses.get(p.house) ?? []), p])
   return {
     sun: of('sun'),
     moon: of('moon'),
     ascSign: Math.floor((((chart.asc % 360) + 360) % 360) / 30),
-    elements: tops(tally(planets.map((p) => SIGN_ELEMENT[p.sign] as string))),
-    modalities: tops(tally(planets.map((p) => MODALITY[p.sign % 3]))),
+    elements: tops(tally(ten.map((p) => SIGN_ELEMENT[p.sign] as string))),
+    modalities: tops(tally(ten.map((p) => MODALITY[p.sign % 3]))),
     crowded: [...houses].filter(([, list]) => list.length >= 3).map(([house, list]) => ({ house, planets: list })).sort((a, b) => b.planets.length - a.planets.length),
     aspects: chart.aspects
       .filter((a) => BIG_THREE.includes(a.a.key) || BIG_THREE.includes(a.b.key))
