@@ -1,6 +1,7 @@
 // English for the 紫微斗数 page. Star, palace and 四化 names stay Chinese (term());
 // so do the hover explanations in lib/ziweiInfo.ts for now.
 export const ZIWEI: Record<string, string> = {
+  命无正曜: 'No major star',
   // Section nav and toolbars
   盘面: 'Chart',
   宫位显示: 'Palace view',
