@@ -7,6 +7,7 @@ import { startStarfield } from './starfield'
 // The titles' typefaces (styles.css: 题字): Cormorant Garamond's Latin here; 思源宋体 below
 import '@fontsource/cormorant-garamond/latin-600.css'
 import './styles.css'
+import './tianshu.css'
 
 setUpPwa()
 startStarfield()

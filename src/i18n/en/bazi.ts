@@ -105,6 +105,7 @@ export const BAZI: Record<string, string> = {
   '学习与思考的分量重：爱琢磨，也需要被理解和支持': 'Learning and thought weigh heavily: fond of pondering, and in need of understanding and support',
   '天干是{star}。': 'Its stem is {star}. ',
   '按固定规则从命盘生成，是常见的传统说法，不是预测，仅供参考。': 'Generated from the chart by fixed rules, in common traditional terms. Not a forecast, for reference only.',
+  '{stem}{element} · 生于{branch}月': '{stem} {element} · born in the {branch} month',
   '{element}最多（{count} 个）': '{element} comes most ({count})',
   '{elements}最多（各 {count} 个）': '{elements} come most ({count} each)',
   '，没有{elements}': ', with no {elements}',

@@ -23,9 +23,11 @@ export interface Settings {
   uiScale: 'auto' | '100' | '115' | '130'
   /** 音效: the little interface sounds (sound.ts) */
   sound: 'on' | 'off'
+  /** 界面风格: the 天书 look (a preview, for the 命理 pages so far) or the classic one */
+  uiStyle: 'classic' | 'tianshu'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'off' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'off', uiStyle: 'classic' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -109,6 +111,13 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
       { value: '130', label: '特大' },
     ],
   },
+  uiStyle: {
+    title: '界面风格',
+    options: [
+      { value: 'classic', label: '经典' },
+      { value: 'tianshu', label: '天书（预览）' },
+    ],
+  },
   sound: {
     title: '音效',
     options: [
@@ -154,6 +163,21 @@ export function applyScale(scale: Settings['uiScale']): void {
   const root = document.documentElement
   if (scale === 'auto') delete root.dataset.scale
   else root.dataset.scale = scale
+}
+
+/** The pages the 天书 look covers, and which night each is drawn in: the east's for 八字 and 紫微, the west's for 星盘 */
+export const TIANSHU_REALM: Partial<Record<string, 'east' | 'west'>> = { bazi: 'east', ziwei: 'east', star: 'west', timeline: 'east' }
+
+/**
+ * Apply the 界面风格 to <html> for the page shown: data-style names its night (east or west), and the
+ * colour mode is then always dark, as the look is drawn by night. Elsewhere, the chosen colour mode.
+ */
+export function applyStyle(style: Settings['uiStyle'], page: string, theme: Settings['theme']): void {
+  const root = document.documentElement
+  const realm = style === 'tianshu' ? TIANSHU_REALM[page] : undefined
+  if (realm) root.dataset.style = realm
+  else delete root.dataset.style
+  applyTheme(realm ? 'dark' : theme)
 }
 
 /** Apply the colour mode to <html>; "system" leaves it to prefers-color-scheme. */
