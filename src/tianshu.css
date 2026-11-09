@@ -129,3 +129,39 @@
 .bazi-hero-lede { max-width: 30em; margin: 26px 24px 0; text-align: center; font-size: 13.5px; line-height: 2; color: var(--muted); }
 .bazi-hero-lede b { color: var(--text); font-weight: 600; }
 .bazi-hero-more { margin: 10px 24px 6px; text-align: center; font-size: 11.5px; color: var(--muted); opacity: 0.7; }
+
+/* ---------- 紫微 ---------- */
+.zw-hero { text-align: center; margin: 6px 0 22px; }
+.zw-hero h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(22px, 5.6vw, 30px); font-weight: 600; letter-spacing: 0.22em; }
+.zw-hero p { margin: 6px 0 0; font-size: 13px; letter-spacing: 0.06em; color: var(--muted); }
+:root[data-style] .zw-toolbar { gap: 8px 16px; }
+/* The board: no plate, hairlines between the palaces */
+:root[data-style] .ziwei-board { background: none; border: 0; border-radius: 0; gap: 0; overflow: visible; }
+:root[data-style] .palace { background: none; border: 0.5px solid var(--ts-hair); }
+:root[data-style] .palace.soul { background: radial-gradient(ellipse 90% 80% at 50% 100%, rgb(224 80 58 / 0.22), transparent 70%); }
+:root[data-style] .palace.soul .palace-name { color: #ff8a73; text-shadow: 0 0 10px var(--ts-vermilion); }
+:root[data-style] .stars-major .star-name { font-size: 16px; text-shadow: 0 0 12px currentColor; }
+:root[data-style] .palace-name { font-weight: 500; letter-spacing: 0.12em; }
+:root[data-style] .mutagen { border-radius: 2px; box-shadow: 0 0 8px currentColor; }
+:root[data-style] .m-禄 { color: #fff; background: #3d8d5a; }
+/* The heart of the board: a ring, the chart's particulars inside it */
+:root[data-style] .ziwei-center { position: relative; background: none; isolation: isolate; align-items: center; text-align: center; }
+:root[data-style] .ziwei-center .kv { justify-content: center; text-align: left; }
+:root[data-style] .zc-title { justify-content: center; }
+:root[data-style] .ziwei-center::before {
+  content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: min(94%, 290px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 1px solid rgb(220 188 124 / 0.4);
+  box-shadow: 0 0 40px rgb(220 188 124 / 0.1), inset 0 0 40px rgb(220 188 124 / 0.07), inset 0 0 0 8px rgb(10 8 7 / 0.4), inset 0 0 0 9px rgb(220 188 124 / 0.12);
+  background: radial-gradient(circle, rgb(220 188 124 / 0.07), rgb(10 8 7 / 0.55) 70%);
+}
+/* 三方四正 as light: the triangle glowing, the 对宫 dashed */
+:root[data-style] .sf-lines polygon, :root[data-style] .sf-lines line { stroke: #f0d9a6; stroke-opacity: 0.85; stroke-width: 1.2; fill: rgb(220 188 124 / 0.06); }
+:root[data-style] .sf-lines { filter: drop-shadow(0 0 5px rgb(220 188 124 / 0.75)); }
+:root[data-style] .palace.sf-self, :root[data-style] .palace.sf-opposite, :root[data-style] .palace.sf-trine { box-shadow: none; }
+:root[data-style] .palace.sf-self .palace-name, :root[data-style] .palace.sf-opposite .palace-name, :root[data-style] .palace.sf-trine .palace-name { color: var(--accent); text-shadow: 0 0 10px var(--ts-glow); }
+:root[data-style] .palace.soul.sf-self .palace-name { color: #ff8a73; }
+:root[data-style] .sf-active .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.5; }
+/* Resting (nothing picked): the 命宫's light, without the tags */
+.sf-resting .sf-tag { display: none; }
+:root[data-style] .sf-resting .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.62; }
+:root[data-style] .sf-tag { background: rgb(220 188 124 / 0.14); }

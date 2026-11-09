@@ -111,7 +111,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const chart = useMemo(() => buildZiwei(input, schools), [input, schools])
   const term = useTerm()
   const t = useT()
-  const { ziweiColor, language, script } = useSettings()
+  const { ziweiColor, language, script, uiStyle } = useSettings()
+  const tianshu = uiStyle === 'tianshu'
   const english = language === 'en'
   // The palace whose 三方四正 is shown (hover with a mouse, tap or focus otherwise)
   // The palace picked out: hovered, or chosen (a click; a click on empty space lets go)
@@ -243,16 +244,20 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const aiPrompt = useMemo(() => ziweiPrompt(chart, patterns), [chart, patterns])
   const patternPick = usePick<string>()
   const litPattern = patterns.find((pt) => pt.name === patternPick.active)
+  // 天书: with nothing picked, the 命宫's own 三方四正 is drawn, resting, as the scene's light
+  const soulBranch = Object.values(chart.palaces).find((p) => p.isSoul)!.branch
+  const sfFrom = active ?? (tianshu && mode === 'sanfang' && !litPattern ? soulBranch : null)
+  const resting = sfFrom !== null && !active
   const roles = useMemo(() => {
-    if (!active || mode !== 'sanfang' || litPattern) return null
-    const { opposite, trines } = sanFangSiZheng(active)
+    if (!sfFrom || mode !== 'sanfang' || litPattern) return null
+    const { opposite, trines } = sanFangSiZheng(sfFrom)
     return new Map<string, Role>([
-      [active, 'self'],
+      [sfFrom, 'self'],
       [opposite, 'opposite'],
       [trines[0], 'trine'],
       [trines[1], 'trine'],
     ])
-  }, [active, mode, litPattern])
+  }, [sfFrom, mode, litPattern])
   // 四化飞星: the hovered palace's four 飞化, and the 禄权科忌 each palace receives from it
   const flies = mode === 'feihua' && active ? chart.palaces[active].flies : null
   const boardRef = useRef<HTMLDivElement>(null)
@@ -440,6 +445,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
         ]}
       />
       <section className="card" id="ziwei-board">
+        {tianshu && <ZiweiHero chart={chart} />}
         <div className="zw-toolbar">
           <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} />
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
@@ -458,7 +464,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
         <div className="ziwei-scroll">
           <div
             ref={boardRef}
-            className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}${flies ? ' fx-active' : ''}${litPattern ? ` pt-active pt-${litPattern.kind}` : ''}`}
+            className={`ziwei-board color-${ziweiColor}${roles ? ' sf-active' : ''}${resting ? ' sf-resting' : ''}${flies ? ' fx-active' : ''}${litPattern ? ` pt-active pt-${litPattern.kind}` : ''}`}
           >
             {Object.values(chart.palaces).map((p) => (
               <Palace
@@ -475,7 +481,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                 lit={!!litPattern?.palaces.includes(p.branch)}
               />
             ))}
-            {active && mode === 'sanfang' && !litPattern && <SanFangLines branch={active} />}
+            {sfFrom && mode === 'sanfang' && !litPattern && <SanFangLines branch={sfFrom} />}
             {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
             <div className="ziwei-center">
               <div className="zc-title">
@@ -697,6 +703,27 @@ function SanFangLines({ branch }: { branch: string }) {
       <polygon points={[self, t1, t2].map((p) => p.join(',')).join(' ')} />
       <line x1={self[0]} y1={self[1]} x2={opp[0]} y2={opp[1]} />
     </svg>
+  )
+}
+
+/** 天书: the chart's title, over the board: the 命宫 and its stars, the 局 and the 命主 / 身主 */
+function ZiweiHero({ chart }: { chart: ReturnType<typeof buildZiwei> }) {
+  const term = useTerm()
+  const t = useT()
+  const soul = Object.values(chart.palaces).find((p) => p.isSoul)!
+  const stars = soul.major.map((s) => `${term(s.name)}${s.mutagen ? term(`化${s.mutagen}`) : ''}`).join(' ')
+  return (
+    <div className="zw-hero">
+      <span className="ts-kicker" aria-hidden="true">
+        Ziwei Doushu
+      </span>
+      <h3>
+        {term('命宫')} · {stars || t('命无正曜')}
+      </h3>
+      <p>
+        {term(chart.fiveElementsClass)} · {term('命主')} {term(chart.soul)} · {term('身主')} {term(chart.body)}
+      </p>
+    </div>
   )
 }
 
