@@ -126,6 +126,7 @@ export const COMMON: Record<string, string> = {
 
   // Saved charts drawer
   已保存的命盘: 'Saved charts',
+  出生信息: 'Birth',
   收起: 'Hide',
   展开: 'Show',
   命盘名称: 'Chart name',

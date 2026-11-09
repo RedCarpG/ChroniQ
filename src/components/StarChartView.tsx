@@ -36,6 +36,7 @@ import { STAR_SCHOOLS } from '../lib/starPrefs'
 import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
 import { BirthForm, DateParts } from './BirthForm'
+import { DrawerBirth } from './SavedCharts'
 import { InfoTip, TipLine } from './InfoTip'
 import { TitleMark } from './Logo'
 import { smoothUpdate } from './smoothUpdate'
@@ -143,6 +144,16 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     aspects ? t('第五重 · 相位 {count} 条', { count: aspects }) : t('第五重 · 没有主要相位'),
   ]
 
+  // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
+  const birthForm = (
+    <BirthForm
+      folding={!tianshu}
+      input={input}
+      onChange={onChange}
+      trueSolar={false}
+      schoolsPanel={<SchoolSettingsPanel registry={STAR_SCHOOLS} settings={settings} onChange={onSettingsChange} />}
+    />
+  )
   return (
     <div className="bazi-layout">
       {birthSky === 'show' && (
@@ -150,12 +161,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           <BirthSky moment={moment} focus={skyFocus} figures="west" />
         </Suspense>
       )}
-      <BirthForm
-        input={input}
-        onChange={onChange}
-        trueSolar={false}
-        schoolsPanel={<SchoolSettingsPanel registry={STAR_SCHOOLS} settings={settings} onChange={onSettingsChange} />}
-      />
+      {/* 天书: the birth is chosen in the 命盘 drawer, the chart being the scene here */}
+      {tianshu ? <DrawerBirth>{birthForm}</DrawerBirth> : birthForm}
       <SectionNav
         items={[
           ['star-natal', t('本命')],
