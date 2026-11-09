@@ -38,6 +38,7 @@ import { ZiweiReadingCard } from './ChartReadingCards'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { CastLine } from './CastLine'
 import { useCasting } from './useCasting'
+import { ZiweiScene, ZiweiWheel } from './ZiweiScene'
 // 站酷小薇, 天书's lettering for the board (tianshu.css); cut by character ranges, only what is shown is fetched
 import '@fontsource/zcool-xiaowei/400.css'
 import { SanFangTip, StarTip } from './ZiweiTips'
@@ -124,9 +125,12 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   // The palace picked out: hovered, or chosen (a click; a click on empty space lets go)
   const palacePick = usePick<string>()
   const active = palacePick.active
-  const [mode, setModeState] = useState<BoardMode>(loadMode)
-  // 简洁 / 详细, as on the other charts
+  const [pickedMode, setModeState] = useState<BoardMode>(loadMode)
+  // 简洁 / 详细, as on the other charts; 天书's 简洁 is a scene (ZiweiScene), its 详细 the square board
   const [fullChart, toggleFullChart] = useChartFull()
+  const scene = tianshu && !fullChart
+  // The scene shows the 三方四正; 四化飞星 is for 详细, the one chosen kept for coming back
+  const mode: BoardMode = scene ? 'sanfang' : pickedMode
   const setMode = (next: BoardMode) => {
     setModeState(next)
     try {
@@ -258,7 +262,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const soulSf = sanFangSiZheng(soulBranch)
   const castLayer = (branch: string) =>
     branch === soulBranch ? 'cast-l1' : branch === soulSf.opposite || soulSf.trines.includes(branch) ? 'cast-l2' : 'cast-l3'
-  const cast = useCasting(`${chart.chineseDate} ${chart.gender} ${soulBranch}`, 4, tianshu)
+  const cast = useCasting(`${chart.chineseDate} ${chart.gender} ${soulBranch}`, 4, scene)
   const birthMutagens = Object.values(chart.palaces)
     .flatMap((p) => [...p.major, ...p.minor])
     .filter((s) => s.mutagen)
@@ -475,17 +479,17 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
         items={[
           ['ziwei-board', t('盘面')],
           ['ziwei-reading', t('解读')],
-          ['ziwei-patterns', term('格局')],
-          ['ziwei-fortune', term('运限')],
+          // 简洁 (天书) is the scene and its reading: the 格局 and 运限 come with 详细
+          ...(scene ? [] : ([['ziwei-patterns', term('格局')], ['ziwei-fortune', term('运限')]] as [string, string][])),
         ]}
       />
-      <section className="card" id="ziwei-board" data-stage={cast.stageAttr}>
-        {tianshu && <ZiweiHero chart={chart} cast={<CastLine cast={cast} captions={captions} />} />}
+      <section className={`card${scene ? ' scene' : ''}`} id="ziwei-board" data-stage={cast.stageAttr}>
         <div className="zw-toolbar">
           {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
           {tianshu && <BirthChip input={input} />}
           {tianshu && <SchoolsMenu panel={schoolsPanel} />}
-          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} />
+          <ChartViewSwitch full={fullChart} onToggle={() => (tianshu ? smoothUpdate('chart-view', toggleFullChart) : toggleFullChart())} />
+          {!scene && (
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
             {(
               [
@@ -498,7 +502,19 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
               </button>
             ))}
           </div>
+          )}
         </div>
+        {scene ? (
+          <ZiweiScene
+            chart={chart}
+            wheel={<ZiweiWheel chart={chart} roles={roles} lit={litPattern?.palaces} castLayer={castLayer} pick={palacePick.props} />}
+            cast={<CastLine cast={cast} captions={captions} />}
+            patterns={patterns}
+            pickPattern={patternPick.props}
+            litPattern={litPattern?.name}
+          />
+        ) : (
+        <>
         <div className="ziwei-scroll">
           <div
             ref={boardRef}
@@ -560,6 +576,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
           </div>
         </div>
         {tianshu && <div className="zw-summary-below">{summary}</div>}
+        </>
+        )}
         {active && (
           <PalaceDetail
             chart={chart}
@@ -569,6 +587,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
             onClose={palacePick.clear}
           />
         )}
+        {!scene && (
         <div className="zw-legends">
           {layers.length > 0 && (
             <div className="zc-legend">
@@ -629,6 +648,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
             )}
           </div>
         </div>
+        )}
         <p className="muted row-note ziwei-credit">
           {fill(
             schools.algorithm === 'zhongzhou'
@@ -642,9 +662,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
 
       <ZiweiReadingCard chart={chart} />
 
-      <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />
+      {!scene && <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />}
 
-      {fortunes}
+      {!scene && fortunes}
 
       {/* At the right edge, opened over the page when wanted */}
       <RightDrawer label={t('AI 解读')}>
@@ -740,28 +760,6 @@ function SanFangLines({ branch }: { branch: string }) {
       <polygon points={[self, t1, t2].map((p) => p.join(',')).join(' ')} />
       <line x1={self[0]} y1={self[1]} x2={opp[0]} y2={opp[1]} />
     </svg>
-  )
-}
-
-/** 天书: the chart's title, over the board: the 命宫 and its stars, the 局 and the 命主 / 身主; 起盘's line under it */
-function ZiweiHero({ chart, cast }: { chart: ReturnType<typeof buildZiwei>; cast: ReactNode }) {
-  const term = useTerm()
-  const t = useT()
-  const soul = Object.values(chart.palaces).find((p) => p.isSoul)!
-  const stars = soul.major.map((s) => `${term(s.name)}${s.mutagen ? term(`化${s.mutagen}`) : ''}`).join(' ')
-  return (
-    <div className="zw-hero">
-      <span className="ts-kicker" aria-hidden="true">
-        Ziwei Doushu
-      </span>
-      <h3>
-        {term('命宫')} · {stars || t('命无正曜')}
-      </h3>
-      <p>
-        {term(chart.fiveElementsClass)} · {term('命主')} {term(chart.soul)} · {term('身主')} {term(chart.body)}
-      </p>
-      {cast}
-    </div>
   )
 }
 
