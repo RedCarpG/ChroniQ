@@ -1,8 +1,15 @@
 // @vitest-environment happy-dom
 import './dom'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ExportButton } from '../ExportButton'
+
+// The poster is loaded when first opened, and with it the Moon's and the sky's code: loaded here first,
+// so opening it waits on no import (with the whole suite running, that import alone could take longer
+// than findByRole waits)
+beforeAll(async () => {
+  await import('../BirthMoonPoster')
+})
 
 // No WebGL or 2D canvas in the test DOM: the posters still open, their pictures left blank
 beforeEach(() => {
