@@ -134,51 +134,57 @@
 .bazi-hero { --font-title: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', serif; font-family: var(--font-title); }
 .bazi-hero { position: relative; display: grid; justify-items: center; margin: 0 -16px; overflow: hidden; overflow: clip; }
 .bazi-hero-dial { width: min(600px, 112%); margin: -4px 0 -14px; }
-/* The dial: a dark plate, its rings and the 六十甲子 engraved in flat gold, the 地支 in gold boxes; what
-   the chart does not use dimmed */
+/* The dial: fine lines of gold light over a see-through plate, its edge softened into the fog; what the
+   chart does not use faint, its own glowing, the day pillar (the 日主's own) in gold */
 .bazi-dial { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font-title); }
-.bazi-dial .bd-plate { fill: #18120b; fill-opacity: 0.94; }
-.bazi-dial .bd-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.55; stroke-width: 0.9; }
-.bazi-dial .bd-ring.strong { stroke-opacity: 0.95; stroke-width: 2; }
-.bazi-dial .bd-ring.faint { stroke-opacity: 0.4; }
+.bazi-dial .bd-plate { fill: rgb(10 8 6 / 0.42); filter: blur(5px); }
+.bazi-dial .bd-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.6; stroke-width: 0.7; }
+.bazi-dial .bd-ring.strong { stroke-opacity: 0.85; stroke-width: 1.1; filter: drop-shadow(0 0 3px rgb(220 188 124 / 0.7)); }
+.bazi-dial .bd-ring.faint { stroke-opacity: 0.35; }
 .bazi-dial .bd-ring.dotted { stroke-dasharray: 1 5; stroke-linecap: round; }
-.bazi-dial .bd-spoke { stroke: var(--accent); stroke-opacity: 0.55; stroke-width: 1; }
-.bazi-dial .bd-tick { stroke: var(--accent); stroke-opacity: 0.45; stroke-width: 0.6; }
-.bazi-dial .bd-tick.major { stroke-opacity: 0.85; stroke-width: 0.9; }
+.bazi-dial .bd-spoke { stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 0.5; }
+.bazi-dial .bd-tick { stroke: var(--accent); stroke-opacity: 0.32; stroke-width: 0.5; }
+.bazi-dial .bd-tick.major { stroke-opacity: 0.6; stroke-width: 0.7; }
 .bazi-dial .bd-turn { transform-origin: 300px 300px; animation: bd-turn 240s linear infinite; }
 @keyframes bd-turn { to { transform: rotate(360deg); } }
-/* The 六十甲子: the branches' sectors dark and light in turn, a hairline between the five of each */
-.bazi-dial .bd-sector { fill: rgb(220 188 124 / 0.03); }
-.bazi-dial .bd-sector.alt { fill: rgb(220 188 124 / 0.08); }
-.bazi-dial .bd-cell-line { stroke: var(--accent); stroke-opacity: 0.28; stroke-width: 0.6; }
-.bazi-dial .bd-jiazi text { text-anchor: middle; font-size: 13.5px; font-weight: 400; fill: var(--accent); fill-opacity: 0.3; }
-.bazi-dial .bd-jiazi.mine path { fill: var(--ts-vermilion); filter: drop-shadow(0 0 6px rgb(224 80 58 / 0.7)); }
-.bazi-dial .bd-jiazi.mine text { fill: #f8ead6; fill-opacity: 1; font-weight: 400; }
+/* The 六十甲子: faint, a hairline between them; the pillars' own glowing vermilion, the day's gold */
+.bazi-dial .bd-sector { fill: none; }
+.bazi-dial .bd-cell-line { stroke: var(--accent); stroke-opacity: 0.12; stroke-width: 0.5; }
+.bazi-dial .bd-jiazi text { text-anchor: middle; font-size: 13.5px; font-weight: 400; fill: var(--accent); fill-opacity: 0.24; }
+.bazi-dial .bd-jiazi.mine path { fill: none; }
+.bazi-dial .bd-jiazi.mine text { fill: #ffd9cc; fill-opacity: 1; filter: drop-shadow(0 0 3px #ff5a3c) drop-shadow(0 0 12px rgb(255 90 60 / 0.9)); }
+.bazi-dial .bd-jiazi.mine.day text { font-size: 15px; fill: #fff3d6; filter: drop-shadow(0 0 4px #e8c27a) drop-shadow(0 0 12px rgb(232 194 122 / 0.85)); }
 .bazi-dial .bd-pillar-name { text-anchor: middle; font-size: 12px; letter-spacing: 1px; fill: #f2b8a4; }
-/* The 地支: gold boxes, the letters cut dark in them; those the pillars stand on edged in vermilion */
-.bazi-dial .bd-branch rect { fill: var(--accent); fill-opacity: 0.3; }
-.bazi-dial .bd-branch text { text-anchor: middle; font-size: 18px; font-weight: 400; fill: var(--accent); fill-opacity: 0.55; }
-.bazi-dial .bd-branch.mine rect { fill-opacity: 1; }
-.bazi-dial .bd-branch.mine text { fill: #1b140c; fill-opacity: 1; }
-.bazi-dial .bd-branch.mine rect { stroke: var(--ts-vermilion); stroke-width: 2.4; filter: drop-shadow(0 0 7px rgb(224 80 58 / 0.65)); }
-.bazi-dial .bd-thread { stroke: var(--ts-vermilion); stroke-width: 1; stroke-dasharray: 4 5; stroke-opacity: 0.7; }
-.bazi-dial .bd-month-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px var(--ts-glow)); }
+.bazi-dial .bd-pillar-name.day { fill: var(--accent); font-size: 13px; }
+/* The 地支: letters only, faint; those the pillars stand on lit */
+.bazi-dial .bd-branch rect { fill: none; }
+.bazi-dial .bd-branch text { text-anchor: middle; font-size: 20px; font-weight: 400; fill: var(--accent); fill-opacity: 0.38; }
+.bazi-dial .bd-branch.mine text { fill: #fff0d8; fill-opacity: 1; filter: drop-shadow(0 0 6px rgb(220 188 124 / 0.9)); }
+/* From each pillar's 甲子 to the heart: dashed vermilion light; the day's a solid line of gold */
+.bazi-dial .bd-thread { stroke: #ffb19c; stroke-width: 0.6; stroke-dasharray: 2 4; filter: drop-shadow(0 0 3px #e0503a); }
+.bazi-dial .bd-thread.day { stroke: #f3d9a0; stroke-width: 1; stroke-dasharray: none; filter: drop-shadow(0 0 4px rgb(232 194 122 / 0.9)); }
+.bazi-dial .bd-month-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 6px var(--ts-glow)); }
 .bazi-dial .bd-note { font-size: 11.5px; letter-spacing: 2px; text-anchor: middle; fill: currentColor; }
 .bazi-dial .bd-month .bd-note { fill: var(--accent); }
 .bazi-dial .bd-link { fill: currentColor; }
-.bazi-dial .bd-link-line { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-opacity: 0.9; }
+.bazi-dial .bd-link-line { fill: none; stroke: currentColor; stroke-width: 1; stroke-opacity: 0.9; filter: drop-shadow(0 0 3px currentColor); }
 .bazi-dial .bd-link.soft .bd-link-line { stroke-dasharray: 3 4; stroke-opacity: 0.7; }
-/* The heart: a gold-rimmed well, the 日主 in it */
-.bazi-dial .bd-heart { fill: #110c07; stroke: var(--accent); stroke-width: 2.2; }
-.bazi-dial .bd-heart-line { fill: none; stroke: var(--accent); stroke-opacity: 0.4; }
-.bazi-dial .bd-day-master { font-size: 78px; font-weight: 400; text-anchor: middle; fill: var(--text); color: var(--text); filter: drop-shadow(0 0 10px rgb(235 227 207 / 0.35)); }
+/* The heart: a ring of light, the 日主 in it */
+.bazi-dial .bd-heart { fill: rgb(10 8 6 / 0.62); stroke: var(--accent); stroke-width: 1; filter: drop-shadow(0 0 8px rgb(220 188 124 / 0.8)); }
+.bazi-dial .bd-heart-line { fill: none; stroke: var(--accent); stroke-opacity: 0.3; }
+.bazi-dial .bd-day-master { font-size: 78px; font-weight: 400; text-anchor: middle; fill: var(--text); color: var(--text); filter: drop-shadow(0 0 16px rgb(235 227 207 / 0.6)); }
+/* The chart's own breathe, slowly: the pillars' 甲子 and the 日主 */
+.bazi-dial :is(.bd-jiazi.mine text, .bd-day-master) { animation: bd-breathe 5s ease-in-out infinite alternate; }
+.bazi-dial .bd-jiazi.mine.day text { animation-delay: -2.5s; }
+@keyframes bd-breathe { from { opacity: 0.78; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bazi-dial :is(.bd-jiazi.mine text, .bd-day-master) { animation: none; } }
 /* 此刻 on the rim: a small light, breathing */
 .bazi-dial .bd-now { color: #f6deb0; }
 .bazi-dial .bd-now circle { fill: currentColor; filter: drop-shadow(0 0 5px currentColor); animation: bd-breathe-dot 4s ease-in-out infinite alternate; }
 .bazi-dial .bd-now .bd-note { font-size: 10px; opacity: 0.75; }
 @keyframes bd-breathe-dot { from { opacity: 0.5; } to { opacity: 1; } }
 /* 起盘's first layer: the 日主 written, its outline drawn and then filled */
-.bazi-hero[data-stage='1'] .bd-day-master { stroke: currentColor; stroke-width: 0.8; stroke-dasharray: 320; animation: bd-write 1.1s ease-out both; }
+.bazi-hero[data-stage='1'] .bazi-dial .bd-day-master { stroke: currentColor; stroke-width: 0.8; stroke-dasharray: 320; animation: bd-write 1.1s ease-out both; }
 @keyframes bd-write { from { stroke-dashoffset: 320; fill-opacity: 0; } 55% { fill-opacity: 0; } to { stroke-dashoffset: 0; fill-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .bazi-dial .bd-turn, .bazi-dial .bd-now circle { animation: none; } }
 
@@ -213,7 +219,9 @@
 .bz-pillars { display: flex; gap: 26px; margin-top: 18px; }
 .bz-pillars > div { display: grid; justify-items: center; }
 .bz-pillars small { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); }
-.bz-pillars .dm small { color: var(--ts-vermilion); }
+.bz-pillars .dm { position: relative; }
+.bz-pillars .dm small { color: var(--accent); }
+.bz-pillars .dm::after { content: ''; position: absolute; left: 50%; bottom: -10px; width: 5px; height: 5px; transform: translateX(-50%) rotate(45deg); background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .bz-pillars b { font-family: var(--font-title); font-size: 40px; font-weight: 400; line-height: 1.1; text-shadow: 0 0 16px currentColor; }
 .bz-pillars > div > small + b { margin-top: 6px; }
 .bz-links { display: grid; justify-items: center; gap: 4px; margin-top: 16px; font-family: var(--font-title); font-size: 13px; letter-spacing: 0.2em; color: var(--muted); text-align: center; }
