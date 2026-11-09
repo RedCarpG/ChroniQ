@@ -81,4 +81,8 @@ export const ZIWEI: Record<string, string> = {
   '{star}化{mutagen}入{palace}': '{star} becomes {mutagen} in {palace}',
   本宫: 'this palace',
   '对宫{a}，三合{b}、{c}': 'opposite {a}; trine {b} and {c}',
+  '第一重 · 命宫在{branch}，{stars}': 'First · the Life palace in {branch}, {stars}',
+  '第二重 · 三方四正：{palaces}': 'Second · its opposite and trines: {palaces}',
+  '第三重 · 十二宫': 'Third · the twelve palaces',
+  '第四重 · 生年四化：{list}': 'Fourth · the birth year’s four transformations: {list}',
 }
