@@ -71,9 +71,20 @@
     radial-gradient(ellipse 120% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.5));
 }
 .ts-page-bazi .ts-motes { opacity: 0.35; }
+/* 星盘: the west's violet stays at the edges, thinner, so the sky of the birth reads through it */
+.ts-page-star .ts-mist {
+  background:
+    radial-gradient(ellipse 55% 30% at 85% 4%, rgb(140 90 220 / 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 32% at 6% 64%, rgb(90 60 180 / 0.1), transparent 70%),
+    radial-gradient(ellipse 120% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.45));
+}
+.ts-page-star .ts-motes { opacity: 0.35; }
 
-/* The sky of the birth (only on 八字), nearly at full strength: the chart is drawn over it */
+/* The sky of the birth (八字 and 星盘), nearly at full strength: the chart is drawn over it */
 :root[data-style] .birth-sky { opacity: 0.92; }
+/* 星盘's sky draws the Western figures across the whole page: fainter and unnamed, so they do not cross the words;
+   the zodiac's own are drawn in the wheel (.zodiac-figures) */
+:root[data-style='west'][data-theme] { --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0); }
 
 /* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
 :root[data-style] .bazi-form-summary {
@@ -129,17 +140,18 @@
 .bazi-dial .bd-pillar-star line { stroke: currentColor; stroke-width: 0.8; stroke-opacity: 0.28; }
 .bazi-dial .bd-pillar-star.day line { stroke-opacity: 0.6; stroke-width: 1.1; }
 
-/* 起盘 (BaziHero): while the chart is cast, the layers not yet come wait in the dark */
-.bazi-hero :is(.bd-l1, .bd-l2, .bd-l3, .bd-l4) { transition: opacity 0.9s ease; }
-.bazi-hero[data-stage='1'] :is(.bd-l2, .bd-l3, .bd-l4),
-.bazi-hero[data-stage='2'] :is(.bd-l3, .bd-l4),
-.bazi-hero[data-stage='3'] .bd-l4 { opacity: 0.05; }
-.bazi-cast { display: flex; justify-content: center; align-items: baseline; gap: 14px; min-height: 1.8em; margin: 10px 0 0; font-size: 13px; letter-spacing: 0.14em; color: var(--muted); }
-.bazi-cast-line { color: var(--text); animation: bazi-cast-in 0.7s ease both; }
-@keyframes bazi-cast-in { from { opacity: 0; transform: translateY(4px); } }
-.bazi-cast button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; opacity: 0.7; }
-.bazi-cast button:hover { color: var(--accent); opacity: 1; }
-@media print { .bazi-cast { display: none; } }
+/* 起盘 (useCasting, CastLine): while a chart is cast, the layers not yet come wait in the dark */
+:is(.cast-l1, .cast-l2, .cast-l3, .cast-l4, .cast-l5) { transition: opacity 0.9s ease; }
+[data-stage='1'] :is(.cast-l2, .cast-l3, .cast-l4, .cast-l5),
+[data-stage='2'] :is(.cast-l3, .cast-l4, .cast-l5),
+[data-stage='3'] :is(.cast-l4, .cast-l5),
+[data-stage='4'] .cast-l5 { opacity: 0.05; }
+.ts-cast { display: flex; justify-content: center; align-items: baseline; gap: 14px; min-height: 1.8em; margin: 10px 0 0; font-size: 13px; letter-spacing: 0.14em; color: var(--muted); }
+.ts-cast-line { color: var(--text); animation: ts-cast-in 0.7s ease both; }
+@keyframes ts-cast-in { from { opacity: 0; transform: translateY(4px); } }
+.ts-cast button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; opacity: 0.7; }
+.ts-cast button:hover { color: var(--accent); opacity: 1; }
+@media print { .ts-cast { display: none; } }
 
 .ts-kicker { font-family: 'Cormorant Garamond', var(--font-title); font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); margin-left: 0.5em; }
 .bazi-hero-title { text-align: center; }
@@ -243,6 +255,10 @@
 :root[data-style] .star-wheel .cusp.angle { stroke: rgb(235 227 207 / 0.75); }
 :root[data-style] .star-wheel .tick { stroke: var(--accent); opacity: 0.5; }
 :root[data-style] .star-wheel .planet-glyph-svg { filter: drop-shadow(0 0 5px currentColor); }
+/* The zodiac's constellations in the signs' ring, where the stars really are; their names just outside */
+.star-wheel .zodiac-figures path { fill: none; stroke: #e9dcb8; stroke-width: 0.6; stroke-opacity: 0.42; stroke-linejoin: round; pointer-events: none; }
+.star-wheel .zodiac-name { font-family: var(--font-title); font-size: 8.5px; letter-spacing: 0.18em; fill: var(--accent); opacity: 0.6; pointer-events: none; }
+:root[data-style] .star-wheel .zodiac-stars { opacity: 0.9; }
 :root[data-style] .star-wheel .aspect-line { stroke-width: 1; filter: drop-shadow(0 0 3px currentColor); }
 :root[data-style] .star-wheel .aspect-line.tone-soft { stroke: #9fb4ff; color: #9fb4ff; }
 :root[data-style] .star-wheel .aspect-line.tone-hard { stroke: #ff8a73; color: #ff8a73; }

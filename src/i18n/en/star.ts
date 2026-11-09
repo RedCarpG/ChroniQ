@@ -169,4 +169,10 @@ export const STAR: Record<string, string> = {
   '（当前）': ' (current)',
   对方出生日期: "Partner's birth date",
   对方出生地: "Partner's birthplace",
+  '第一重 · 太阳在{sign}，核心的你': 'First · the Sun in {sign}, who you are at heart',
+  '第二重 · 月亮在{sign}，内心的你': 'Second · the Moon in {sign}, who you are within',
+  '第三重 · 上升{sign}，外在的你': 'Third · {sign} rising, the face you show',
+  '第四重 · 另外 {count} 颗行星落入十二宫': 'Fourth · the other {count} planets in their houses',
+  '第五重 · 相位 {count} 条': 'Fifth · {count} aspects between them',
+  '第五重 · 没有主要相位': 'Fifth · no major aspects between them',
 }

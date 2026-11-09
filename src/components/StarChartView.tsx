@@ -31,7 +31,7 @@ import {
 import type { BaziInput } from '../lib/bazi'
 import { loadCharts, sameInput } from '../lib/savedCharts'
 import { DEFAULT_PLACE } from '../lib/place'
-import { zodiacStars } from '../lib/eclipticStars'
+import { zodiacFigures, zodiacStars } from '../lib/eclipticStars'
 import { STAR_SCHOOLS } from '../lib/starPrefs'
 import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
@@ -47,6 +47,8 @@ import { starPrompt } from '../lib/ai/prompts'
 import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
+import { CastLine } from './CastLine'
+import { useCasting } from './useCasting'
 
 // 生辰星空, shared with the 八字 page: loaded apart, as it brings the star catalogue
 const BirthSky = lazy(() => import('./BirthSky').then((m) => ({ default: m.BirthSky })))
@@ -129,6 +131,17 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     [chart.utc, place.latitude, place.longitude],
   )
   const skyFocus = focus && 'planet' in focus && focus.layer === 'natal' ? focus.planet : null
+  // 天书's 起盘: the Sun, the Moon, the Ascendant, the other bodies in their houses, then the aspects
+  const cast = useCasting(`${chart.utc.getTime()} ${place.latitude} ${place.longitude}`, 5, tianshu)
+  const others = chart.points.filter((p) => !['sun', 'moon', 'asc', 'mc', 'node', 'southNode'].includes(p.key)).length
+  const aspects = chart.aspects.filter((a) => !['asc', 'mc'].includes(a.a.key) && !['asc', 'mc'].includes(a.b.key)).length
+  const captions = [
+    t('第一重 · 太阳在{sign}，核心的你', { sign: signName(t, sun.sign) }),
+    t('第二重 · 月亮在{sign}，内心的你', { sign: signName(t, moon.sign) }),
+    t('第三重 · 上升{sign}，外在的你', { sign: signName(t, asc.sign) }),
+    t('第四重 · 另外 {count} 颗行星落入十二宫', { count: others }),
+    aspects ? t('第五重 · 相位 {count} 条', { count: aspects }) : t('第五重 · 没有主要相位'),
+  ]
 
   return (
     <div className="bazi-layout">
@@ -153,7 +166,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         ]}
       />
 
-      <section className="card" id="star-natal">
+      <section className="card" id="star-natal" data-stage={cast.stageAttr}>
         {/* 天书: the chart's title, the Sun's heart and the Ascendant's face */}
         {tianshu && (
           <div className="st-hero">
@@ -161,17 +174,18 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
               Natal Chart
             </span>
             <h3>{t('{sun}之心 · {asc}之貌', { sun: t(SIGNS[sun.sign]), asc: t(SIGNS[asc.sign]) })}</h3>
+            <CastLine cast={cast} captions={captions} />
           </div>
         )}
         <div className="big-three">
           {(
             [
-              [sun, t('太阳'), 'SOL', t('核心的你')],
-              [moon, t('月亮'), 'LUNA', t('内心的你')],
-              [asc, t('上升'), 'ORIENS', t('外在的你')],
+              [sun, t('太阳'), 'SOL', t('核心的你'), 'cast-l1'],
+              [moon, t('月亮'), 'LUNA', t('内心的你'), 'cast-l2'],
+              [asc, t('上升'), 'ORIENS', t('外在的你'), 'cast-l3'],
             ] as const
-          ).map(([pt, label, latin, who]) => (
-            <div key={label} className={`b3 el-${SIGN_ELEMENT[pt.sign]}`}>
+          ).map(([pt, label, latin, who, layer]) => (
+            <div key={label} className={`b3 el-${SIGN_ELEMENT[pt.sign]} ${layer}`}>
               <span className="b3-latin" aria-hidden="true">
                 {latin}
               </span>
@@ -238,7 +252,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           <p className="muted row-note">{t('请选择出生之后的日期。')}</p>
         )}
         <div className="star-layout">
-          <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
+          <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} tianshu={tianshu} />
           <div className="star-tables">
             <PointTable chart={chart} hl={hl} hover={hover} full={fullChart} />
             <SignBalance chart={chart} full={fullChart} tianshu={tianshu} />
@@ -685,13 +699,17 @@ function StarWheel({
   overlay,
   hl,
   hover,
+  tianshu = false,
 }: {
   chart: StarChart
   overlay: Overlay | null
   hl: Highlight
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
+  /** 天书: the zodiac's constellations drawn in the signs' ring, and the chart cast a layer at a time */
+  tianshu?: boolean
 }) {
   const t = useT()
+  const { language } = useSettings()
   const at = (lon: number, r: number) => {
     const d = ((lon - chart.asc) * Math.PI) / 180
     return [C - r * Math.cos(d), C + r * Math.sin(d)] as const
@@ -732,6 +750,30 @@ function StarWheel({
     return [...sizes]
     // at follows the ascendant
   }, [year, chart.asc])
+  // 天书: the constellations those stars make, as figures, and their names just outside the ring; the
+  // signs are the tropical twelfths, the figures where the stars really are, so they do not line up
+  const figures = useMemo(() => {
+    if (!tianshu) return []
+    const r = (lat: number) => (R_OUT + R_SIGN) / 2 + lat * 1.35
+    return zodiacFigures(year).map((f) => {
+      const d = f.lines
+        .map((l) =>
+          l
+            .map((p, i) => {
+              const [x, y] = at(p.lon, r(p.lat))
+              return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
+            })
+            .join(''),
+        )
+        .join('')
+      const [x, y] = at(f.label.lon, R_OUT + 10)
+      // along the ring, never upside down
+      let turn = (Math.atan2(y - C, x - C) * 180) / Math.PI + 90
+      if (turn > 90) turn -= 180
+      return { id: f.id, name: language === 'en' ? f.en : f.name, d, x, y, turn }
+    })
+    // at follows the ascendant
+  }, [tianshu, year, chart.asc, language])
 
   // 浮现: a new chart comes in as the sky turning into place: the signs' ring turns to its place,
   // the bodies appear one by one, and the aspects draw themselves between them. Not for a new 行运
@@ -751,6 +793,8 @@ function StarWheel({
       easing: ease,
       fill: 'backwards',
     })
+    // 天书 casts the rest a layer at a time instead (useCasting)
+    if (tianshu) return
     svg.querySelectorAll('.houses').forEach((el) =>
       el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 300, fill: 'backwards' }),
     )
@@ -796,8 +840,31 @@ function StarWheel({
           </g>
         )
       })}
+      {figures.length > 0 && (
+        <g className="zodiac-figures" clipPath="url(#zodiac-figures-clip)">
+          <clipPath id="zodiac-figures-clip">
+            <circle cx={C} cy={C} r={R_OUT + 20} />
+          </clipPath>
+          {figures.map((f) => (
+            <path key={f.id} d={f.d} />
+          ))}
+        </g>
+      )}
       {stars.map(([w, d]) => (
         <path key={w} className="zodiac-stars" d={d} strokeWidth={w} />
+      ))}
+      {figures.map((f) => (
+        <text
+          key={f.id}
+          x={f.x}
+          y={f.y}
+          className="zodiac-name"
+          textAnchor="middle"
+          dominantBaseline="central"
+          transform={`rotate(${f.turn.toFixed(1)} ${f.x.toFixed(1)} ${f.y.toFixed(1)})`}
+        >
+          {f.name}
+        </text>
       ))}
       {Array.from({ length: 72 }, (_, i) => {
         const [x1, y1] = at(i * 5, R_SIGN)
@@ -808,7 +875,7 @@ function StarWheel({
       <circle cx={C} cy={C} r={R_SIGN} className="ring" />
       <circle cx={C} cy={C} r={R_HOUSE} className="ring faint" />
       <circle cx={C} cy={C} r={R_ASPECT} className="ring" />
-      <g className="houses">
+      <g className="houses cast-l3">
       {chart.cusps.map((c, i) => (
         <path
           key={`sector-${i}`}
@@ -845,7 +912,7 @@ function StarWheel({
         const lon = k === 'asc' ? chart.asc : chart.mc
         const [x, y] = at(lon, R_OUT + 1)
         return (
-          <text key={k} x={x} y={y} className="angle-label" textAnchor="middle" dominantBaseline="central">
+          <text key={k} x={x} y={y} className="angle-label cast-l3" textAnchor="middle" dominantBaseline="central">
             {k === 'asc' ? 'AC' : 'MC'}
           </text>
         )
@@ -855,7 +922,7 @@ function StarWheel({
         const [x2, y2] = at(a.b.lon, R_ASPECT)
         // A wide invisible stroke on top makes the thin line easy to hover.
         return (
-          <g key={a.a.key + a.b.key} className="aspect" {...hover({ aspect: a, cross: !!overlay })}>
+          <g key={a.a.key + a.b.key} className="aspect cast-l5" {...hover({ aspect: a, cross: !!overlay })}>
             <line
               x1={x1}
               y1={y1}
@@ -886,7 +953,7 @@ function StarWheel({
         return (
           <g
             key={p.key}
-            className={`planet el-${SIGN_ELEMENT[p.sign]}${hl.planet(p) ? ' on' : ''}`}
+            className={`planet el-${SIGN_ELEMENT[p.sign]} ${p.key === 'sun' ? 'cast-l1' : p.key === 'moon' ? 'cast-l2' : 'cast-l4'}${hl.planet(p) ? ' on' : ''}`}
             {...hover({ planet: p.key, layer: 'natal' })}
           >
             <title>
