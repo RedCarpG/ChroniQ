@@ -231,9 +231,12 @@ export function App() {
   useEffect(() => applyStyle(settings.uiStyle, tab, settings.theme), [settings.uiStyle, tab, settings.theme])
   // The top bar, folded up on the full-screen pages (each visit starts folded): the mouse at the top of the
   // screen brings it down, and it goes again a moment after the mouse leaves it, unless one of its
-  // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up
+  // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up.
+  // 天书's 命理 pages fold it up too, the chart being the scene there: it comes down over the page,
+  // wherever the page is scrolled (fold-bar)
+  const foldable = immersive || !!realm
   const [barShown, setBarShown] = useState(false)
-  const barFolded = immersive && !barShown
+  const barFolded = foldable && !barShown
   const barTimer = useRef(0)
   const showBar = () => {
     clearTimeout(barTimer.current)
@@ -304,10 +307,11 @@ export function App() {
         </div>
       )}
       {loadError && <div role="alert">{t('页面加载失败，请重试或刷新页面。')} <button onClick={() => location.reload()}>{t('刷新页面')}</button></div>}
-      <div className={`app page-${tab}${immersive ? ' immersive' : ''}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
-        {/* On the full-screen pages the top bar folds up out of the way (folded at first): the mouse at
-            the very top brings it down; a small tab pulls it down, and one under it folds it up again */}
-        {immersive && (
+      <div className={`app page-${tab}${immersive ? ' immersive' : ''}${foldable && !immersive ? ' fold-bar' : ''}${barFolded ? ' bar-folded' : ''}`} ref={appRef}>
+        {/* On the full-screen pages (and 天书's 命理 pages) the top bar folds up out of the way (folded at
+            first): the mouse at the very top brings it down; a small tab pulls it down, and one under it
+            folds it up again */}
+        {foldable && (
           <div
             className="topbar-hotzone"
             aria-hidden="true"
@@ -332,9 +336,9 @@ export function App() {
           className="topbar"
           ref={topbarRef}
           inert={barFolded}
-          onPointerEnter={() => immersive && clearTimeout(barTimer.current)}
-          onPointerLeave={(e) => immersive && e.pointerType === 'mouse' && hideBarSoon()}
-          onBlur={(e) => immersive && !e.currentTarget.contains(e.relatedTarget as Node | null) && hideBarSoon()}
+          onPointerEnter={() => foldable && clearTimeout(barTimer.current)}
+          onPointerLeave={(e) => foldable && e.pointerType === 'mouse' && hideBarSoon()}
+          onBlur={(e) => foldable && !e.currentTarget.contains(e.relatedTarget as Node | null) && hideBarSoon()}
         >
           <h1>
             <Logo />
@@ -352,7 +356,7 @@ export function App() {
             )}
             <SettingsMenu settings={settings} onChange={changeSettings} />
           </div>
-          {immersive && (
+          {foldable && (
             <button type="button" className="topbar-fold up" aria-label={t('收起标题栏')} title={t('收起标题栏')} onClick={() => setBarShown(false)}>
               <span aria-hidden="true">⌃</span>
             </button>
