@@ -20,8 +20,8 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
   return (
     <div className={`ts-atmos ts-${realm} ts-page-${page}`} aria-hidden="true">
       <div className="ts-mist" />
-      {/* 八字: a thin fog, in drifts, moving slowly across */}
-      {page === 'bazi' && (
+      {/* 八字 and 紫微: a thin fog, in drifts, moving slowly across */}
+      {(page === 'bazi' || page === 'ziwei') && (
         <svg className="ts-fog">
           <filter id="ts-fog" x="0" y="0" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0055" numOctaves="4" seed="11" />

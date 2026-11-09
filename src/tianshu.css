@@ -262,14 +262,19 @@
 .bazi-hero-lede b { color: var(--text); font-weight: 400; }
 
 /* ---------- 紫微 ---------- */
+/* Lettered in 站酷小薇, as 八字's scene is (ZiweiView imports it); one weight, so nothing set bold */
+:root[data-style] #ziwei-board { --font-title: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', serif; }
+:root[data-style] #ziwei-board :is(.zw-hero, .ziwei-board) { font-family: var(--font-title); }
+:root[data-style] #ziwei-board :is(h3, strong, b, .star-name, .palace-name) { font-weight: 400; }
 .zw-hero { text-align: center; margin: 6px 0 22px; }
-.zw-hero h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(22px, 5.6vw, 30px); font-weight: 600; letter-spacing: 0.22em; }
+.zw-hero h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(22px, 5.6vw, 30px); font-weight: 400; letter-spacing: 0.22em; }
 .zw-hero p { margin: 6px 0 0; font-size: 13px; letter-spacing: 0.06em; color: var(--muted); }
 :root[data-style] .zw-toolbar { gap: 8px 16px; }
 /* The board: no plate, hairlines between the palaces */
 :root[data-style] .ziwei-board { background: none; border: 0; border-radius: 0; gap: 0; overflow: visible; }
-:root[data-style] .palace { background: none; border: 0.5px solid var(--ts-hair); }
-:root[data-style] .palace.soul { background: radial-gradient(ellipse 90% 80% at 50% 100%, rgb(224 80 58 / 0.22), transparent 70%); }
+/* Fine lines of gold between the palaces, as the 八字 compass is drawn; the 命宫 with a vermilion glow inside */
+:root[data-style] .palace { background: none; border: 0.5px solid rgb(220 188 124 / 0.2); }
+:root[data-style] .palace.soul { box-shadow: inset 0 0 28px rgb(224 80 58 / 0.22); }
 :root[data-style] .palace.soul .palace-name { color: #ff8a73; text-shadow: 0 0 10px var(--ts-vermilion); }
 :root[data-style] .stars-major .star-name { text-shadow: 0 0 10px color-mix(in srgb, currentColor 55%, transparent); }
 :root[data-style] .stars-major, :root[data-style] .stars-minor { gap: 3px 12px; }
@@ -279,7 +284,7 @@
   :root[data-style] .palace-stars { gap: 6px 5px; }
   :root[data-style] .palace-stars .tip-label { line-height: 1.16; }
 }
-:root[data-style] .palace-name { font-weight: 500; letter-spacing: 0.12em; }
+:root[data-style] .palace-name { letter-spacing: 0.12em; }
 :root[data-style] .mutagen { border-radius: 2px; box-shadow: 0 0 8px currentColor; }
 :root[data-style] .m-禄 { color: #fff; background: #3d8d5a; }
 /* The heart of the board: a ring sized to the space it has, the chart's particulars inside it */
@@ -290,8 +295,8 @@
 :root[data-style] .ziwei-center::before {
   content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 94cqmin; aspect-ratio: 1; transform: translate(-50%, -50%);
   border-radius: 50%; border: 1px solid rgb(220 188 124 / 0.4);
-  box-shadow: 0 0 40px rgb(220 188 124 / 0.1), inset 0 0 40px rgb(220 188 124 / 0.07), inset 0 0 0 7px rgb(10 8 7 / 0.4), inset 0 0 0 8px rgb(220 188 124 / 0.12);
-  background: radial-gradient(circle, rgb(220 188 124 / 0.07), rgb(10 8 7 / 0.55) 70%);
+  box-shadow: 0 0 12px rgb(220 188 124 / 0.35), inset 0 0 0 7px rgb(10 8 7 / 0.4), inset 0 0 0 8px rgb(220 188 124 / 0.14);
+  background: rgb(10 8 6 / 0.5);
 }
 :root[data-style] .ziwei-center .zc-birth, :root[data-style] .ziwei-center .zc-extra { display: none; }
 :root[data-style] .zc-title { justify-content: center; font-size: clamp(13px, 7cqmin, 18px); letter-spacing: 0.12em; }
@@ -308,11 +313,17 @@
 :root[data-style] .palace.sf-self, :root[data-style] .palace.sf-opposite, :root[data-style] .palace.sf-trine { box-shadow: none; }
 :root[data-style] .palace.sf-self .palace-name, :root[data-style] .palace.sf-opposite .palace-name, :root[data-style] .palace.sf-trine .palace-name { color: var(--accent); text-shadow: 0 0 10px var(--ts-glow); }
 :root[data-style] .palace.soul.sf-self .palace-name { color: #ff8a73; }
-:root[data-style] .sf-active .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.5; }
+:root[data-style] .sf-active .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.38; }
 /* Resting (nothing picked): the 命宫's light, without the tags */
 .sf-resting .sf-tag { display: none; }
-:root[data-style] .sf-resting .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.62; }
+:root[data-style] .sf-resting .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.45; }
 :root[data-style] .sf-tag { background: rgb(220 188 124 / 0.14); }
+/* 起盘 on the board: the palaces not yet come wait in the dark (over the resting light, which would keep
+   them half lit), and the 生年四化 come in last */
+:root[data-style] #ziwei-board:is([data-stage='1'], [data-stage='2']) .palace.cast-l3,
+:root[data-style] #ziwei-board[data-stage='1'] .palace.cast-l2,
+:root[data-style] #ziwei-board:is([data-stage='1'], [data-stage='2'], [data-stage='3']) .palace .mutagen { opacity: 0.05; }
+:root[data-style] #ziwei-board .palace .mutagen { transition: opacity 0.9s ease; }
 
 /* ---------- 星盘 ---------- */
 .b3-latin, .b3-who { display: none; }

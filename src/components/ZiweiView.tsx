@@ -34,6 +34,10 @@ import { RightDrawer } from './RightDrawer'
 import { ziweiPrompt } from '../lib/ai/prompts'
 import { ZiweiReadingCard } from './ChartReadingCards'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
+import { CastLine } from './CastLine'
+import { useCasting } from './useCasting'
+// 站酷小薇, 天书's lettering for the board (tianshu.css); cut by character ranges, only what is shown is fetched
+import '@fontsource/zcool-xiaowei/400.css'
 import { SanFangTip, StarTip } from './ZiweiTips'
 import type { Settings } from '../lib/settings'
 
@@ -248,6 +252,24 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const soulBranch = Object.values(chart.palaces).find((p) => p.isSoul)!.branch
   const sfFrom = active ?? (tianshu && mode === 'sanfang' && !litPattern ? soulBranch : null)
   const resting = sfFrom !== null && !active
+  // 天书's 起盘: the 命宫 alone, then its 三方四正, then the other palaces, then the 生年四化
+  const soulSf = sanFangSiZheng(soulBranch)
+  const castLayer = (branch: string) =>
+    branch === soulBranch ? 'cast-l1' : branch === soulSf.opposite || soulSf.trines.includes(branch) ? 'cast-l2' : 'cast-l3'
+  const cast = useCasting(`${chart.chineseDate} ${chart.gender} ${soulBranch}`, 4, tianshu)
+  const birthMutagens = Object.values(chart.palaces)
+    .flatMap((p) => [...p.major, ...p.minor])
+    .filter((s) => s.mutagen)
+    .sort((a, b) => '禄权科忌'.indexOf(a.mutagen!) - '禄权科忌'.indexOf(b.mutagen!))
+  const captions = [
+    t('第一重 · 命宫在{branch}，{stars}', {
+      branch: term(soulBranch),
+      stars: chart.palaces[soulBranch].major.map((s) => term(s.name)).join(' ') || t('命无正曜'),
+    }),
+    t('第二重 · 三方四正：{palaces}', { palaces: [soulSf.opposite, ...soulSf.trines].map((b) => term(chart.palaces[b].name)).join(t('、')) }),
+    t('第三重 · 十二宫'),
+    t('第四重 · 生年四化：{list}', { list: birthMutagens.map((s) => `${term(s.name)}${term(`化${s.mutagen}`)}`).join(' ') }),
+  ]
   const roles = useMemo(() => {
     if (!sfFrom || mode !== 'sanfang' || litPattern) return null
     const { opposite, trines } = sanFangSiZheng(sfFrom)
@@ -445,8 +467,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
           ['ziwei-fortune', term('运限')],
         ]}
       />
-      <section className="card" id="ziwei-board">
-        {tianshu && <ZiweiHero chart={chart} />}
+      <section className="card" id="ziwei-board" data-stage={cast.stageAttr}>
+        {tianshu && <ZiweiHero chart={chart} cast={<CastLine cast={cast} captions={captions} />} />}
         <div className="zw-toolbar">
           <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} />
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
@@ -480,11 +502,12 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                 layers={layers}
                 pick={palacePick.props}
                 lit={!!litPattern?.palaces.includes(p.branch)}
+                castLayer={tianshu ? castLayer(p.branch) : undefined}
               />
             ))}
             {sfFrom && mode === 'sanfang' && !litPattern && <SanFangLines branch={sfFrom} />}
             {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
-            <div className="ziwei-center">
+            <div className="ziwei-center cast-l3">
               <div className="zc-title">
                 <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong>
                 <span>{term(chart.fiveElementsClass)}</span>
@@ -698,15 +721,15 @@ function SanFangLines({ branch }: { branch: string }) {
   const { opposite, trines } = sanFangSiZheng(branch)
   const [self, opp, t1, t2] = [branch, opposite, ...trines].map(anchor)
   return (
-    <svg className="sf-lines" viewBox="0 0 4 4" preserveAspectRatio="none" aria-hidden="true">
+    <svg className="sf-lines cast-l2" viewBox="0 0 4 4" preserveAspectRatio="none" aria-hidden="true">
       <polygon points={[self, t1, t2].map((p) => p.join(',')).join(' ')} />
       <line x1={self[0]} y1={self[1]} x2={opp[0]} y2={opp[1]} />
     </svg>
   )
 }
 
-/** 天书: the chart's title, over the board: the 命宫 and its stars, the 局 and the 命主 / 身主 */
-function ZiweiHero({ chart }: { chart: ReturnType<typeof buildZiwei> }) {
+/** 天书: the chart's title, over the board: the 命宫 and its stars, the 局 and the 命主 / 身主; 起盘's line under it */
+function ZiweiHero({ chart, cast }: { chart: ReturnType<typeof buildZiwei>; cast: ReactNode }) {
   const term = useTerm()
   const t = useT()
   const soul = Object.values(chart.palaces).find((p) => p.isSoul)!
@@ -722,6 +745,7 @@ function ZiweiHero({ chart }: { chart: ReturnType<typeof buildZiwei> }) {
       <p>
         {term(chart.fiveElementsClass)} · {term('命主')} {term(chart.soul)} · {term('身主')} {term(chart.body)}
       </p>
+      {cast}
     </div>
   )
 }
@@ -843,8 +867,11 @@ function PalaceView({
   layers,
   pick,
   lit,
+  castLayer,
 }: {
   palace: ZiweiPalace
+  /** 天书's 起盘: the layer the palace comes in on */
+  castLayer?: string
   /** 详细: the 杂曜 and the 长生十二神 too */
   full: boolean
   /** The palace's 干支 */
@@ -873,7 +900,7 @@ function PalaceView({
   const [row, col] = BOARD[p.branch]
   return (
     <div
-      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}${lit ? ' pt-on' : ''}`}
+      className={`palace${p.isSoul ? ' soul' : ''}${role ? ` sf-${role}` : ''}${flyClass}${lit ? ' pt-on' : ''}${castLayer ? ` ${castLayer}` : ''}`}
       style={{ gridRow: row, gridColumn: col }}
       tabIndex={0}
       data-sound="yu"
