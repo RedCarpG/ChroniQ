@@ -177,10 +177,8 @@
 
 /* The 命理 pages' sections snap into place as the page is scrolled: when it comes to rest near the top of
    one (原局, 解读, 岁运 …), it settles there; in the middle of a long one it stays where it is */
-:root[data-style] { scroll-snap-type: y proximity; }
-:root[data-style] main section.card[id] { scroll-snap-align: start; scroll-margin-top: 12px; }
-/* The page's very top is a resting place too, so opening it does not pull the page down to the first */
-:root[data-style] .app { scroll-snap-align: start; }
+/* (the snapping itself is useSectionSnap's, which glides where the browser's own snap jumps) */
+:root[data-style] main section.card[id] { scroll-margin-top: 12px; }
 
 /* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
 :root[data-style] .bazi-form-summary {

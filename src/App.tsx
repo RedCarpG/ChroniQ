@@ -19,6 +19,7 @@ import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/sta
 import { DEFAULT_PLACE, type Place } from './lib/place'
 import { toUtc } from './lib/timeZone'
 import { TianshuAtmosphere } from './components/TianshuAtmosphere'
+import { useSectionSnap } from './components/useSectionSnap'
 import { applyScale, applyStyle, loadSettings, saveSettings, TIANSHU_REALM, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
 import { hantReady, loadHant } from './lib/hant'
@@ -229,6 +230,8 @@ export function App() {
   // 界面风格: the 天书 look draws the 命理 pages by night, over an atmosphere of its own (TianshuAtmosphere)
   const realm = settings.uiStyle === 'tianshu' ? TIANSHU_REALM[tab] : undefined
   useEffect(() => applyStyle(settings.uiStyle, tab, settings.theme), [settings.uiStyle, tab, settings.theme])
+  // 天书's sections settle into place, gliding, when the page comes to rest near the top of one
+  useSectionSnap(!!realm)
   // The top bar, folded up on the full-screen pages (each visit starts folded): the mouse at the top of the
   // screen brings it down, and it goes again a moment after the mouse leaves it, unless one of its
   // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up.
