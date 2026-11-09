@@ -2,6 +2,13 @@
 // so do the hover explanations in lib/ziweiInfo.ts for now.
 export const ZIWEI: Record<string, string> = {
   命无正曜: 'No major star',
+  // 天书's scene (ZiweiScene)
+  '{stars}坐命': '{stars} in the Life palace',
+  '命宫在{branch}': 'Life palace in {branch}',
+  '格局{count}种': 'Patterns: {count}',
+  命宫三方未成常见格局: 'The Life palace forms no common pattern',
+  借对宫: 'empty',
+  紫微命盘: 'Zi Wei chart',
   // Section nav and toolbars
   盘面: 'Chart',
   宫位显示: 'Palace view',
