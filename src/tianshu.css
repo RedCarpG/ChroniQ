@@ -84,8 +84,10 @@
 }
 .ts-page-star .ts-motes { opacity: 0.35; }
 
-/* The sky of the birth (八字 and 星盘), nearly at full strength: the chart is drawn over it */
-:root[data-style] .birth-sky { opacity: 0.92; }
+/* The sky of the birth (八字 and 星盘), nearly at full strength: the chart is drawn over it. It and the
+   night over it are a little larger than the screen, so their edges never show as they move (useParallax) */
+:root[data-style] .birth-sky { opacity: 0.92; scale: 1.04; }
+:root[data-style] .ts-atmos { scale: 1.03; }
 /* 星盘's sky draws the Western figures across the whole page: fainter and unnamed, so they do not cross the words;
    the zodiac's own are drawn in the wheel (.zodiac-figures) */
 :root[data-style='west'][data-theme] { --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0); }
