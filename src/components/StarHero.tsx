@@ -1,6 +1,6 @@
 // 天书's 星盘, 简洁: the chart as a scene, laid out as 八字's is (BaziHero), but in the west's manner, read
 // across: the wheel (StarWheel) in the middle, as large as the screen allows; the chart's name at the top
-// left (the Sun's heart, the Ascendant's face); the four elements at the top right; the big three (Sun,
+// left (太阳射手 · 上升双子: the Sun's sign and the Ascendant's, as people say it); the four elements at the top right; the big three (Sun,
 // Moon, Ascendant) at the foot on the left, as 八字's four pillars stand; the chart's closest aspects at
 // the foot on the right. 详细 is the full chart without the scene: the comparison charts, the tables and
 // the houses.
@@ -67,8 +67,8 @@ export function StarHero({ chart, place, wheel, balance, cast, captions, pointAt
           Natal Chart
         </span>
         <h3>
-          <span className="cast-l1">{t('{sign}之心', { sign: t(SIGNS[sun.sign]) })}</span>
-          <span className="cast-l3">{t('{sign}之貌', { sign: t(SIGNS[asc.sign]) })}</span>
+          <span className="cast-l1">{t('太阳{sign}', { sign: t(SIGNS[sun.sign]) })}</span>
+          <span className="cast-l3">{t('上升{sign}', { sign: t(SIGNS[asc.sign]) })}</span>
         </h3>
         <p>
           {t(place)} · {daytime ? t('昼生') : t('夜生')}
