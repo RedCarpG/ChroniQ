@@ -1,19 +1,32 @@
 // 天书's 八字, the top of the chart: the dial (BaziDial) as the scene, the 日主 and the month it was
 // born in as its title, then (简洁) the four pillars in large glowing characters and the 五行 counted in
 // dots, as the 河图 counts; a line of what it comes to. 详细 keeps the full table under it instead.
-// 起盘 (useCasting): a chart newly shown comes in a layer at a time — the 日主 alone, then the month it
-// was born in, then the four pillars, then the 刑冲合会 between them — a line under the dial saying each.
-import { useMemo } from 'react'
+// 起盘 (useCasting): a chart newly shown comes in a layer at a time — the 日主 alone (written stroke by
+// stroke), then the month it was born in, then the four pillars, then the 刑冲合会 between them — a line
+// under the dial saying each; once all are in, the 日主's seal is pressed beside the title. Beside the
+// dial, the moment of birth (MomentNote); on it, where today stands in the year (BaziDial's 此刻).
+import { useMemo, type ReactNode } from 'react'
+import { SolarDay } from 'tyme4ts'
 import { ELEMENTS, type BaziChart, type ElementName } from '../lib/bazi'
 import { baziReading } from '../lib/baziReading'
 import { useT, useTerm } from '../settingsContext'
+import { monthBuildOf } from '../lib/dipper'
 import { BaziDial } from './BaziDial'
 import { CastLine } from './CastLine'
 import { useCasting } from './useCasting'
 
 const EL_VAR: Record<ElementName, string> = { 木: 'var(--wood)', 火: 'var(--fire)', 土: 'var(--earth)', 金: 'var(--metal)', 水: 'var(--water)' }
 
-export function BaziHero({ chart, full }: { chart: BaziChart; full: boolean }) {
+/** Where today stands in the year, for the dial: the 节 month's branch and how far into it, and the 节气 */
+function today() {
+  const now = new Date()
+  const day = SolarDay.fromYmd(now.getFullYear(), now.getMonth() + 1, now.getDate())
+  const month = monthBuildOf(day)
+  const span = month.to.day.subtract(month.from.day)
+  return { branch: month.name, into: span > 0 ? day.subtract(month.from.day) / span : 0, term: day.getTermDay().getSolarTerm().getName() }
+}
+
+export function BaziHero({ chart, full, moment }: { chart: BaziChart; full: boolean; moment?: ReactNode }) {
   const t = useT()
   const term = useTerm()
   const reading = useMemo(() => baziReading(chart, new Date().getFullYear()), [chart])
@@ -22,6 +35,7 @@ export function BaziHero({ chart, full }: { chart: BaziChart; full: boolean }) {
   const tendency = { strong: t('日主偏旺'), weak: t('日主偏弱'), balanced: t('比较平衡') }[reading.tendency]
   const counted = [...ELEMENTS].sort((a, b) => chart.elementCount[b] - chart.elementCount[a])
   const list = (items: string[]) => items.join(t('、'))
+  const now = useMemo(today, [])
   const cast = useCasting(chart.pillars.map((p) => p.stem.char + p.branch.char).join('') + chart.gender, 4)
   const linked = chart.relations.length
   const captions = [
@@ -33,15 +47,23 @@ export function BaziHero({ chart, full }: { chart: BaziChart; full: boolean }) {
   return (
     <div className="bazi-hero" data-stage={cast.stageAttr}>
       <div className="bazi-hero-dial">
-        <BaziDial pillars={chart.pillars} relations={chart.relations} />
+        <BaziDial pillars={chart.pillars} relations={chart.relations} today={now} />
       </div>
       <div className="bazi-hero-title">
         <span className="ts-kicker" aria-hidden="true">
           Day Master
         </span>
-        <h3>{t('{stem}{element} · 生于{branch}月', { stem: dm.char, element: t(dm.element), branch: term(month) })}</h3>
+        <h3>
+          {t('{stem}{element} · 生于{branch}月', { stem: dm.char, element: t(dm.element), branch: term(month) })}
+          {/* The 日主's seal, pressed once the chart is cast */}
+          <span className="ts-seal" aria-hidden="true">
+            <i>{dm.char}</i>
+            <i>{dm.element}</i>
+          </span>
+        </h3>
         <CastLine cast={cast} captions={captions} />
       </div>
+      {moment}
       {!full && (
         <>
           <div className="bazi-hero-pillars cast-l3">

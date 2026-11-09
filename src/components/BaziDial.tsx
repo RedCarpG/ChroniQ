@@ -8,7 +8,7 @@
 // cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会; the rings and seasons are there throughout.
 import type { ElementName, Pillar } from '../lib/bazi'
 import type { Relation } from '../lib/relations'
-import { useTerm } from '../settingsContext'
+import { useT, useTerm } from '../settingsContext'
 
 /** From the top, clockwise: 午 south, 酉 west, 子 north, 卯 east */
 const RING = '午未申酉戌亥子丑寅卯辰巳'
@@ -38,7 +38,17 @@ const elementOf = (text: string): ElementName | null => {
   return (m?.[0] as ElementName) ?? null
 }
 
-export function BaziDial({ pillars, relations }: { pillars: Pillar[]; relations: Relation[] }) {
+export function BaziDial({
+  pillars,
+  relations,
+  today,
+}: {
+  pillars: Pillar[]
+  relations: Relation[]
+  /** Where today stands in the year: the 节 month's branch, how far into it (0–1), and the 节气 */
+  today?: { branch: string; into: number; term: string }
+}) {
+  const t = useT()
   const term = useTerm()
   const month = pillars[1].branch.char
   // Which pillars stand on each branch
@@ -133,6 +143,21 @@ export function BaziDial({ pillars, relations }: { pillars: Pillar[]; relations:
           </g>
         )
       })}
+      {/* 此刻: where today stands in the year, a light on the rim, among the months */}
+      {today &&
+        (() => {
+          const i = RING.indexOf(today.branch) - 0.5 + today.into
+          const [x, y] = at(i, R_RIM)
+          const [lx, ly] = at(i, R_RIM + 18)
+          return (
+            <g className="bd-now cast-l4">
+              <circle cx={x} cy={y} r="2.6" />
+              <text x={lx} y={ly + 4} className="bd-note">
+                {t('此刻')} · {term(today.term)}
+              </text>
+            </g>
+          )
+        })()}
       {/* The 日主 */}
       <g className="cast-l1">
         <circle cx={C} cy={C} r="50" className="bd-heart-halo" />

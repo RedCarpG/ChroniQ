@@ -112,6 +112,7 @@ export const BAZI: Record<string, string> = {
   '第四重 · 刑冲合会 {count} 道': 'Fourth · {count} clashes and combinations between them',
   '第四重 · 原局没有刑冲合会': 'Fourth · no clashes or combinations between them',
   '重看起盘': 'Cast it again',
+  此刻: 'Now',
   跳过: 'Skip',
   '{element}最多（{count} 个）': '{element} comes most ({count})',
   '{elements}最多（各 {count} 个）': '{elements} come most ({count} each)',

@@ -4,6 +4,7 @@
 import * as A from 'astronomy-engine'
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { SolarDay } from 'tyme4ts'
 import type { ElementName } from '../lib/bazi'
 import { FIVE_STARS } from '../lib/fiveStars'
 import { mansionOf } from '../lib/mansions'
@@ -499,6 +500,33 @@ export function FiveStars({
         {' · '}
         {sun.alt > -0.8 ? t('昼生') : t('夜生')}
       </p>
+    </div>
+  )
+}
+/**
+ * 出生那一刻 (天书's 八字, beside the dial): where the Sun and the Moon stood among the 二十八宿, the
+ * 节气 the day fell in, the hour, and whether it was by day or by night — the sky the chart is drawn on.
+ */
+export function MomentNote({ moment, date, hour }: { moment: BirthMoment; date: { year: number; month: number; day: number }; hour: string }) {
+  const t = useT()
+  const term = useTerm()
+  const sky = skyOf(moment)
+  const where = (key: string) => term(mansionOf(sky.bodies.find((b) => b.key === key)!.ra).mansion.name)
+  const sun = sky.bodies.find((b) => b.key === 'sun')!
+  const termDay = SolarDay.fromYmd(date.year, date.month, date.day).getTermDay()
+  return (
+    <div className="bazi-moment">
+      <span className="ts-kicker" aria-hidden="true">
+        At that moment
+      </span>
+      <ul>
+        <li>{t('日躔{mansion}', { mansion: where('sun') })}</li>
+        <li>{t('月离{mansion}', { mansion: where('moon') })}</li>
+        <li>{t('{term}第{n}天', { term: term(termDay.getSolarTerm().getName()), n: termDay.getDayIndex() + 1 })}</li>
+        <li>
+          {term(hour)} · {sun.alt > -0.8 ? t('昼生') : t('夜生')}
+        </li>
+      </ul>
     </div>
   )
 }
