@@ -24,7 +24,8 @@ import {
 import type { Relation } from '../lib/relations'
 import type { SchoolSettings } from '../lib/schools'
 import { Char } from './Char'
-import { BirthForm, dateText, dateTimeText, monthDayText } from './BirthForm'
+import { BirthChip, BirthForm, dateText, dateTimeText, monthDayText } from './BirthForm'
+import { SchoolsMenu } from './SchoolsMenu'
 import { DrawerBirth } from './SavedCharts'
 import { SchoolMark, SchoolSettingsPanel } from './Schools'
 import { HighlightScope, useHighlight, useTrigger } from './highlight'
@@ -195,13 +196,17 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     onChange({ ...input, ...patch })
   }
 
+  // 流派设置: in the birth form, or in 天书 by the chart's switches (SchoolsMenu)
+  const schoolsPanel = <SchoolSettingsPanel settings={schools} onChange={onSchoolsChange} />
   // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
   const birthForm = (
     <BirthForm
       folding={!tianshu}
       input={input}
       onChange={update}
-      schoolsPanel={<SchoolSettingsPanel settings={schools} onChange={onSchoolsChange} />}
+
+      schoolsPanel={schoolsPanel}
+      withSchools={!tianshu}
     />
   )
   return (
@@ -245,6 +250,9 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               {term('农历')} {term(chart.lunarText)}
             </div>
           </div>
+          {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
+          {tianshu && <BirthChip input={input} />}
+          {tianshu && <SchoolsMenu panel={schoolsPanel} />}
           <ChartViewSwitch
             full={fullChart}
             onToggle={() => (tianshu ? smoothUpdate('bazi', toggleFullChart) : toggleFullChart())}

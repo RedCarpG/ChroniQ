@@ -132,6 +132,30 @@
 .drawer-birth .bazi-form > * { width: 100%; }
 .drawer-birth .bazi-form .seg { width: auto; align-self: flex-start; }
 .drawer-birth .bazi-form .ghost { align-self: flex-start; }
+/* The birth by a chart's switches (BirthChip): small words, a tap opening the 命盘 drawer */
+.birth-chip {
+  display: inline-flex; align-items: baseline; gap: 10px; padding: 4px 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--font-title); font-size: 13px; letter-spacing: 0.12em; color: var(--muted); white-space: nowrap;
+}
+.birth-chip:hover { color: var(--text); }
+.birth-chip-edit { color: var(--accent); border-bottom: 1px solid var(--edge); }
+:root[data-style] .overlay-bar .birth-chip { margin-left: auto; }
+:root[data-style] .overlay-bar .star-view { margin-left: 0; }
+:root[data-style] .natal-head { align-items: center; }
+/* 流派设置 by the switches (SchoolsMenu): its panel opening under it */
+.schools-menu { position: relative; }
+.schools-menu > .ghost { height: auto; padding: 4px 2px; font-size: 13px; letter-spacing: 0.12em; }
+.schools-menu-panel { font-size: 13px; line-height: 1.7; }
+.schools-menu-panel select {
+  height: 28px; margin: 0 6px; padding: 0 24px 0 8px; font: inherit; font-size: 13px; color: var(--text);
+  background-color: var(--surface-2); border: 0; border-bottom: 1px solid var(--edge); border-radius: 0;
+}
+.schools-menu-panel select:focus { outline: none; border-bottom-color: var(--accent); }
+.schools-menu-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: min(440px, 86vw); max-height: 62vh; overflow-y: auto;
+  padding: 14px; border: 1px solid var(--edge); border-radius: 10px; background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+}
 /* The drawer nearly solid over the scene, whose lit words would read through it */
 :root[data-style] .drawer:not(.bare) .drawer-panel { background: color-mix(in srgb, var(--surface) 95%, transparent); }
 

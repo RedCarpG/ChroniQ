@@ -127,6 +127,7 @@ export const COMMON: Record<string, string> = {
   // Saved charts drawer
   已保存的命盘: 'Saved charts',
   出生信息: 'Birth',
+  '在左侧「命盘」里修改出生信息': 'Change the birth in the Charts drawer on the left',
   收起: 'Hide',
   展开: 'Show',
   命盘名称: 'Chart name',

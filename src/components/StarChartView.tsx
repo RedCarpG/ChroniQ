@@ -35,7 +35,8 @@ import { zodiacFigures, zodiacStars } from '../lib/eclipticStars'
 import { STAR_SCHOOLS } from '../lib/starPrefs'
 import { usePick } from './usePick'
 import { useSettings, useT } from '../settingsContext'
-import { BirthForm, DateParts } from './BirthForm'
+import { BirthChip, BirthForm, DateParts } from './BirthForm'
+import { SchoolsMenu } from './SchoolsMenu'
 import { DrawerBirth } from './SavedCharts'
 import { InfoTip, TipLine } from './InfoTip'
 import { TitleMark } from './Logo'
@@ -144,6 +145,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     aspects ? t('第五重 · 相位 {count} 条', { count: aspects }) : t('第五重 · 没有主要相位'),
   ]
 
+  // 流派设置: in the birth form, or in 天书 by the chart's switches (SchoolsMenu)
+  const schoolsPanel = <SchoolSettingsPanel registry={STAR_SCHOOLS} settings={settings} onChange={onSettingsChange} />
   // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
   const birthForm = (
     <BirthForm
@@ -151,7 +154,9 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       input={input}
       onChange={onChange}
       trueSolar={false}
-      schoolsPanel={<SchoolSettingsPanel registry={STAR_SCHOOLS} settings={settings} onChange={onSettingsChange} />}
+
+      schoolsPanel={schoolsPanel}
+      withSchools={!tianshu}
     />
   )
   return (
@@ -252,6 +257,9 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
               </button>
             </>
           )}
+          {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
+          {tianshu && <BirthChip input={input} trueSolar={false} />}
+          {tianshu && <SchoolsMenu panel={schoolsPanel} />}
           <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="star-view" />
         </div>
         {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} input={input} />}
@@ -696,6 +704,8 @@ const R_DEG = 104
 const R_ASPECT = 90
 const R_OUTER = 228
 const R_OUTER_PLANET = 213
+/** The ring the zodiac's constellations are named on (天书), just outside the signs */
+const R_NAME = R_OUT + 10
 
 /**
  * Traditional orientation: the ascendant at nine o'clock, signs running
@@ -762,8 +772,11 @@ function StarWheel({
   const figures = useMemo(() => {
     if (!tianshu) return []
     const r = (lat: number) => (R_OUT + R_SIGN) / 2 + lat * 1.35
-    return zodiacFigures(year).map((f) => {
-      const d = f.lines
+    const all = zodiacFigures(year).map((f) => ({
+      id: f.id,
+      name: language === 'en' ? f.en : f.name,
+      lon: f.label.lon,
+      d: f.lines
         .map((l) =>
           l
             .map((p, i) => {
@@ -772,15 +785,46 @@ function StarWheel({
             })
             .join(''),
         )
-        .join('')
-      const [x, y] = at(f.label.lon, R_OUT + 10)
+        .join(''),
+    }))
+    // The names go round the ring, each by its constellation, but pushed apart where two would print over
+    // each other (天蝎 and 蛇夫 meet) and kept off the AC and MC: half of each name's length, as degrees
+    const half = (name: string) => (((/[\u4e00-\u9fff]/.test(name) ? 9.5 : 5.2) * name.length + 6) / 2 / R_NAME) * (180 / Math.PI)
+    const names = all.map((f) => ({ id: f.id, lon: f.lon, half: half(f.name) })).sort((a, b) => a.lon - b.lon)
+    const angles = [chart.asc, chart.mc]
+    for (let pass = 0; pass < 30; pass++) {
+      let moved = false
+      names.forEach((a, i) => {
+        const b = names[(i + 1) % names.length]
+        const gap = (b.lon - a.lon + 360) % 360
+        const need = a.half + b.half + 1
+        if (gap < need) {
+          a.lon -= (need - gap) / 2
+          b.lon += (need - gap) / 2
+          moved = true
+        }
+      })
+      for (const n of names)
+        for (const angle of angles) {
+          const off = ((n.lon - angle + 540) % 360) - 180
+          const need = n.half + 5
+          if (Math.abs(off) < need) {
+            n.lon += (off >= 0 ? 1 : -1) * (need - Math.abs(off))
+            moved = true
+          }
+        }
+      if (!moved) break
+    }
+    const placed = new Map(names.map((n) => [n.id, n.lon]))
+    return all.map((f) => {
+      const [x, y] = at(placed.get(f.id)!, R_NAME)
       // along the ring, never upside down
       let turn = (Math.atan2(y - C, x - C) * 180) / Math.PI + 90
       if (turn > 90) turn -= 180
-      return { id: f.id, name: language === 'en' ? f.en : f.name, d, x, y, turn }
+      return { id: f.id, name: f.name, d: f.d, x, y, turn }
     })
     // at follows the ascendant
-  }, [tianshu, year, chart.asc, language])
+  }, [tianshu, year, chart.asc, chart.mc, language])
 
   // 浮现: a new chart comes in as the sky turning into place: the signs' ring turns to its place,
   // the bodies appear one by one, and the aspects draw themselves between them. Not for a new 行运
