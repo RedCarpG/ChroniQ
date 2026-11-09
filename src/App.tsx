@@ -234,7 +234,8 @@ export function App() {
   // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up.
   // 天书's 命理 pages fold it up too, the chart being the scene there: it comes down over the page,
   // wherever the page is scrolled (fold-bar)
-  const foldable = immersive || !!realm
+  // (not on the 历法 pages 今日 and 日历, where the bar stays open: the way to every page, in sight)
+  const foldable = immersive || (!!realm && tab !== 'today' && tab !== 'calendar')
   const [barShown, setBarShown] = useState(false)
   const barFolded = foldable && !barShown
   const barTimer = useRef(0)
