@@ -1,13 +1,12 @@
 // 天书's 八字, the top of the chart. 简洁 is a scene, laid out as an old star plate is: the gold 罗盘
 // (BaziDial) in the middle; the 日主 written down the right in columns (who it is, its image and the
 // month it was born in, what the five elements come to); down the left, who was born and the moment of
-// it (MomentNote); the four pillars at the foot on the left, the 刑冲合会 on the right; the 日主's seal.
-// 详细 keeps the dial with a title over the full table instead; moving between them, the dial and the
-// seal go to their places (BaziView's smoothUpdate).
+// it (MomentNote); the four pillars at the foot on the left, the 刑冲合会 on the right.
+// 详细 keeps the dial with a title over the full table instead; moving between them, the dial goes to
+// its place (BaziView's smoothUpdate).
 // 起盘 (useCasting): a chart newly shown comes in a layer at a time — the 日主 alone (written stroke by
 // stroke), then the month it was born in, then the four pillars, then the 刑冲合会 between them — a line
-// under the dial saying each; once all are in, the seal is pressed. On the dial, where today stands in
-// the year (此刻).
+// under the dial saying each. On the dial, where today stands in the year (此刻).
 import { useMemo, type ReactNode } from 'react'
 import { SolarDay } from 'tyme4ts'
 import type { BaziChart, ElementName } from '../lib/bazi'
@@ -57,13 +56,6 @@ export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; ful
       <BaziDial pillars={chart.pillars} relations={chart.relations} today={now} />
     </div>
   )
-  // The 日主's seal, pressed once the chart is cast
-  const seal = (
-    <span className="ts-seal" aria-hidden="true">
-      <i>{dm.char}</i>
-      <i>{dm.element}</i>
-    </span>
-  )
   const most =
     t('{elements}最多{count}', { elements: list(reading.most.map((m) => t(m.element))), count: num(reading.most[0].count) }) +
     gap +
@@ -101,7 +93,6 @@ export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; ful
           {moment}
         </div>
         {dial}
-        {seal}
         <CastLine cast={cast} captions={captions} />
         <div className="bz-pillars cast-l3" aria-label={t('四柱')}>
           {chart.pillars.map((p, i) => (
@@ -128,7 +119,6 @@ export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; ful
         </span>
         <h3>
           {t('{stem}{element} · 生于{branch}月', { stem: dm.char, element: t(dm.element), branch: term(month) })}
-          {seal}
         </h3>
         <CastLine cast={cast} captions={captions} />
       </div>

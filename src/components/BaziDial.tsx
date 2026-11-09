@@ -1,38 +1,57 @@
-// 天书's 八字: the chart as a gold 罗盘, south up, carved as the old star plates were. Round the rim the
-// twelve 地支, each in its box between the spokes; those the four pillars stand on are stamped in
-// vermilion, their pillars named under them, and a dashed line runs from each to the heart. Inside, the
-// month of birth (月令) is marked on the ring; between the branches, the chart's 刑冲合会 (合 and 会 arcs,
-// 冲 straight across, 刑 害 破 dashed); the 日主 at the heart; and on the rim, where today stands in the
-// year (此刻). Everything it shows is in the chart; nothing is there for show.
-// Each part is marked with the layer it comes in on when the chart is cast (BaziHero): cast-l1 the 日主,
-// cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会 and 此刻; the plate is there throughout.
+// 天书's 八字: the chart as a gold 罗盘, south up, its rings engraved as on a bronze plate. Outermost the
+// 六十甲子, laid out as a 罗盘's 透地六十龙: each 地支's sector holds the five 甲子 of that branch (the 午
+// sector 甲午 丙午 戊午 庚午 壬午), so each pillar is lit where it stands among the sixty, its name
+// outside the rim, a dashed line running from it to the heart. Inside, the twelve 地支 in their boxes
+// between the spokes, those the pillars stand on edged in vermilion; the month of birth (月令) marked on
+// its ring; the chart's 刑冲合会 between the branches (合 and 会 arcs, 冲 straight across, 刑 害 破
+// dashed); the 日主 at the heart; and on the rim, where today stands in the year (此刻). Everything it
+// shows is in the chart; nothing is there for show.
+// Each part is marked with the layer it comes in on when the chart is cast (BaziHero): cast-l1 the 日主
+// and its own pillar, cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会 and 此刻.
 import type { ElementName, Pillar } from '../lib/bazi'
 import type { Relation } from '../lib/relations'
 import { useT, useTerm } from '../settingsContext'
 
 /** From the top, clockwise: 午 south, 酉 west, 子 north, 卯 east */
 const RING = '午未申酉戌亥子丑寅卯辰巳'
-const C = 265
-/** The rim's ticks, outside the branches' band */
-const R_RIM = 252
-/** The branches' band, its outer and inner edge, and the boxes in it */
-const R_BAND_OUT = 244
-const R_BAND_IN = 206
-const R_BRANCH = (R_BAND_OUT + R_BAND_IN) / 2
-/** The ring the month is marked on, the ring the 刑冲合会 end on, the heart */
-const R_MONTH = 168
-const R_LINK = 150
-const R_INNER = 104
-const R_HEART = 66
+const YANG_STEMS = '甲丙戊庚壬'
+const YIN_STEMS = '乙丁己辛癸'
+/** The yang branches take the yang stems, the yin the yin: the five 甲子 of a branch, in order */
+const stemsOf = (branch: string) => ('子寅辰午申戌'.includes(branch) ? YANG_STEMS : YIN_STEMS)
 
+const C = 300
+/** The rim and its ticks */
+const R_RIM = 292
+/** The 六十甲子's band */
+const R_JIAZI_OUT = 282
+const R_JIAZI_IN = 234
+/** The 地支's band */
+const R_BAND_IN = 192
+const R_BRANCH = (R_JIAZI_IN + R_BAND_IN) / 2
+/** The ring the month is marked on, the ring the 刑冲合会 end on, the inner ring, the heart */
+const R_MONTH = 172
+const R_LINK = 152
+const R_INNER = 108
+const R_HEART = 70
+
+/** Angle (radians, from the top, clockwise) of a place on the ring, counted in branch slots */
 const angle = (i: number) => (i / 12) * 2 * Math.PI - Math.PI / 2
 const at = (i: number, r: number): [number, number] => [C + Math.cos(angle(i)) * r, C + Math.sin(angle(i)) * r]
+const deg = (i: number) => i * 30
 /** An arc along a ring over the slots i0..i1 (inclusive), clockwise */
 function arc(i0: number, i1: number, r: number) {
-  const a0 = angle(i0 - 0.5)
-  const a1 = angle(i1 + 0.5)
-  return `M${C + Math.cos(a0) * r} ${C + Math.sin(a0) * r} A${r} ${r} 0 0 1 ${C + Math.cos(a1) * r} ${C + Math.sin(a1) * r}`
+  const [x0, y0] = at(i0 - 0.5, r)
+  const [x1, y1] = at(i1 + 0.5, r)
+  return `M${x0} ${y0} A${r} ${r} 0 0 1 ${x1} ${y1}`
 }
+/** A cell of a band between two places on the ring */
+function cell(i0: number, i1: number, rOut: number, rIn: number) {
+  const [a, b] = [at(i0, rOut), at(i1, rOut)]
+  const [c, d] = [at(i1, rIn), at(i0, rIn)]
+  return `M${a[0]} ${a[1]} A${rOut} ${rOut} 0 0 1 ${b[0]} ${b[1]} L${c[0]} ${c[1]} A${rIn} ${rIn} 0 0 0 ${d[0]} ${d[1]}Z`
+}
+/** Where a 甲子 sits on the ring, in branch slots: its branch's sector, its stem's fifth of it */
+const jiaziAt = (stem: string, branch: string) => RING.indexOf(branch) - 0.5 + (stemsOf(branch).indexOf(stem) + 0.5) / 5
 const elementOf = (text: string): ElementName | null => {
   const m = text.match(/[木火土金水](?=[局方]?$)/)
   return (m?.[0] as ElementName) ?? null
@@ -52,40 +71,106 @@ export function BaziDial({
   const t = useT()
   const term = useTerm()
   const month = pillars[1].branch.char
-  // Which pillars stand on each branch, and the layer each branch comes in on (the earliest of its pillars)
-  const on = new Map<string, string[]>()
-  pillars.forEach((p) => on.set(p.branch.char, [...(on.get(p.branch.char) ?? []), term(p.label.slice(0, 1))]))
-  const layerOf = (b: string) => (b === pillars[2].branch.char ? 'cast-l1' : b === month ? 'cast-l2' : 'cast-l3')
+  /** The layer a pillar comes in on: the day's with the 日主, the month's next, the year's and hour's after */
+  const layer = (k: number) => (k === 2 ? 'cast-l1' : k === 1 ? 'cast-l2' : 'cast-l3')
+  // The pillars on each 甲子 (two pillars may be the same one) and on each branch
+  const onJiazi = new Map<string, number[]>()
+  pillars.forEach((p, k) => onJiazi.set(p.stem.char + p.branch.char, [...(onJiazi.get(p.stem.char + p.branch.char) ?? []), k]))
+  const onBranch = new Map<string, number[]>()
+  pillars.forEach((p, k) => onBranch.set(p.branch.char, [...(onBranch.get(p.branch.char) ?? []), k]))
   // One line for each relation between branches (亥卯 半合 twice, with two 亥, is drawn once)
   const links = relations.filter((r, i, all) => r.on === 'branch' && all.findIndex((o) => o.on === 'branch' && o.text === r.text) === i)
   const dayMaster = pillars[2].stem
   return (
-    <svg className="bazi-dial" viewBox="0 0 530 530" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
-      {/* The plate: a faint night under it, so the sky behind does not read through the words */}
-      <circle cx={C} cy={C} r={R_BAND_OUT} className="bd-ground" />
-      {/* The rim's ticks, turning slowly */}
+    <svg className="bazi-dial" viewBox="-24 -24 648 648" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
+      <defs>
+        {/* Gold, lit from the upper left */}
+        <linearGradient id="bd-metal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f7e3ad" />
+          <stop offset="0.3" stopColor="#c99a52" />
+          <stop offset="0.5" stopColor="#f0d592" />
+          <stop offset="0.75" stopColor="#9a7238" />
+          <stop offset="1" stopColor="#e5c784" />
+        </linearGradient>
+        {/* The plate: bronze, warmer where the light falls */}
+        <radialGradient id="bd-plate" cx="0.38" cy="0.32" r="0.75">
+          <stop offset="0" stopColor="#4a3720" stopOpacity="0.9" />
+          <stop offset="0.6" stopColor="#1f160c" stopOpacity="0.92" />
+          <stop offset="1" stopColor="#0c0905" stopOpacity="0.95" />
+        </radialGradient>
+        {/* Cut into the metal: a dark edge under every line */}
+        <filter id="bd-engrave" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="0.7" dy="0.9" stdDeviation="0.35" floodColor="#000" floodOpacity="0.9" />
+        </filter>
+      </defs>
+      <circle cx={C} cy={C} r={R_RIM} className="bd-plate" />
+      {/* The rim's ticks, a degree apart, turning slowly */}
       <g className="bd-turn">
-        {Array.from({ length: 120 }, (_, k) => {
-          const a = (k / 120) * 2 * Math.PI
-          const l = k % 10 === 0 ? 8 : k % 5 ? 3 : 5
-          return <line key={k} x1={C + Math.cos(a) * R_RIM} y1={C + Math.sin(a) * R_RIM} x2={C + Math.cos(a) * (R_RIM - l)} y2={C + Math.sin(a) * (R_RIM - l)} className="bd-tick" />
+        {Array.from({ length: 360 }, (_, k) => {
+          const a = (k / 360) * 2 * Math.PI
+          const l = k % 30 === 0 ? 9 : k % 5 === 0 ? 6 : 3
+          return <line key={k} x1={C + Math.cos(a) * R_RIM} y1={C + Math.sin(a) * R_RIM} x2={C + Math.cos(a) * (R_RIM - l)} y2={C + Math.sin(a) * (R_RIM - l)} className={k % 5 ? 'bd-tick' : 'bd-tick major'} />
         })}
       </g>
-      <circle cx={C} cy={C} r={R_RIM} className="bd-ring strong" />
-      <circle cx={C} cy={C} r={R_BAND_OUT} className="bd-ring strong" />
-      <circle cx={C} cy={C} r={R_BAND_IN} className="bd-ring" />
-      <circle cx={C} cy={C} r={R_MONTH} className="bd-ring faint dotted" />
-      <circle cx={C} cy={C} r={R_INNER} className="bd-ring" />
-      {/* The spokes between the branches, from the inner ring to the rim */}
-      {[...RING].map((_, i) => {
-        const [x1, y1] = at(i - 0.5, R_INNER)
-        const [x2, y2] = at(i - 0.5, R_BAND_OUT)
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="bd-spoke" />
+      <g className="bd-engraved" filter="url(#bd-engrave)">
+        {/* The 六十甲子: a sector of five for each branch, the dark and the light sectors in turn */}
+        {[...RING].map((b, i) => (
+          <path key={b} d={cell(i - 0.5, i + 0.5, R_JIAZI_OUT, R_JIAZI_IN)} className={`bd-sector${i % 2 ? ' alt' : ''}`} />
+        ))}
+        {[...RING].flatMap((b) =>
+          [...stemsOf(b)].map((s) => {
+            const i = jiaziAt(s, b)
+            const [x1, y1] = at(i + 0.1, R_JIAZI_OUT)
+            const [x2, y2] = at(i + 0.1, R_JIAZI_IN)
+            return <line key={s + b} x1={x1} y1={y1} x2={x2} y2={y2} className="bd-cell-line" />
+          }),
+        )}
+        <circle cx={C} cy={C} r={R_RIM} className="bd-ring strong" />
+        <circle cx={C} cy={C} r={R_JIAZI_OUT} className="bd-ring strong" />
+        <circle cx={C} cy={C} r={R_JIAZI_IN} className="bd-ring strong" />
+        <circle cx={C} cy={C} r={R_BAND_IN} className="bd-ring" />
+        <circle cx={C} cy={C} r={R_MONTH} className="bd-ring faint dotted" />
+        <circle cx={C} cy={C} r={R_INNER} className="bd-ring" />
+        {/* The spokes between the branches, from the inner ring to the rim */}
+        {[...RING].map((_, i) => {
+          const [x1, y1] = at(i - 0.5, R_INNER)
+          const [x2, y2] = at(i - 0.5, R_JIAZI_OUT)
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="bd-spoke" />
+        })}
+        {/* The sixty, each facing the heart, the stem outside its branch, as a 罗盘's rings are read */}
+        {[...RING].flatMap((b) =>
+          [...stemsOf(b)].map((s) => {
+            const i = jiaziAt(s, b)
+            const [x, y] = at(i, 0)
+            const mine = onJiazi.get(s + b)
+            return (
+              <g key={s + b} className={`bd-jiazi${mine ? ` mine ${layer(Math.min(...mine))}` : ''}`} transform={`rotate(${deg(i).toFixed(2)} ${x} ${y})`}>
+                {mine && <path d={cell(-0.1, 0.1, R_JIAZI_OUT - 2, R_JIAZI_IN + 2)} />}
+                <text x={C} y={C - 263}>
+                  {s}
+                </text>
+                <text x={C} y={C - 245}>
+                  {b}
+                </text>
+              </g>
+            )
+          }),
+        )}
+      </g>
+      {/* The pillars' names outside the rim, by their 甲子 */}
+      {[...onJiazi].map(([gz, ks]) => {
+        const i = jiaziAt(gz[0], gz[1])
+        const [x, y] = at(i, R_RIM + 14)
+        return (
+          <text key={gz} x={x} y={y + 4} className={`bd-pillar-name ${layer(Math.min(...ks))}`}>
+            {t('{pillars}柱', { pillars: ks.map((k) => term(pillars[k].label.slice(0, 1))).join('·') })}
+          </text>
+        )
       })}
       {/* The month of birth, marked on its ring */}
       {(() => {
         const i = RING.indexOf(month)
-        const [x, y] = at(i + 0.32, R_MONTH - 16)
+        const [x, y] = at(i + 0.3, R_MONTH - 15)
         return (
           <g className="bd-month cast-l2">
             <path d={arc(i, i, R_MONTH)} className="bd-month-line" />
@@ -95,29 +180,23 @@ export function BaziDial({
           </g>
         )
       })()}
-      {/* From each branch a pillar stands on, a dashed line to the heart */}
-      {[...on.keys()].map((b) => {
-        const i = RING.indexOf(b)
-        const [x1, y1] = at(i, R_BAND_IN - 22)
+      {/* From each pillar's 甲子, a dashed line to the heart */}
+      {pillars.map((p, k) => {
+        const i = jiaziAt(p.stem.char, p.branch.char)
+        const [x1, y1] = at(i, R_JIAZI_IN - 2)
         const [x2, y2] = at(i, R_HEART + 4)
-        return <line key={b} x1={x1} y1={y1} x2={x2} y2={y2} className={`bd-thread ${layerOf(b)}`} />
+        return <line key={p.label} x1={x1} y1={y1} x2={x2} y2={y2} className={`bd-thread ${layer(k)}`} />
       })}
-      {/* The branches in their boxes, upright; the chart's own stamped in vermilion, their pillars named under them */}
+      {/* The 地支 in their boxes, upright; those the pillars stand on edged in vermilion */}
       {[...RING].map((b, i) => {
         const [x, y] = at(i, R_BRANCH)
-        const mine = on.get(b)
-        const [wx, wy] = at(i, R_BAND_IN - 12)
+        const mine = onBranch.get(b)
         return (
-          <g key={b} className={['bd-branch', mine ? `mine ${layerOf(b)}` : ''].join(' ')}>
-            <rect x={x - 13} y={y - 13} width="26" height="26" rx="2" />
-            <text x={x} y={y + 6}>
+          <g key={b} className={`bd-branch${mine ? ` mine ${layer(Math.min(...mine))}` : ''}`}>
+            <rect x={x - 14} y={y - 14} width="28" height="28" rx="2" />
+            <text x={x} y={y + 6.5}>
               {b}
             </text>
-            {mine && (
-              <text x={wx} y={wy + 4} className="bd-who">
-                {t('{pillars}柱', { pillars: mine.join('·') })}
-              </text>
-            )}
           </g>
         )
       })}
@@ -126,10 +205,10 @@ export function BaziDial({
         (() => {
           const i = RING.indexOf(today.branch) - 0.5 + today.into
           const [x, y] = at(i, R_RIM)
-          const [lx, ly] = at(i, R_RIM + 16)
+          const [lx, ly] = at(i, R_RIM + 14)
           return (
             <g className="bd-now cast-l4">
-              <circle cx={x} cy={y} r="2.6" />
+              <circle cx={x} cy={y} r="2.8" />
               <text x={lx} y={ly + 4} className="bd-note">
                 {t('此刻')} · {term(today.term)}
               </text>
@@ -168,7 +247,7 @@ export function BaziDial({
         const soft = r.kind === '刑' || r.kind === '害' || r.kind === '破'
         const mid =
           r.kind === '冲' || pts.length !== 2
-            ? [C, C - 84]
+            ? [C, C - 86]
             : [0.25 * pts[0][0] + 0.5 * ctrl[0] + 0.25 * pts[1][0], 0.25 * pts[0][1] + 0.5 * ctrl[1] + 0.25 * pts[1][1]]
         return (
           <g key={k} className={`bd-link cast-l4${soft ? ' soft' : ''}`} style={{ color: colour }}>
@@ -186,7 +265,7 @@ export function BaziDial({
       <g className="cast-l1">
         <circle cx={C} cy={C} r={R_HEART} className="bd-heart" />
         <circle cx={C} cy={C} r={R_HEART - 6} className="bd-heart-line" />
-        <text x={C} y={C + 26} className="bd-day-master">
+        <text x={C} y={C + 27} className="bd-day-master">
           {dayMaster.char}
         </text>
       </g>
