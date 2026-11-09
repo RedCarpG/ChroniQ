@@ -123,17 +123,13 @@ export function TodayScene({
         {ji.length > 0 && (
           <div className="td-ji">
             <i>{term('忌')}</i>
-            {ji.map((a) => (
-              <span key={a}>{term(a)}</span>
-            ))}
+            <span className="td-list">{ji.map((a) => term(a)).join(gap)}</span>
           </div>
         )}
         {yi.length > 0 && (
           <div className="td-yi">
             <i>{term('宜')}</i>
-            {yi.map((a) => (
-              <span key={a}>{term(a)}</span>
-            ))}
+            <span className="td-list">{yi.map((a) => term(a)).join(gap)}</span>
           </div>
         )}
       </div>

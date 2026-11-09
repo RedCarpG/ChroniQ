@@ -576,6 +576,9 @@
 .td-margin .td-festival { color: var(--accent); }
 .td-yiji { display: flex; gap: 26px; }
 .td-yiji > div { gap: 12px; align-items: center; font-size: 18px; }
+/* Each list one column of text, broken only between items (keep-all), into a second column when long:
+   six items fit in two, so the 宜 and 忌 never reach the date in the middle */
+.td-list { max-height: 13em; word-break: keep-all; line-height: 1.7; }
 .td-yiji i { writing-mode: horizontal-tb; display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 4px; border: 1px solid currentColor; border-radius: 3px; font-style: normal; font-size: 20px; letter-spacing: 0; }
 .td-yi { color: var(--text); } .td-yi i { color: #8fc79a; box-shadow: 0 0 10px rgb(143 199 154 / 0.3); }
 .td-ji { color: var(--muted); } .td-ji i { color: #ff8a73; box-shadow: 0 0 10px rgb(255 138 115 / 0.3); }
@@ -588,6 +591,8 @@
   .today-scene { min-height: 470px; align-content: start; }
   .td-margin { position: absolute; left: 3%; top: 12px; }
   .td-yiji { position: absolute; right: 3%; top: 12px; flex-direction: row-reverse; }
+  /* the seals at the top of their columns, over the words */
+  .td-yiji > div { align-items: flex-start; }
   :root[lang='en'] .td-margin { width: 220px; }
   :root[lang='en'] .td-yiji { flex-direction: column; width: 230px; }
 }
