@@ -12,6 +12,7 @@ import { useSettings, useT, useTerm } from '../settingsContext'
 import { AlmanacTags } from './AlmanacTags'
 import { ACTIVITY_INFO } from '../lib/almanacInfo'
 import { MoonGlyph } from './MoonGlyph'
+import { TodayScene } from './TodayScene'
 import { BODY_COLOUR } from './bodyColours'
 import type { SkyEvent } from '../lib/skyEvents'
 import type { CSSProperties } from 'react'
@@ -62,8 +63,10 @@ export function TodayPage({
 }) {
   const t = useT()
   const term = useTerm()
-  const { language } = useSettings()
+  const { language, uiStyle } = useSettings()
   const en = language === 'en'
+  // 天书: the day as a scene (TodayScene), in place of its card
+  const tianshu = uiStyle === 'tianshu'
 
   // A page left open past midnight, or the night turned to morning: read again on coming back to it
   const [now, setNow] = useState(() => new Date())
@@ -151,9 +154,23 @@ export function TodayPage({
   ]
   const aiPrompt = dayPrompt(today.getYear(), today.getMonth(), today.getDay(), chart && bazi ? { name: chart.name, bazi, notes: aiNotes } : undefined, aiWestern)
 
+  const chartHint = chartDays.charts.length === 0
+    ? t('在左侧「命盘」里保存一张命盘，这里会显示今天与它的关系。')
+    : t('在左侧「命盘」里选一张命盘，这里会显示今天与它的关系。')
+
   return (
-    <div className="today-page">
+    <div className={`today-page${tianshu ? ' scene' : ''}`}>
+      {tianshu && (
+        <TodayScene
+          date={{ year: today.getYear(), month: today.getMonth(), day: today.getDay() }}
+          detail={detail}
+          moon={moon}
+          onViewMoon={onViewMoon}
+          hint={chart && bazi && dayStar ? undefined : chartHint}
+        />
+      )}
       <div className="today-col">
+      {!tianshu && (
       <section className="card today-day">
         <div className="detail-hero">
           <div className="big">{today.getDay()}</div>
@@ -194,13 +211,10 @@ export function TodayPage({
         <AlmanacTags title={term('忌')} kind="bad" items={detail.avoids.slice(0, 8)} info={ACTIVITY_INFO} />
         {/* Without a chart chosen, a line on what one would add (its card shows only with one) */}
         {!(chart && bazi && dayStar) && (
-          <p className="muted today-note today-chart-hint">
-            {chartDays.charts.length === 0
-              ? t('在左侧「命盘」里保存一张命盘，这里会显示今天与它的关系。')
-              : t('在左侧「命盘」里选一张命盘，这里会显示今天与它的关系。')}
-          </p>
+          <p className="muted today-note today-chart-hint">{chartHint}</p>
         )}
       </section>
+      )}
 
       <section className="card today-western">
         <h3 className="section-title">{t('今日星象')}</h3>

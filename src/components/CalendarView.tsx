@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+// 站酷小薇, 天书's lettering for the lunar dates (tianshu.css); cut by character ranges, only what is shown is fetched
+import '@fontsource/zcool-xiaowei/400.css'
 import { SolarDay } from 'tyme4ts'
 import { Char } from './Char'
 import { DipperDial } from './DipperDial'
