@@ -591,6 +591,8 @@
   .today-scene { min-height: 470px; align-content: start; }
   .td-margin { position: absolute; left: 3%; top: 12px; }
   .td-yiji { position: absolute; right: 3%; top: 12px; flex-direction: row-reverse; }
+  /* the seals at the top of their columns, over the words */
+  .td-yiji > div { align-items: flex-start; }
   :root[lang='en'] .td-margin { width: 220px; }
   :root[lang='en'] .td-yiji { flex-direction: column; width: 230px; }
 }
