@@ -23,6 +23,8 @@ const setOpenTab = (next: DrawerTab | ((tab: DrawerTab) => DrawerTab)) => {
   openTab = typeof next === 'function' ? next(openTab) : next
   listeners.forEach((l) => l())
 }
+/** Opens the drawer on its 命盘 tab: the birth (天书) and the saved charts */
+export const openChartsDrawer = () => setOpenTab('charts')
 function useOpenTab() {
   const tab = useSyncExternalStore(
     (l) => {
@@ -207,7 +209,8 @@ export function SavedChartsDrawer({
                   onClick={() => {
                     onLoad(c.input)
                     choose(calendar && c === on ? null : c.id)
-                    close()
+                    // With the birth form in it (天书), the drawer stays: the chart loaded is there to change
+                    if (!document.getElementById(DRAWER_BIRTH_SLOT)?.childElementCount) close()
                   }}
                 >
                   <span className="saved-name">{c.name}</span>

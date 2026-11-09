@@ -6,6 +6,9 @@ import { DEFAULT_PLACE } from '../lib/place'
 import type { Lang } from '../i18n'
 import { useSettings, useT } from '../settingsContext'
 import { PlacePicker } from './PlacePicker'
+import { openChartsDrawer } from './SavedCharts'
+
+type T = ReturnType<typeof useT>
 
 interface Props {
   input: BaziInput
@@ -16,6 +19,8 @@ interface Props {
   trueSolar?: boolean
   /** Whether it may fold to one line (on a phone): not in the 命盘 drawer, where it is shown whole */
   folding?: boolean
+  /** Whether 流派设置 is in it: not in the 命盘 drawer, which is for the birth (天书 puts it by the chart) */
+  withSchools?: boolean
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -110,19 +115,34 @@ function YearInput({ year, onChange }: { year: number; onChange: (year: number) 
   )
 }
 
-/** Birth date/time, gender, birthplace, 真太阳时 and 流派设置 — shared by 八字, 紫微 and 星盘. */
-export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, folding = true }: Props) {
-  const t = useT()
-  const [showSchools, setShowSchools] = useState(false)
-  // On a phone the form folds to one line (the birth in short, and 修改), so the chart is what the page
-  // opens on; it unfolds on a tap. On a wider screen the line is not shown and the form always is.
-  const [folded, setFolded] = useState(true)
-  const summary = [
+/** The birth in one line: 1990年5月17日 10:30 · 男 · 北京 (· 真太阳时) */
+export const birthSummary = (t: T, input: BaziInput, trueSolar = true) =>
+  [
     t('{y}年{m}月{d}日', { y: input.year, m: input.month, d: input.day }) + ` ${pad(input.hour)}:${pad(input.minute)}`,
     input.gender === 1 ? t('男') : t('女'),
     t((input.place ?? DEFAULT_PLACE).name),
     ...(trueSolar && input.trueSolar ? [t('真太阳时')] : []),
   ].join(' · ')
+
+/** 天书: the birth, written small by a chart's switches; a tap opens the 命盘 drawer, where it is changed */
+export function BirthChip({ input, trueSolar = true }: { input: BaziInput; trueSolar?: boolean }) {
+  const t = useT()
+  return (
+    <button type="button" className="birth-chip" title={t('在左侧「命盘」里修改出生信息')} onClick={openChartsDrawer}>
+      <span>{birthSummary(t, input, trueSolar)}</span>
+      <span className="birth-chip-edit">{t('修改')}</span>
+    </button>
+  )
+}
+
+/** Birth date/time, gender, birthplace, 真太阳时 and 流派设置 — shared by 八字, 紫微 and 星盘. */
+export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, folding = true, withSchools = true }: Props) {
+  const t = useT()
+  const [showSchools, setShowSchools] = useState(false)
+  // On a phone the form folds to one line (the birth in short, and 修改), so the chart is what the page
+  // opens on; it unfolds on a tap. On a wider screen the line is not shown and the form always is.
+  const [folded, setFolded] = useState(true)
+  const summary = birthSummary(t, input, trueSolar)
   const timeValue = `${pad(input.hour)}:${pad(input.minute)}`
   const [timeError, setTimeError] = useState(false)
   const resolution = toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).resolution
@@ -173,15 +193,19 @@ export function BirthForm({ input, onChange, schoolsPanel, trueSolar = true, fol
           {t('真太阳时')}
         </label>
       )}
-      <button
-        type="button"
-        className={`ghost${showSchools ? ' on' : ''}`}
-        aria-expanded={showSchools}
-        onClick={() => setShowSchools((v) => !v)}
-      >
-        {t('流派设置')}
-      </button>
-      {showSchools && schoolsPanel}
+      {withSchools && (
+        <>
+          <button
+            type="button"
+            className={`ghost${showSchools ? ' on' : ''}`}
+            aria-expanded={showSchools}
+            onClick={() => setShowSchools((v) => !v)}
+          >
+            {t('流派设置')}
+          </button>
+          {showSchools && schoolsPanel}
+        </>
+      )}
     </section>
   )
 }

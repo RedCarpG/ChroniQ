@@ -23,7 +23,8 @@ import { findPatterns, type ZiweiPattern } from '../lib/ziweiPatterns'
 import { ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../lib/ziweiSchools'
 import { usePick } from './usePick'
 import { useSettings, useT, useTerm } from '../settingsContext'
-import { BirthForm } from './BirthForm'
+import { BirthChip, BirthForm } from './BirthForm'
+import { SchoolsMenu } from './SchoolsMenu'
 import { DrawerBirth } from './SavedCharts'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
@@ -453,13 +454,17 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
     // The handlers read only these (and state setters)
     [chart, decadeIndex, year, month, day, hour, depth, open, today, currentDecade, isThisMonth, isToday, language, script, schools],
   )
+  // 流派设置: in the birth form, or in 天书 by the chart's switches (SchoolsMenu)
+  const schoolsPanel = <SchoolSettingsPanel registry={ZIWEI_SCHOOLS} settings={schools} onChange={onSchoolsChange} />
   // The birth form: over the page, or in 天书 in the 命盘 drawer (DrawerBirth)
   const birthForm = (
     <BirthForm
       folding={!tianshu}
       input={input}
       onChange={update}
-      schoolsPanel={<SchoolSettingsPanel registry={ZIWEI_SCHOOLS} settings={schools} onChange={onSchoolsChange} />}
+
+      schoolsPanel={schoolsPanel}
+      withSchools={!tianshu}
     />
   )
   return (
@@ -477,6 +482,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
       <section className="card" id="ziwei-board" data-stage={cast.stageAttr}>
         {tianshu && <ZiweiHero chart={chart} cast={<CastLine cast={cast} captions={captions} />} />}
         <div className="zw-toolbar">
+          {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
+          {tianshu && <BirthChip input={input} />}
+          {tianshu && <SchoolsMenu panel={schoolsPanel} />}
           <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} />
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
             {(
