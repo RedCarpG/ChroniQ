@@ -43,7 +43,7 @@ describe('partner storage', () => {
     { ...DEFAULT_PLACE, latitude: 100 },
   ])('ignores invalid partner places and keeps synastry usable', (place) => {
     localStorage.setItem('chroniq-star-partner', JSON.stringify({ name: 'bad', wall: input, place }))
-    const view = render(<SettingsContext.Provider value={{ ...DEFAULT_SETTINGS, birthSky: 'hide' }}><StarChartView input={input} onChange={() => {}} settings={DEFAULT_STAR_SETTINGS} onSettingsChange={() => {}} /></SettingsContext.Provider>)
+    const view = render(<SettingsContext.Provider value={{ ...DEFAULT_SETTINGS, birthSky: 'hide', uiStyle: 'classic' }}><StarChartView input={input} onChange={() => {}} settings={DEFAULT_STAR_SETTINGS} onSettingsChange={() => {}} /></SettingsContext.Provider>)
     fireEvent.click(view.getByRole('button', { name: /^合盘$/ }))
     expect(view.container.querySelector('.partner-form')).not.toBeNull()
     const time = view.container.querySelector('.partner-form input[type=time]')!

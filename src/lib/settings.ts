@@ -27,7 +27,7 @@ export interface Settings {
   uiStyle: 'classic' | 'tianshu'
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'off', uiStyle: 'classic' }
+export const DEFAULT_SETTINGS: Settings = { language: 'zh', theme: 'system', script: 'trad', weekStart: 'mon', dayGanzhi: 'show', moonPhase: 'show', dipper: 'show', skyEvents: 'show', birthSky: 'show', ziweiColor: 'element', uiScale: 'auto', sound: 'off', uiStyle: 'tianshu' }
 
 export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options: { value: Settings[K]; label: string }[] } } = {
   language: {
@@ -114,8 +114,8 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
   uiStyle: {
     title: '界面风格',
     options: [
+      { value: 'tianshu', label: '天书' },
       { value: 'classic', label: '经典' },
-      { value: 'tianshu', label: '天书（预览）' },
     ],
   },
   sound: {
@@ -130,6 +130,8 @@ export const SETTING_OPTIONS: { [K in keyof Settings]: { title: string; options:
 const STORAGE_KEY = 'chroniq-settings'
 /** Set once the sounds' default turned to off: settings saved before then had them on by default, not by choice */
 const SOUND_OFF_SINCE = 'chroniq-sound-default-off'
+/** Set once 天书 became the default style: settings saved before then had 经典 by default, not by choice */
+const TIANSHU_SINCE = 'chroniq-tianshu-default'
 
 export function loadSettings(): Settings {
   try {
@@ -143,6 +145,11 @@ export function loadSettings(): Settings {
     if (!localStorage.getItem(SOUND_OFF_SINCE)) {
       merged.sound = 'off'
       localStorage.setItem(SOUND_OFF_SINCE, '1')
+    }
+    // 天书 is the default now: everyone moves to it once, and a choice of 经典 made since is kept
+    if (!localStorage.getItem(TIANSHU_SINCE)) {
+      merged.uiStyle = 'tianshu'
+      localStorage.setItem(TIANSHU_SINCE, '1')
     }
     return merged
   } catch {
