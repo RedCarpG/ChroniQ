@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { SolarDay } from 'tyme4ts'
 import type { ElementName } from '../lib/bazi'
 import { FIVE_STARS } from '../lib/fiveStars'
+import { hanNumber } from '../lib/hanNumber'
 import { mansionOf } from '../lib/mansions'
 import { litPath } from '../lib/moon'
 import { WESTERN } from '../lib/constellations'
@@ -513,7 +514,10 @@ export function MomentNote({ moment, date, hour }: { moment: BirthMoment; date: 
   const sky = skyOf(moment)
   const where = (key: string) => term(mansionOf(sky.bodies.find((b) => b.key === key)!.ra).mansion.name)
   const sun = sky.bodies.find((b) => b.key === 'sun')!
+  const { language } = useSettings()
   const termDay = SolarDay.fromYmd(date.year, date.month, date.day).getTermDay()
+  // In 天书's 简洁 the note is set down the page in columns, where a number is written out
+  const day = termDay.getDayIndex() + 1
   return (
     <div className="bazi-moment">
       <span className="ts-kicker" aria-hidden="true">
@@ -522,7 +526,7 @@ export function MomentNote({ moment, date, hour }: { moment: BirthMoment; date: 
       <ul>
         <li>{t('日躔{mansion}', { mansion: where('sun') })}</li>
         <li>{t('月离{mansion}', { mansion: where('moon') })}</li>
-        <li>{t('{term}第{n}天', { term: term(termDay.getSolarTerm().getName()), n: termDay.getDayIndex() + 1 })}</li>
+        <li>{t('{term}第{n}天', { term: term(termDay.getSolarTerm().getName()), n: language === 'en' ? day : hanNumber(day) })}</li>
         <li>
           {term(hour)} · {sun.alt > -0.8 ? t('昼生') : t('夜生')}
         </li>
