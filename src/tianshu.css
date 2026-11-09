@@ -391,10 +391,13 @@
 :root[data-style] .zc-title { justify-content: center; font-size: clamp(13px, 7cqmin, 18px); letter-spacing: 0.12em; }
 :root[data-style] .zc-title span { font-size: 0.82em; }
 :root[data-style] .ziwei-center .kv { max-width: 66cqmin; margin: 0 auto; gap: 2px 8px; font-size: clamp(10px, 4.6cqmin, 13px); text-align: left; }
-/* What the picked palace is, under the board (on a phone the palace's own detail does this) */
-.zw-summary-below { max-width: 560px; margin: 14px auto 0; }
-.zw-summary-below .zc-sf-area { height: auto; min-height: 0; border-top: 0; padding-top: 0; }
-@media (max-width: 760px) { .zw-summary-below { display: none; } }
+/* A palace picked: its 三方四正 in the ring, in place of the chart's particulars, the ring keeping its
+   size so nothing on the page moves (on a phone the palace's own detail does this) */
+:root[data-style] .ziwei-center .zc-sf-area { height: auto; max-width: 74cqmin; margin: 0 auto; padding-top: 0; border-top: 0; text-align: left; }
+:root[data-style] .ziwei-center .zc-sanfang { font-size: clamp(11px, 4.8cqmin, 14px); }
+@container zw (min-width: 621px) {
+  :root[data-style] .ziwei-center.sf-open :is(.zc-title, .kv) { display: none; }
+}
 
 /* 三方四正 as light: the triangle glowing, the 对宫 dashed */
 :root[data-style] .sf-lines polygon, :root[data-style] .sf-lines line { stroke: #f0d9a6; stroke-opacity: 0.85; stroke-width: 1.2; fill: rgb(220 188 124 / 0.06); }

@@ -538,7 +538,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
             ))}
             {sfFrom && mode === 'sanfang' && !litPattern && <SanFangLines branch={sfFrom} />}
             {active && flies && boardSize && <FeiHuaLines from={active} flies={flies} size={boardSize} />}
-            <div className="ziwei-center cast-l3">
+            {/* 天书: a palace picked, its 三方四正 takes the ring's place (on a phone, the palace's detail does) */}
+            <div className={`ziwei-center cast-l3${tianshu && active ? ' sf-open' : ''}`}>
               <div className="zc-title">
                 <strong>{chart.gender === '男' ? term('乾造') : term('坤造')}</strong>
                 <span>{term(chart.fiveElementsClass)}</span>
@@ -570,12 +571,10 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                   {term(chart.zodiac)} · {t(chart.sign)}
                 </dd>
               </dl>
-              {/* 天书: the ring holds only the chart's particulars; what a palace is, under the board */}
-              {!tianshu && summary}
+              {(!tianshu || active) && summary}
             </div>
           </div>
         </div>
-        {tianshu && <div className="zw-summary-below">{summary}</div>}
         </>
         )}
         {active && (
