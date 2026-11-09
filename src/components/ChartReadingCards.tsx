@@ -110,7 +110,7 @@ export function StarReadingCard({ chart }: { chart: StarChart }) {
             label={t('{elements}最多（{count} 颗）', { elements: list(r.elements.map((e) => t(ELEMENT_NAME[e.key as Element]))), count: r.elements[0].count })}
             title={t('元素')}
           >
-            <span>{t('只数太阳到土星七颗行星所在的星座；天王星、海王星、冥王星在一个星座停留多年，不算。')}</span>
+            <span>{t('按太阳到冥王星十颗星计，不含交点、上升和天顶')}</span>
           </InfoTip>
           {t('；')}
           {list(r.modalities.map((m) => t('{modality}星座', { modality: t(m.key) })))} {t('{count} 颗', { count: r.modalities[0].count })}

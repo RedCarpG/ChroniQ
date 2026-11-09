@@ -53,7 +53,15 @@ describe('starReading', () => {
     expect(reading.ascSign).toBeLessThan(12)
   })
 
-  it('counts the seven planets by element and modality', () => {
+  it('counts the elements over the same ten planets as the chart tally', () => {
+    // 1995-11-26 17:45, Beijing: six of the ten in 射手 (Pluto with them), three in 摩羯, Saturn in 双鱼
+    const c = buildStarChart({ ...INPUT, year: 1995, month: 11, day: 26, hour: 17, minute: 45 }, DEFAULT_PLACE, DEFAULT_STAR_SETTINGS)
+    const r = starReading(c)
+    expect(r.elements).toEqual([{ key: 'fire', count: 6 }])
+    expect(r.modalities).toEqual([{ key: '变动', count: 7 }])
+  })
+
+  it('counts by element and modality, and finds crowded houses', () => {
     expect(reading.elements[0].count).toBeGreaterThanOrEqual(2)
     expect(['基本', '固定', '变动']).toContain(reading.modalities[0].key)
     for (const c of reading.crowded) expect(c.planets.length).toBeGreaterThanOrEqual(3)

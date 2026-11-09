@@ -152,7 +152,6 @@ export const BAZI: Record<string, string> = {
   '第{n}宫': 'House {n}',
   元素: 'Elements',
   '{elements}最多（{count} 颗）': '{elements} most ({count} planets)',
-  '只数太阳到土星七颗行星所在的星座；天王星、海王星、冥王星在一个星座停留多年，不算。': 'Counts the signs of the seven planets from the Sun to Saturn. Uranus, Neptune and Pluto stay in a sign for years, so they are left out.',
   '{modality}星座': '{modality} signs',
   基本: 'Cardinal',
   固定: 'Fixed',
