@@ -8,9 +8,9 @@ export const STAR: Record<string, string> = {
   阴性: 'Feminine',
   没有: 'none',
   '热情、行动、自信': 'Warmth, action, confidence',
-  // 天书's scene (StarHero): the chart's name, the Sun's heart and the Ascendant's face
-  '{sign}之心': 'A {sign} heart',
-  '{sign}之貌': 'a {sign} face',
+  // 天书's scene (StarHero): the chart's name, the Sun's sign and the Ascendant's
+  '太阳{sign}': 'Sun in {sign}',
+  '上升{sign}': '{sign} rising',
   '太阳、月亮、上升': 'Sun, Moon and Ascendant',
   '相位 {count} 条': '{count} aspects',
   没有主要相位: 'No major aspects',
