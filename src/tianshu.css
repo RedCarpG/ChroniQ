@@ -86,6 +86,26 @@
    the zodiac's own are drawn in the wheel (.zodiac-figures) */
 :root[data-style='west'][data-theme] { --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0); }
 
+/* 八字's sky of the birth in the east's warm light: the Milky Way and the stars warm, the 二十八宿 in gold */
+:root[data-style='east'][data-theme] {
+  --bs-star: #f3e2c2; --bs-star-alpha: 0.95; --bs-milky-alpha: 0.75;
+  --bs-mw-haze: #9a7650; --bs-mw-body: #d6b98a; --bs-mw-core: #f4e4c4; --bs-mw-grain: #ead6b0;
+  --bs-figure: rgb(216 191 140 / 0.34); --bs-label: rgb(216 191 140 / 0.58);
+}
+
+/* The top bar, as an old plate's head: the name in gold, no mark; the pages as words, the one shown
+   marked with a diamond rather than underlined; no rule under the bar */
+:root[data-style] .topbar { background: none; }
+:root[data-style] .topbar h1 { color: var(--accent); letter-spacing: 0.3em; }
+:root[data-style] .topbar h1 .logo, :root[data-style] .topbar .brand-en { display: none; }
+:root[data-style] :is(.page-nav-group-btn, .page-nav-item)::after { display: none; }
+:root[data-style] .page-nav-group-btn { font-size: 15px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); }
+:root[data-style] .page-nav-group.open > .page-nav-group-btn { color: var(--text); }
+:root[data-style] .page-nav-item { font-size: 14px; letter-spacing: 0.24em; }
+:root[data-style] .page-nav-item.on { font-weight: 500; }
+:root[data-style] .page-nav-item.on::before { content: '◆'; display: inline-block; margin-right: 6px; font-size: 7px; vertical-align: 2px; }
+:root[data-style] .topbar-right { opacity: 0.75; }
+
 /* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
 :root[data-style] .bazi-form-summary {
   display: flex; flex: 1 0 100%; align-items: baseline; justify-content: center; gap: 14px; margin: -4px 0; padding: 4px 0;
@@ -107,49 +127,43 @@
 /* ---------- 八字 (BaziHero, BaziDial) ---------- */
 .bazi-hero { position: relative; display: grid; justify-items: center; margin: 0 -16px; overflow: hidden; overflow: clip; }
 .bazi-hero-dial { width: min(560px, 108%); margin: -4px 0 -14px; }
+/* The dial: a gold plate, the 地支 cut in boxes round the rim */
 .bazi-dial { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font-title); }
-.bazi-dial .bd-ground { fill: rgb(10 8 7 / 0.34); }
-.bazi-dial .bd-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.25; stroke-width: 0.7; }
-.bazi-dial .bd-ring.strong { stroke-opacity: 0.5; stroke-width: 1; }
-.bazi-dial .bd-ring.faint { stroke-opacity: 0.16; }
-.bazi-dial .bd-tick { stroke: var(--accent); stroke-opacity: 0.45; stroke-width: 0.6; }
+.bazi-dial .bd-ground { fill: rgb(12 9 6 / 0.42); }
+.bazi-dial .bd-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.55; stroke-width: 0.9; }
+.bazi-dial .bd-ring.strong { stroke-opacity: 0.9; stroke-width: 1.6; }
+.bazi-dial .bd-ring.faint { stroke-opacity: 0.4; }
+.bazi-dial .bd-ring.dotted { stroke-dasharray: 1 5; stroke-linecap: round; }
+.bazi-dial .bd-spoke { stroke: var(--accent); stroke-opacity: 0.42; stroke-width: 0.8; }
+.bazi-dial .bd-tick { stroke: var(--accent); stroke-opacity: 0.75; stroke-width: 0.8; }
 .bazi-dial .bd-turn { transform-origin: 265px 265px; animation: bd-turn 240s linear infinite; }
 @keyframes bd-turn { to { transform: rotate(360deg); } }
-.bazi-dial .bd-season { fill: none; stroke-width: 14; stroke-opacity: 0.16; }
-.bazi-dial .bd-month-glow { fill: none; stroke-width: 16; stroke-opacity: 0.8; animation: bd-breathe 5s ease-in-out infinite alternate; }
-.bazi-dial .bd-month-line { fill: none; stroke: #f4f0ff; stroke-opacity: 0.85; stroke-width: 1.6; }
-@keyframes bd-breathe { from { stroke-opacity: 0.45; } to { stroke-opacity: 0.9; } }
-.bazi-dial .bd-earth { fill: var(--earth); }
+.bazi-dial .bd-branch rect { fill: var(--accent); fill-opacity: 0.9; }
+.bazi-dial .bd-branch text { text-anchor: middle; font-size: 17px; font-weight: 700; fill: #1b140c; }
+.bazi-dial .bd-branch.mine rect { fill: var(--ts-vermilion); fill-opacity: 1; filter: drop-shadow(0 0 8px rgb(224 80 58 / 0.6)); }
+.bazi-dial .bd-branch.mine text { fill: #f6e8d6; }
+.bazi-dial .bd-branch .bd-who { font-size: 11px; font-weight: 400; letter-spacing: 2px; fill: var(--text); opacity: 0.78; }
+.bazi-dial .bd-thread { stroke: var(--ts-vermilion); stroke-width: 1; stroke-dasharray: 4 5; stroke-opacity: 0.75; }
+.bazi-dial .bd-month-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px var(--ts-glow)); }
 .bazi-dial .bd-note { font-size: 11px; letter-spacing: 2px; text-anchor: middle; fill: currentColor; }
-.bazi-dial .bd-month .bd-note { fill: var(--text); opacity: 0.8; }
-.bazi-dial .bd-branch text { text-anchor: middle; font-size: 17px; fill: var(--text); opacity: 0.36; }
-.bazi-dial .bd-branch.mine text { font-size: 22px; font-weight: 700; opacity: 1; filter: drop-shadow(0 0 7px currentColor); }
-.bazi-dial .bd-branch .bd-who { font-size: 10px !important; font-weight: 400 !important; letter-spacing: 2px; fill: var(--text) !important; opacity: 0.55 !important; filter: none !important; }
+.bazi-dial .bd-month .bd-note { fill: var(--accent); }
 .bazi-dial .bd-link { fill: currentColor; }
-.bazi-dial .bd-link circle { filter: drop-shadow(0 0 6px currentColor); }
-.bazi-dial .bd-link-glow { fill: none; stroke: currentColor; stroke-width: 6; stroke-opacity: 0.45; }
-.bazi-dial .bd-link-line { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.bazi-dial .bd-link-line { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-opacity: 0.9; }
 .bazi-dial .bd-link.soft .bd-link-line { stroke-dasharray: 3 4; stroke-opacity: 0.7; }
-.bazi-dial .bd-heart { fill: #140b08; stroke: var(--ts-vermilion); stroke-opacity: 0.8; }
-.bazi-dial .bd-heart-halo { fill: none; stroke: var(--ts-vermilion); stroke-opacity: 0.25; }
-.bazi-dial .bd-day-master { font-size: 50px; font-weight: 700; text-anchor: middle; filter: drop-shadow(0 0 14px currentColor); }
-@media (prefers-reduced-motion: reduce) { .bazi-dial .bd-turn, .bazi-dial .bd-month-glow { animation: none; } }
-/* The four pillars, stars on the rim; a thread from each to the heart, the 日主's in its own colour */
-.bazi-dial .bd-pillar-star { color: #f6e6c4; }
-.bazi-dial .bd-pillar-star circle { fill: currentColor; filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor); }
-.bazi-dial .bd-pillar-star line { stroke: currentColor; stroke-width: 0.8; stroke-opacity: 0.28; }
-.bazi-dial .bd-pillar-star.day line { stroke-opacity: 0.6; stroke-width: 1.1; }
+.bazi-dial .bd-heart { fill: #120d08; stroke: var(--accent); stroke-width: 1.6; }
+.bazi-dial .bd-heart-line { fill: none; stroke: var(--accent); stroke-opacity: 0.4; }
+.bazi-dial .bd-day-master { font-size: 76px; font-weight: 700; text-anchor: middle; fill: var(--text); color: var(--text); filter: drop-shadow(0 0 10px rgb(235 227 207 / 0.35)); }
 /* 此刻 on the rim: a small light, breathing */
 .bazi-dial .bd-now { color: #f6deb0; }
 .bazi-dial .bd-now circle { fill: currentColor; filter: drop-shadow(0 0 5px currentColor); animation: bd-breathe-dot 4s ease-in-out infinite alternate; }
 .bazi-dial .bd-now .bd-note { font-size: 10px; opacity: 0.75; }
 @keyframes bd-breathe-dot { from { opacity: 0.5; } to { opacity: 1; } }
 /* 起盘's first layer: the 日主 written, its outline drawn and then filled */
-.bazi-hero[data-stage='1'] .bd-day-master { stroke: currentColor; stroke-width: 0.8; stroke-dasharray: 260; animation: bd-write 1.1s ease-out both; }
-@keyframes bd-write { from { stroke-dashoffset: 260; fill-opacity: 0; } 55% { fill-opacity: 0; } to { stroke-dashoffset: 0; fill-opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .bazi-dial .bd-now circle { animation: none; } }
+.bazi-hero[data-stage='1'] .bd-day-master { stroke: currentColor; stroke-width: 0.8; stroke-dasharray: 320; animation: bd-write 1.1s ease-out both; }
+@keyframes bd-write { from { stroke-dashoffset: 320; fill-opacity: 0; } 55% { fill-opacity: 0; } to { stroke-dashoffset: 0; fill-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bazi-dial .bd-turn, .bazi-dial .bd-now circle { animation: none; } }
 
-/* The 日主's seal beside the title: hidden while the chart is cast, pressed once it is */
+/* The 日主's seal: hidden while the chart is cast, pressed once it is. Beside the title in 详细 */
 .ts-seal {
   display: inline-grid; grid-template-columns: 1fr; place-items: center; vertical-align: middle; margin: -6px 0 0 14px;
   width: 26px; padding: 3px 0; border-radius: 3px; background: var(--ts-vermilion); color: #f6e8d6;
@@ -162,14 +176,61 @@
 @keyframes ts-stamp { from { opacity: 0; transform: rotate(-4deg) scale(1.8); } to { opacity: 1; transform: rotate(-4deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .bazi-hero .ts-seal { animation: none; } }
 
-/* 出生那一刻 beside the dial (on a phone, under the title) */
+/* 出生那一刻 (详细): under the title, or beside the dial on a wide screen */
 .bazi-moment { margin-top: 14px; text-align: center; }
 .bazi-moment ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 8px 0 0; padding: 0 16px; list-style: none; font-family: var(--font-title); font-size: 13px; letter-spacing: 0.12em; color: var(--muted); }
 @media (min-width: 900px) {
-  .bazi-moment { position: absolute; right: 6%; top: 34%; margin: 0; text-align: right; }
-  .bazi-moment ul { display: grid; justify-items: end; gap: 10px; padding: 0; font-size: 14px; }
-  .bazi-moment .ts-kicker { margin-right: -0.5em; }
+  .bazi-hero:not(.bazi-scene) .bazi-moment { position: absolute; right: 6%; top: 34%; margin: 0; text-align: right; }
+  .bazi-hero:not(.bazi-scene) .bazi-moment ul { display: grid; justify-items: end; gap: 10px; padding: 0; font-size: 14px; }
+  .bazi-hero:not(.bazi-scene) .bazi-moment .ts-kicker { white-space: nowrap; margin-right: -0.5em; }
 }
+
+/* ---------- 简洁: the scene, as an old star plate is laid out ---------- */
+#bazi-natal.scene .natal-head { justify-content: flex-end; }
+#bazi-natal.scene .natal-head .chart-meta { display: none; }
+.bazi-scene { padding: 4px 0 12px; }
+.bazi-scene .bazi-hero-dial { width: min(540px, 100%); margin: 0; }
+/* Words set down the page in columns, right to left */
+.bz-verse, .bz-margin { writing-mode: vertical-rl; display: flex; flex-direction: column; font-family: var(--font-title); letter-spacing: 0.3em; line-height: 1.5; }
+.bz-verse { gap: 12px; margin: 4px 0 18px; }
+.bz-verse b { font-size: 30px; font-weight: 600; color: var(--accent); text-shadow: 0 0 18px rgb(220 188 124 / 0.35); }
+.bz-verse span { font-size: 16px; color: var(--text); }
+.bz-verse small { font-size: 13px; color: var(--muted); }
+.bz-margin { order: 9; gap: 10px; margin-top: 18px; font-size: 14px; color: var(--muted); }
+.bz-margin .bazi-moment { margin: 0; text-align: start; }
+.bz-margin .bazi-moment .ts-kicker { display: none; }
+.bz-margin .bazi-moment ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; font-size: 14px; letter-spacing: 0.3em; color: var(--muted); }
+/* In English the words run across, as English does */
+:root[lang='en'] :is(.bz-verse, .bz-margin) { writing-mode: horizontal-tb; align-items: center; text-align: center; letter-spacing: 0.06em; }
+:root[lang='en'] .bz-margin .bazi-moment ul { flex-direction: row; flex-wrap: wrap; justify-content: center; letter-spacing: 0.06em; }
+/* The four pillars, and the 刑冲合会 */
+.bz-pillars { display: flex; gap: 26px; margin-top: 18px; }
+.bz-pillars > div { display: grid; justify-items: center; }
+.bz-pillars small { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); }
+.bz-pillars .dm small { color: var(--ts-vermilion); }
+.bz-pillars b { font-family: var(--font-title); font-size: 40px; font-weight: 700; line-height: 1.1; text-shadow: 0 0 16px currentColor; }
+.bz-pillars > div > small + b { margin-top: 6px; }
+.bz-links { display: grid; justify-items: center; gap: 4px; margin-top: 16px; font-family: var(--font-title); font-size: 13px; letter-spacing: 0.2em; color: var(--muted); text-align: center; }
+.bz-links span:first-child { color: var(--text); }
+/* The seal, larger: on a phone over the verse's corner, on a wide screen at the right edge */
+.bazi-scene > .ts-seal { position: absolute; right: 14px; top: 44px; width: 40px; margin: 0; padding: 5px 0; font-size: 16px; }
+@media (min-width: 900px) {
+  .bazi-scene { min-height: 700px; align-content: center; }
+  .bz-verse { position: absolute; right: 3%; top: 4px; margin: 0; }
+  .bz-margin { position: absolute; left: 3%; top: 4px; margin: 0; }
+  .bazi-scene > .ts-seal { right: 4%; top: 60%; width: 54px; padding: 7px 0; font-size: 21px; }
+  .bz-pillars { position: absolute; left: 3%; bottom: 10px; margin: 0; }
+  .bz-links { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; max-width: 260px; text-align: right; }
+}
+
+/* 简洁 ↔ 详细 (smoothUpdate 'bazi'): the dial and the seal go to their places, the rest crossfades */
+:root[data-vt='bazi'] .bazi-hero-dial { view-transition-name: bazi-dial; }
+:root[data-vt='bazi'] .ts-seal { view-transition-name: bazi-seal; }
+:root[data-vt='bazi']::view-transition-group(*) { animation-duration: 0.6s; animation-timing-function: var(--vt-ease); }
+:root[data-vt='bazi']::view-transition-old(root) { animation: ts-fade-out 0.3s ease both; }
+:root[data-vt='bazi']::view-transition-new(root) { animation: ts-fade-in 0.45s ease 0.15s both; }
+@keyframes ts-fade-out { to { opacity: 0; } }
+@keyframes ts-fade-in { from { opacity: 0; } }
 
 /* 起盘 (useCasting, CastLine): while a chart is cast, the layers not yet come wait in the dark */
 :is(.cast-l1, .cast-l2, .cast-l3, .cast-l4, .cast-l5) { transition: opacity 0.9s ease; }
@@ -187,24 +248,8 @@
 .ts-kicker { font-family: 'Cormorant Garamond', var(--font-title); font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); margin-left: 0.5em; }
 .bazi-hero-title { text-align: center; }
 .bazi-hero-title h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(24px, 6vw, 32px); font-weight: 600; letter-spacing: 0.26em; }
-.bazi-hero-pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: min(100%, 520px); margin-top: 28px; padding: 0 16px; }
-.bazi-hero-pillars > div { position: relative; display: grid; justify-items: center; padding: 2px 0 12px; }
-.bazi-hero-pillars > div + div::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 1px; background: linear-gradient(transparent, var(--ts-hair), transparent); }
-.bazi-hero-pillars small { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); }
-.bazi-hero-pillars .ten { font-size: 12px; color: var(--accent); letter-spacing: 0.12em; margin: 8px 0 4px; }
-.bazi-hero-pillars b { font-family: var(--font-title); font-size: clamp(42px, 12vw, 58px); font-weight: 700; line-height: 1.12; text-shadow: 0 0 22px currentColor, 0 0 2px currentColor; }
-.bazi-hero-pillars .hid { display: grid; margin-top: 12px; font-size: 11px; line-height: 1.8; color: var(--muted); }
-.bazi-hero-pillars .dm small { color: var(--ts-vermilion); }
-.bazi-hero-pillars .dm::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 6px; height: 6px; transform: translateX(-50%) rotate(45deg); background: var(--ts-vermilion); box-shadow: 0 0 12px var(--ts-vermilion); }
-.bazi-hero-wuxing { display: flex; justify-content: center; gap: 22px; margin-top: 40px; }
-.bazi-hero-wuxing > div { display: grid; justify-items: center; }
-.bazi-hero-wuxing b { font-family: var(--font-title); font-size: 20px; text-shadow: 0 0 14px currentColor; }
-.bazi-hero-wuxing i { margin-top: 6px; font-style: normal; font-size: 9px; letter-spacing: 4px; }
-.bazi-hero-wuxing .none { opacity: 0.3; }
-.bazi-hero-wuxing .none b { text-shadow: none; }
 .bazi-hero-lede { max-width: 30em; margin: 26px 24px 0; text-align: center; font-size: 13.5px; line-height: 2; color: var(--muted); }
 .bazi-hero-lede b { color: var(--text); font-weight: 600; }
-.bazi-hero-more { margin: 10px 24px 6px; text-align: center; font-size: 11.5px; color: var(--muted); opacity: 0.7; }
 
 /* ---------- 紫微 ---------- */
 .zw-hero { text-align: center; margin: 6px 0 22px; }

@@ -1,16 +1,20 @@
-// 天书's 八字, the top of the chart: the dial (BaziDial) as the scene, the 日主 and the month it was
-// born in as its title, then (简洁) the four pillars in large glowing characters and the 五行 counted in
-// dots, as the 河图 counts; a line of what it comes to. 详细 keeps the full table under it instead.
+// 天书's 八字, the top of the chart. 简洁 is a scene, laid out as an old star plate is: the gold 罗盘
+// (BaziDial) in the middle; the 日主 written down the right in columns (who it is, its image and the
+// month it was born in, what the five elements come to); down the left, who was born and the moment of
+// it (MomentNote); the four pillars at the foot on the left, the 刑冲合会 on the right; the 日主's seal.
+// 详细 keeps the dial with a title over the full table instead; moving between them, the dial and the
+// seal go to their places (BaziView's smoothUpdate).
 // 起盘 (useCasting): a chart newly shown comes in a layer at a time — the 日主 alone (written stroke by
 // stroke), then the month it was born in, then the four pillars, then the 刑冲合会 between them — a line
-// under the dial saying each; once all are in, the 日主's seal is pressed beside the title. Beside the
-// dial, the moment of birth (MomentNote); on it, where today stands in the year (BaziDial's 此刻).
+// under the dial saying each; once all are in, the seal is pressed. On the dial, where today stands in
+// the year (此刻).
 import { useMemo, type ReactNode } from 'react'
 import { SolarDay } from 'tyme4ts'
-import { ELEMENTS, type BaziChart, type ElementName } from '../lib/bazi'
-import { baziReading } from '../lib/baziReading'
-import { useT, useTerm } from '../settingsContext'
+import type { BaziChart, ElementName } from '../lib/bazi'
+import { baziReading, DAY_MASTER_IMAGE } from '../lib/baziReading'
 import { monthBuildOf } from '../lib/dipper'
+import { hanNumber } from '../lib/hanNumber'
+import { useSettings, useT, useTerm } from '../settingsContext'
 import { BaziDial } from './BaziDial'
 import { CastLine } from './CastLine'
 import { useCasting } from './useCasting'
@@ -26,14 +30,18 @@ function today() {
   return { branch: month.name, into: span > 0 ? day.subtract(month.from.day) / span : 0, term: day.getTermDay().getSolarTerm().getName() }
 }
 
-export function BaziHero({ chart, full, moment }: { chart: BaziChart; full: boolean; moment?: ReactNode }) {
+export function BaziHero({ chart, full, moment, place }: { chart: BaziChart; full: boolean; moment?: ReactNode; place: string }) {
   const t = useT()
   const term = useTerm()
+  const { language } = useSettings()
+  const en = language === 'en'
+  // Set down the page in columns, numbers are written out (an Arabic one would lie on its side)
+  const num = (n: number) => (en ? String(n) : hanNumber(n))
+  const gap = en ? ' · ' : '　'
   const reading = useMemo(() => baziReading(chart, new Date().getFullYear()), [chart])
   const dm = chart.dayMaster
   const month = chart.pillars[1].branch.char
   const tendency = { strong: t('日主偏旺'), weak: t('日主偏弱'), balanced: t('比较平衡') }[reading.tendency]
-  const counted = [...ELEMENTS].sort((a, b) => chart.elementCount[b] - chart.elementCount[a])
   const list = (items: string[]) => items.join(t('、'))
   const now = useMemo(today, [])
   const cast = useCasting(chart.pillars.map((p) => p.stem.char + p.branch.char).join('') + chart.gender, 4)
@@ -44,55 +52,87 @@ export function BaziHero({ chart, full, moment }: { chart: BaziChart; full: bool
     t('第三重 · 四柱 {pillars}', { pillars: chart.pillars.map((p) => p.stem.char + p.branch.char).join(' ') }),
     linked ? t('第四重 · 刑冲合会 {count} 道', { count: linked }) : t('第四重 · 原局没有刑冲合会'),
   ]
+  const dial = (
+    <div className="bazi-hero-dial">
+      <BaziDial pillars={chart.pillars} relations={chart.relations} today={now} />
+    </div>
+  )
+  // The 日主's seal, pressed once the chart is cast
+  const seal = (
+    <span className="ts-seal" aria-hidden="true">
+      <i>{dm.char}</i>
+      <i>{dm.element}</i>
+    </span>
+  )
+  const most =
+    t('{elements}最多{count}', { elements: list(reading.most.map((m) => t(m.element))), count: num(reading.most[0].count) }) +
+    gap +
+    (reading.missing.length ? t('无{elements}', { elements: list(reading.missing.map((e) => t(e))) }) : t('五行俱全'))
+
+  if (!full)
+    return (
+      <div className="bazi-hero bazi-scene" data-stage={cast.stageAttr}>
+        {/* Down the right: the 日主, its image and month, what the elements come to; the birth, small */}
+        <div className="bz-verse">
+          <b className="cast-l1">{t('{stem}{element}日主', { stem: dm.char, element: t(dm.element) })}</b>
+          <span className="cast-l2">
+            {t(DAY_MASTER_IMAGE[dm.char]).split(/[：:]/)[0]}
+            {gap}
+            {t('生于{branch}月', { branch: term(month) })}
+          </span>
+          <span className="cast-l4">
+            {most}
+            {gap}
+            {tendency}
+          </span>
+          <small>
+            {term(chart.lunarText)}
+            {gap}
+            {t(place)}
+          </small>
+        </div>
+        {/* Down the left: who was born, and the moment of it */}
+        <div className="bz-margin">
+          <span>
+            {chart.gender === '男' ? term('乾造') : term('坤造')}
+            {gap}
+            {t('属{zodiac}', { zodiac: term(chart.zodiac) })}
+          </span>
+          {moment}
+        </div>
+        {dial}
+        {seal}
+        <CastLine cast={cast} captions={captions} />
+        <div className="bz-pillars cast-l3" aria-label={t('四柱')}>
+          {chart.pillars.map((p, i) => (
+            <div key={p.label} className={i === 2 ? 'dm' : undefined}>
+              <small>{term(p.label)}</small>
+              <b style={{ color: EL_VAR[p.stem.element] }}>{p.stem.char}</b>
+              <b style={{ color: EL_VAR[p.branch.element] }}>{p.branch.char}</b>
+            </div>
+          ))}
+        </div>
+        <div className="bz-links cast-l4">
+          <span>{linked ? t('刑冲合会{count}道', { count: num(linked) }) : t('原局没有刑冲合会')}</span>
+          {linked > 0 && <span>{chart.relations.map((r) => term(r.text)).join(' · ')}</span>}
+        </div>
+      </div>
+    )
+
   return (
     <div className="bazi-hero" data-stage={cast.stageAttr}>
-      <div className="bazi-hero-dial">
-        <BaziDial pillars={chart.pillars} relations={chart.relations} today={now} />
-      </div>
+      {dial}
       <div className="bazi-hero-title">
         <span className="ts-kicker" aria-hidden="true">
           Day Master
         </span>
         <h3>
           {t('{stem}{element} · 生于{branch}月', { stem: dm.char, element: t(dm.element), branch: term(month) })}
-          {/* The 日主's seal, pressed once the chart is cast */}
-          <span className="ts-seal" aria-hidden="true">
-            <i>{dm.char}</i>
-            <i>{dm.element}</i>
-          </span>
+          {seal}
         </h3>
         <CastLine cast={cast} captions={captions} />
       </div>
       {moment}
-      {!full && (
-        <>
-          <div className="bazi-hero-pillars cast-l3">
-            {chart.pillars.map((p, i) => (
-              <div key={p.label} className={i === 2 ? 'dm' : undefined}>
-                <small>{i === 2 ? term('日主') : term(p.label)}</small>
-                <span className="ten">{i === 2 ? `${dm.char}${t(dm.element)}` : term(p.stem.tenStar ?? '')}</span>
-                <b style={{ color: EL_VAR[p.stem.element] }}>{p.stem.char}</b>
-                <b style={{ color: EL_VAR[p.branch.element] }}>{p.branch.char}</b>
-                <span className="hid">
-                  {p.hidden.map((h) => (
-                    <span key={h.char}>
-                      {h.char} {term(h.tenStar ?? '')}
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="bazi-hero-wuxing cast-l4" aria-label={t('五行')}>
-            {counted.map((e) => (
-              <div key={e} className={chart.elementCount[e] ? undefined : 'none'} style={{ color: EL_VAR[e] }}>
-                <b>{e}</b>
-                <i aria-label={String(chart.elementCount[e])}>{chart.elementCount[e] ? '●'.repeat(chart.elementCount[e]) : '○'}</i>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
       <p className="bazi-hero-lede cast-l4">
         {reading.most.length > 1
           ? t('{elements}最多（各 {count} 个）', { elements: list(reading.most.map((m) => t(m.element))), count: reading.most[0].count })
@@ -101,7 +141,6 @@ export function BaziHero({ chart, full, moment }: { chart: BaziChart; full: bool
         {t('；')}
         <b>{tendency}</b>
       </p>
-      {!full && <p className="bazi-hero-more">{t('纳音、星运、自坐、空亡、神煞、五星和胎元命宫在「详细」里')}</p>}
     </div>
   )
 }

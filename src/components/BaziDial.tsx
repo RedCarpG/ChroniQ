@@ -1,33 +1,33 @@
-// 天书's 八字: the chart as a dial, south up as on a 罗盘. Outside, the twelve 地支, those of the four
-// pillars lit; inside them, the seasons with their 五行 (寅卯辰 spring wood … 亥子丑 winter water,
-// a mark on each 土 month), the month of birth (月令) aglow; between the branches, the 刑冲合会 of the
-// chart drawn as light (合 and 会 arcs, 冲 straight across, 刑 害 破 a faint dashed line); the 日主 at
-// the heart; the four pillars are stars on the rim, each on its branch, a thread of light from each to
-// the heart. Everything it shows is in the chart; nothing is there for show.
+// 天书's 八字: the chart as a gold 罗盘, south up, carved as the old star plates were. Round the rim the
+// twelve 地支, each in its box between the spokes; those the four pillars stand on are stamped in
+// vermilion, their pillars named under them, and a dashed line runs from each to the heart. Inside, the
+// month of birth (月令) is marked on the ring; between the branches, the chart's 刑冲合会 (合 and 会 arcs,
+// 冲 straight across, 刑 害 破 dashed); the 日主 at the heart; and on the rim, where today stands in the
+// year (此刻). Everything it shows is in the chart; nothing is there for show.
 // Each part is marked with the layer it comes in on when the chart is cast (BaziHero): cast-l1 the 日主,
-// cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会; the rings and seasons are there throughout.
+// cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会 and 此刻; the plate is there throughout.
 import type { ElementName, Pillar } from '../lib/bazi'
 import type { Relation } from '../lib/relations'
 import { useT, useTerm } from '../settingsContext'
 
 /** From the top, clockwise: 午 south, 酉 west, 子 north, 卯 east */
 const RING = '午未申酉戌亥子丑寅卯辰巳'
-const SEASONS: { branches: string; element: ElementName }[] = [
-  { branches: '巳午未', element: '火' },
-  { branches: '申酉戌', element: '金' },
-  { branches: '亥子丑', element: '水' },
-  { branches: '寅卯辰', element: '木' },
-]
-const EL_VAR: Record<ElementName, string> = { 木: 'var(--wood)', 火: 'var(--fire)', 土: 'var(--earth)', 金: 'var(--metal)', 水: 'var(--water)' }
 const C = 265
-const R_BRANCH = 222
-const R_SEASON = 178
+/** The rim's ticks, outside the branches' band */
+const R_RIM = 252
+/** The branches' band, its outer and inner edge, and the boxes in it */
+const R_BAND_OUT = 244
+const R_BAND_IN = 206
+const R_BRANCH = (R_BAND_OUT + R_BAND_IN) / 2
+/** The ring the month is marked on, the ring the 刑冲合会 end on, the heart */
+const R_MONTH = 168
 const R_LINK = 150
-const R_RIM = 246
+const R_INNER = 104
+const R_HEART = 66
 
 const angle = (i: number) => (i / 12) * 2 * Math.PI - Math.PI / 2
 const at = (i: number, r: number): [number, number] => [C + Math.cos(angle(i)) * r, C + Math.sin(angle(i)) * r]
-/** An arc along the ring over the slots i0..i1 (inclusive), clockwise */
+/** An arc along a ring over the slots i0..i1 (inclusive), clockwise */
 function arc(i0: number, i1: number, r: number) {
   const a0 = angle(i0 - 0.5)
   const a1 = angle(i1 + 0.5)
@@ -37,6 +37,7 @@ const elementOf = (text: string): ElementName | null => {
   const m = text.match(/[木火土金水](?=[局方]?$)/)
   return (m?.[0] as ElementName) ?? null
 }
+const EL_VAR: Record<ElementName, string> = { 木: 'var(--wood)', 火: 'var(--fire)', 土: 'var(--earth)', 金: 'var(--metal)', 水: 'var(--water)' }
 
 export function BaziDial({
   pillars,
@@ -51,95 +52,72 @@ export function BaziDial({
   const t = useT()
   const term = useTerm()
   const month = pillars[1].branch.char
-  // Which pillars stand on each branch
+  // Which pillars stand on each branch, and the layer each branch comes in on (the earliest of its pillars)
   const on = new Map<string, string[]>()
   pillars.forEach((p) => on.set(p.branch.char, [...(on.get(p.branch.char) ?? []), term(p.label.slice(0, 1))]))
-  // One light for each relation between branches (亥卯 半合 twice, with two 亥, is drawn once)
+  const layerOf = (b: string) => (b === pillars[2].branch.char ? 'cast-l1' : b === month ? 'cast-l2' : 'cast-l3')
+  // One line for each relation between branches (亥卯 半合 twice, with two 亥, is drawn once)
   const links = relations.filter((r, i, all) => r.on === 'branch' && all.findIndex((o) => o.on === 'branch' && o.text === r.text) === i)
   const dayMaster = pillars[2].stem
   return (
     <svg className="bazi-dial" viewBox="0 0 530 530" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
-      <defs>
-        <radialGradient id="bd-core">
-          <stop offset="0" stopColor="var(--ts-vermilion)" stopOpacity="0.3" />
-          <stop offset="1" stopColor="var(--ts-vermilion)" stopOpacity="0" />
-        </radialGradient>
-        <filter id="bd-blur" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="5" />
-        </filter>
-      </defs>
-      {/* The night under the dial, so the sky behind the page does not read through it */}
-      <circle cx={C} cy={C} r="252" className="bd-ground" />
-      <circle cx={C} cy={C} r="150" fill="url(#bd-core)" />
-      {/* The rings, the outer one turning slowly */}
+      {/* The plate: a faint night under it, so the sky behind does not read through the words */}
+      <circle cx={C} cy={C} r={R_BAND_OUT} className="bd-ground" />
+      {/* The rim's ticks, turning slowly */}
       <g className="bd-turn">
-        <circle cx={C} cy={C} r="246" className="bd-ring strong" />
-        {Array.from({ length: 180 }, (_, k) => {
-          const a = (k / 180) * 2 * Math.PI
-          const l = k % 15 === 0 ? 10 : k % 5 ? 3 : 6
-          return <line key={k} x1={C + Math.cos(a) * 246} y1={C + Math.sin(a) * 246} x2={C + Math.cos(a) * (246 - l)} y2={C + Math.sin(a) * (246 - l)} className="bd-tick" />
+        {Array.from({ length: 120 }, (_, k) => {
+          const a = (k / 120) * 2 * Math.PI
+          const l = k % 10 === 0 ? 8 : k % 5 ? 3 : 5
+          return <line key={k} x1={C + Math.cos(a) * R_RIM} y1={C + Math.sin(a) * R_RIM} x2={C + Math.cos(a) * (R_RIM - l)} y2={C + Math.sin(a) * (R_RIM - l)} className="bd-tick" />
         })}
       </g>
-      <circle cx={C} cy={C} r="196" className="bd-ring" />
-      <circle cx={C} cy={C} r="160" className="bd-ring" />
-      <circle cx={C} cy={C} r="104" className="bd-ring faint" />
-      {/* The seasons, the month of birth lit */}
-      {SEASONS.map((s) => {
-        const i0 = RING.indexOf(s.branches[0])
-        return <path key={s.element} d={arc(i0, i0 + 2, R_SEASON)} className="bd-season" style={{ stroke: EL_VAR[s.element] }} />
+      <circle cx={C} cy={C} r={R_RIM} className="bd-ring strong" />
+      <circle cx={C} cy={C} r={R_BAND_OUT} className="bd-ring strong" />
+      <circle cx={C} cy={C} r={R_BAND_IN} className="bd-ring" />
+      <circle cx={C} cy={C} r={R_MONTH} className="bd-ring faint dotted" />
+      <circle cx={C} cy={C} r={R_INNER} className="bd-ring" />
+      {/* The spokes between the branches, from the inner ring to the rim */}
+      {[...RING].map((_, i) => {
+        const [x1, y1] = at(i - 0.5, R_INNER)
+        const [x2, y2] = at(i - 0.5, R_BAND_OUT)
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="bd-spoke" />
       })}
+      {/* The month of birth, marked on its ring */}
       {(() => {
         const i = RING.indexOf(month)
-        const season = SEASONS.find((s) => s.branches.includes(month))!
-        // beside the lit month, not on the branch (where its links end)
-        const [x, y] = at(i + 0.62, R_SEASON - 26)
+        const [x, y] = at(i + 0.32, R_MONTH - 16)
         return (
           <g className="bd-month cast-l2">
-            <path d={arc(i, i, R_SEASON)} className="bd-month-glow" style={{ stroke: EL_VAR[season.element] }} filter="url(#bd-blur)" />
-            <path d={arc(i, i, R_SEASON)} className="bd-month-line" />
+            <path d={arc(i, i, R_MONTH)} className="bd-month-line" />
             <text x={x} y={y + 4} className="bd-note">
               {term('月令')}
             </text>
           </g>
         )
       })()}
-      {[...'辰戌丑未'].map((b) => {
-        const [x, y] = at(RING.indexOf(b), R_SEASON)
-        return <circle key={b} cx={x} cy={y} r="2.6" className="bd-earth" />
+      {/* From each branch a pillar stands on, a dashed line to the heart */}
+      {[...on.keys()].map((b) => {
+        const i = RING.indexOf(b)
+        const [x1, y1] = at(i, R_BAND_IN - 22)
+        const [x2, y2] = at(i, R_HEART + 4)
+        return <line key={b} x1={x1} y1={y1} x2={x2} y2={y2} className={`bd-thread ${layerOf(b)}`} />
       })}
-      {/* The branches, upright; the chart's own lit, with their pillars under them */}
+      {/* The branches in their boxes, upright; the chart's own stamped in vermilion, their pillars named under them */}
       {[...RING].map((b, i) => {
         const [x, y] = at(i, R_BRANCH)
         const mine = on.get(b)
-        const own = pillars.find((p) => p.branch.char === b)
+        const [wx, wy] = at(i, R_BAND_IN - 12)
         return (
-          <g key={b} className={['bd-branch', mine && 'mine', b === month ? 'cast-l2' : mine && 'cast-l3'].filter(Boolean).join(' ')}>
-            <text x={x} y={y + 7} style={own ? { fill: EL_VAR[own.branch.element], color: EL_VAR[own.branch.element] } : undefined}>
+          <g key={b} className={['bd-branch', mine ? `mine ${layerOf(b)}` : ''].join(' ')}>
+            <rect x={x - 13} y={y - 13} width="26" height="26" rx="2" />
+            <text x={x} y={y + 6}>
               {b}
             </text>
             {mine && (
-              <text x={x} y={y + 24} className="bd-who">
-                {mine.join('·')}
+              <text x={wx} y={wy + 4} className="bd-who">
+                {t('{pillars}柱', { pillars: mine.join('·') })}
               </text>
             )}
-          </g>
-        )
-      })}
-      {/* The four pillars as stars on the rim, two on one branch side by side; a thread from each to the heart */}
-      {pillars.map((p, k) => {
-        const same = pillars.filter((q) => q.branch.char === p.branch.char)
-        const i = RING.indexOf(p.branch.char) + (same.indexOf(p) - (same.length - 1) / 2) * 0.24
-        const [x, y] = at(i, R_RIM)
-        const [x0, y0] = at(i, 54)
-        const [x1, y1] = at(i, R_SEASON + 12)
-        return (
-          <g
-            key={p.label}
-            className={`bd-pillar-star ${k === 2 ? 'day cast-l1' : k === 1 ? 'cast-l2' : 'cast-l3'}`}
-            style={k === 2 ? { color: EL_VAR[dayMaster.element] } : undefined}
-          >
-            <line x1={x0} y1={y0} x2={x1} y2={y1} />
-            <circle cx={x} cy={y} r="3.2" />
           </g>
         )
       })}
@@ -148,7 +126,7 @@ export function BaziDial({
         (() => {
           const i = RING.indexOf(today.branch) - 0.5 + today.into
           const [x, y] = at(i, R_RIM)
-          const [lx, ly] = at(i, R_RIM + 18)
+          const [lx, ly] = at(i, R_RIM + 16)
           return (
             <g className="bd-now cast-l4">
               <circle cx={x} cy={y} r="2.6" />
@@ -158,15 +136,7 @@ export function BaziDial({
             </g>
           )
         })()}
-      {/* The 日主 */}
-      <g className="cast-l1">
-        <circle cx={C} cy={C} r="50" className="bd-heart-halo" />
-        <circle cx={C} cy={C} r="44" className="bd-heart" />
-        <text x={C} y={C + 18} className="bd-day-master" style={{ fill: EL_VAR[dayMaster.element], color: EL_VAR[dayMaster.element] }}>
-          {dayMaster.char}
-        </text>
-      </g>
-      {/* 刑冲合会 as light between the branches */}
+      {/* 刑冲合会 between the branches */}
       {links.map((r, k) => {
         const branches = r.text.slice(0, r.members.length)
         const name = r.text.slice(r.members.length)
@@ -175,19 +145,19 @@ export function BaziDial({
         const el = elementOf(r.text)
         const colour = r.kind === '冲' ? 'var(--ts-vermilion)' : el ? EL_VAR[el] : 'var(--accent)'
         if (idx.every((i) => i === idx[0])) {
-          // the same branch twice (自刑): two lights side by side
+          // the same branch twice (自刑): two marks side by side
           const [x, y] = pts[0]
           return (
             <g key={k} className="bd-link self cast-l4" style={{ color: colour }}>
-              <circle cx={x - 6} cy={y} r="3.6" />
-              <circle cx={x + 6} cy={y} r="3.6" />
-              <text x={C + (x - C) * 0.8} y={C + (y - C) * 0.8 + 4} className="bd-note">
+              <circle cx={x - 6} cy={y} r="3" />
+              <circle cx={x + 6} cy={y} r="3" />
+              <text x={C + (x - C) * 0.82} y={C + (y - C) * 0.82 + 4} className="bd-note">
                 {name}
               </text>
             </g>
           )
         }
-        // A two-branch link bows towards the heart; its label sits on the curve's middle
+        // A two-branch link bows towards the heart; its name sits on the curve's middle
         const ctrl: [number, number] = pts.length === 2 ? [((pts[0][0] + pts[1][0]) / 2) * 0.4 + C * 0.6, ((pts[0][1] + pts[1][1]) / 2) * 0.4 + C * 0.6] : [C, C]
         const d =
           r.kind === '冲'
@@ -198,14 +168,13 @@ export function BaziDial({
         const soft = r.kind === '刑' || r.kind === '害' || r.kind === '破'
         const mid =
           r.kind === '冲' || pts.length !== 2
-            ? [C, C - 70]
+            ? [C, C - 84]
             : [0.25 * pts[0][0] + 0.5 * ctrl[0] + 0.25 * pts[1][0], 0.25 * pts[0][1] + 0.5 * ctrl[1] + 0.25 * pts[1][1]]
         return (
           <g key={k} className={`bd-link cast-l4${soft ? ' soft' : ''}`} style={{ color: colour }}>
-            {!soft && <path d={d} className="bd-link-glow" filter="url(#bd-blur)" />}
             <path d={d} className="bd-link-line" />
             {pts.map(([x, y], j) => (
-              <circle key={j} cx={x} cy={y} r="3.6" />
+              <circle key={j} cx={x} cy={y} r="3" />
             ))}
             <text x={mid[0]} y={mid[1] - 7} className="bd-note">
               {name}
@@ -213,6 +182,14 @@ export function BaziDial({
           </g>
         )
       })}
+      {/* The 日主 at the heart */}
+      <g className="cast-l1">
+        <circle cx={C} cy={C} r={R_HEART} className="bd-heart" />
+        <circle cx={C} cy={C} r={R_HEART - 6} className="bd-heart-line" />
+        <text x={C} y={C + 26} className="bd-day-master">
+          {dayMaster.char}
+        </text>
+      </g>
     </svg>
   )
 }

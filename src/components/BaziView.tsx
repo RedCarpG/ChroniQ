@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { BaziHero } from './BaziHero'
+import { smoothUpdate } from './smoothUpdate'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
@@ -214,7 +215,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
         ]}
       />
 
-      <section className="card" id="bazi-natal">
+      {/* 天书's 简洁 is a scene of its own (BaziHero): the particulars are in it, not over it */}
+      <section className={`card${tianshu && !fullChart ? ' scene' : ''}`} id="bazi-natal">
         {/* The chart's particulars, and beside them (never under them) 简洁 / 详细 */}
         <div className="natal-head">
           <div className="chart-meta">
@@ -235,7 +237,11 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               {term('农历')} {term(chart.lunarText)}
             </div>
           </div>
-          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="natal-view" />
+          <ChartViewSwitch
+            full={fullChart}
+            onToggle={() => (tianshu ? smoothUpdate('bazi', toggleFullChart) : toggleFullChart())}
+            className="natal-view"
+          />
         </div>
 
         {/* 天书: the dial and the pillars as a scene; the table under it in 详细 */}
@@ -243,6 +249,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           <BaziHero
             chart={chart}
             full={fullChart}
+            place={(input.place ?? DEFAULT_PLACE).name}
             moment={
               <Suspense fallback={null}>
                 <MomentNote moment={moment} date={input} hour={chart.lunarText.split(' ').at(-1) ?? ''} />
