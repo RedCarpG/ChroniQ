@@ -4,6 +4,7 @@
 // mist all but lifts: the sky of the birth behind it is the scene there (tianshu.css .ts-page-bazi),
 // with a thin fog drifting over it, as smoke over an old plate.
 import { useMemo } from 'react'
+import { useParallax } from './useParallax'
 
 const W = 1200
 const H = 900
@@ -16,6 +17,8 @@ function motes(seed: number, colours: string[], n: number) {
 }
 
 export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; page: string }) {
+  // The page's layers moving against one another with the pointer: depth (useParallax)
+  useParallax(true)
   const dots = useMemo(() => (realm === 'east' ? motes(7, ['#f2d6a8', '#e0503a', '#ebe3cf'], 110) : motes(13, ['#ffffff', '#c8d6ff', '#ffe2bd'], 150)), [realm])
   return (
     <div className={`ts-atmos ts-${realm} ts-page-${page}`} aria-hidden="true">
