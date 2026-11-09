@@ -2,15 +2,20 @@
 import './dom'
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_SETTINGS } from '../../lib/settings'
 import { DEFAULT_ZIWEI_SCHOOLS } from '../../lib/ziweiSchools'
+import { SettingsContext } from '../../settingsContext'
 import { ZiweiView } from '../ZiweiView'
 
 const input = { year: 1990, month: 5, day: 15, hour: 10, minute: 30, gender: 1 } as const
 
 /** The 运限 rows (大限, 流年, 流月, 流日, 流时), the 叠加 buttons and the layers on the board */
 function setUp() {
+  // 经典: in 天书's 简洁 the 运限 are left for 详细
   const { container } = render(
-    <ZiweiView input={input} onChange={() => {}} schools={DEFAULT_ZIWEI_SCHOOLS} onSchoolsChange={() => {}} onColourChange={() => {}} />,
+    <SettingsContext.Provider value={{ ...DEFAULT_SETTINGS, uiStyle: 'classic' }}>
+      <ZiweiView input={input} onChange={() => {}} schools={DEFAULT_ZIWEI_SCHOOLS} onSchoolsChange={() => {}} onColourChange={() => {}} />
+    </SettingsContext.Provider>,
   )
   const card = container.querySelector<HTMLElement>('#ziwei-fortune')!
   const rows = [...card.querySelectorAll<HTMLElement>('.fortune-group')]
