@@ -37,6 +37,7 @@ import { useSettings, useT, useTerm } from '../settingsContext'
 const loadBirthSky = () => import('./BirthSky')
 const BirthSky = lazy(() => loadBirthSky().then((m) => ({ default: m.BirthSky })))
 const FiveStars = lazy(() => loadBirthSky().then((m) => ({ default: m.FiveStars })))
+const MomentNote = lazy(() => loadBirthSky().then((m) => ({ default: m.MomentNote })))
 
 interface Props {
   input: BaziInput
@@ -238,7 +239,17 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
         </div>
 
         {/* 天书: the dial and the pillars as a scene; the table under it in 详细 */}
-        {tianshu && <BaziHero chart={chart} full={fullChart} />}
+        {tianshu && (
+          <BaziHero
+            chart={chart}
+            full={fullChart}
+            moment={
+              <Suspense fallback={null}>
+                <MomentNote moment={moment} date={input} hour={chart.lunarText.split(' ').at(-1) ?? ''} />
+              </Suspense>
+            }
+          />
+        )}
         {(!tianshu || fullChart) && (
         <HighlightScope pillars={chart.pillars} relations={chart.relations}>
           <PillarTable
