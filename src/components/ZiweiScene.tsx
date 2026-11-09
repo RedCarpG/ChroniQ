@@ -30,7 +30,7 @@ const C = 300
 const R_RIM = 292
 const R_NAMES = 252
 const R_IN = 140
-const R_HEART = 64
+const R_HEART = 50
 /** Angle of a palace, degrees clockwise from the top, 午 at the top */
 const angleOf = (branch: string) => ((BRANCHES.indexOf(branch) - 6) * 30 + 360) % 360
 const at = (r: number, deg: number) => [C + r * Math.sin((deg * Math.PI) / 180), C - r * Math.cos((deg * Math.PI) / 180)] as const
@@ -84,8 +84,8 @@ export function ZiweiWheel({
   pick: (branch: string) => Record<string, unknown>
 }) {
   const t = useT()
+  const term = useTerm()
   const palaces = Object.values(chart.palaces)
-  const soul = palaces.find((p) => p.isSoul)!
   const from = roles && [...roles].find(([, r]) => r === 'self')?.[0]
   const sf = from ? sanFangSiZheng(from) : null
   const point = (b: string) => at(R_IN, angleOf(b))
@@ -114,16 +114,12 @@ export function ZiweiWheel({
           <line x1={f(point(from)[0])} y1={f(point(from)[1])} x2={f(point(sf.opposite)[0])} y2={f(point(sf.opposite)[1])} />
         </g>
       )}
-      {/* The pole, and the 命宫's stars under it */}
+      {/* The pole at the heart: the 命宫's stars are in its own palace, not said again here */}
       <circle className="zw-heart" cx={C} cy={C} r={R_HEART} />
-      <circle className="zw-pole" cx={C} cy={C - 38} r={2.6} />
-      {soul.major.length ? (
-        soul.major.map((s, i) => <StarText key={s.name} star={s} x={C} y={C + 4 + (i - (soul.major.length - 1) / 2) * 30 + 8} size={22} />)
-      ) : (
-        <text className="zw-empty" x={C} y={C + 8} textAnchor="middle">
-          {t('命无正曜')}
-        </text>
-      )}
+      <circle className="zw-pole" cx={C} cy={C - 10} r={3.4} />
+      <text className="zw-pole-name" x={C} y={C + 24} textAnchor="middle">
+        {term('紫微垣')}
+      </text>
     </svg>
   )
 }
