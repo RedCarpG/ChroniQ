@@ -64,9 +64,25 @@
 .ts-grain { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: overlay; opacity: 0.28; }
 @media (prefers-reduced-motion: reduce) { .ts-motes circle { animation: none; } }
 @media print { .ts-atmos { display: none; } }
+/* 八字: the sky of the birth is the scene (BirthSky), so the mist all but lifts, leaving a warm edge */
+.ts-page-bazi .ts-mist {
+  background:
+    radial-gradient(ellipse 70% 45% at 10% 4%, rgb(130 88 52 / 0.16), transparent 70%),
+    radial-gradient(ellipse 120% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.5));
+}
+.ts-page-bazi .ts-motes { opacity: 0.35; }
 
-/* The sky of the birth stays, but behind the words: dimmed under the night's mist */
-:root[data-style] .birth-sky { opacity: 0.5; }
+/* The sky of the birth (only on 八字), nearly at full strength: the chart is drawn over it */
+:root[data-style] .birth-sky { opacity: 0.92; }
+
+/* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
+:root[data-style] .bazi-form-summary {
+  display: flex; flex: 1 0 100%; align-items: baseline; justify-content: center; gap: 14px; margin: -4px 0; padding: 4px 0;
+  border: 0; background: none; color: var(--muted); font-family: var(--font-title); font-size: 14px; letter-spacing: 0.16em;
+}
+:root[data-style] .bazi-form-summary > span:first-child { flex: 0 1 auto; min-width: 0; }
+:root[data-style] .bazi-form-edit { flex: none; color: var(--accent); font-size: 13px; letter-spacing: 0.1em; border-bottom: 1px solid var(--edge); }
+:root[data-style] .bazi-form.folded > :not(.bazi-form-summary) { display: none; }
 
 /* Few frames: the cards give way to the night, a fading hairline between them */
 :root[data-style] .app main .card { background: none; border: 0; border-radius: 0; box-shadow: none; }
@@ -81,7 +97,7 @@
 .bazi-hero { position: relative; display: grid; justify-items: center; margin: 0 -16px; overflow: hidden; overflow: clip; }
 .bazi-hero-dial { width: min(560px, 108%); margin: -4px 0 -14px; }
 .bazi-dial { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font-title); }
-.bazi-dial .bd-ground { fill: rgb(10 8 7 / 0.62); }
+.bazi-dial .bd-ground { fill: rgb(10 8 7 / 0.34); }
 .bazi-dial .bd-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.25; stroke-width: 0.7; }
 .bazi-dial .bd-ring.strong { stroke-opacity: 0.5; stroke-width: 1; }
 .bazi-dial .bd-ring.faint { stroke-opacity: 0.16; }
@@ -107,6 +123,23 @@
 .bazi-dial .bd-heart-halo { fill: none; stroke: var(--ts-vermilion); stroke-opacity: 0.25; }
 .bazi-dial .bd-day-master { font-size: 50px; font-weight: 700; text-anchor: middle; filter: drop-shadow(0 0 14px currentColor); }
 @media (prefers-reduced-motion: reduce) { .bazi-dial .bd-turn, .bazi-dial .bd-month-glow { animation: none; } }
+/* The four pillars, stars on the rim; a thread from each to the heart, the 日主's in its own colour */
+.bazi-dial .bd-pillar-star { color: #f6e6c4; }
+.bazi-dial .bd-pillar-star circle { fill: currentColor; filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor); }
+.bazi-dial .bd-pillar-star line { stroke: currentColor; stroke-width: 0.8; stroke-opacity: 0.28; }
+.bazi-dial .bd-pillar-star.day line { stroke-opacity: 0.6; stroke-width: 1.1; }
+
+/* 起盘 (BaziHero): while the chart is cast, the layers not yet come wait in the dark */
+.bazi-hero :is(.bd-l1, .bd-l2, .bd-l3, .bd-l4) { transition: opacity 0.9s ease; }
+.bazi-hero[data-stage='1'] :is(.bd-l2, .bd-l3, .bd-l4),
+.bazi-hero[data-stage='2'] :is(.bd-l3, .bd-l4),
+.bazi-hero[data-stage='3'] .bd-l4 { opacity: 0.05; }
+.bazi-cast { display: flex; justify-content: center; align-items: baseline; gap: 14px; min-height: 1.8em; margin: 10px 0 0; font-size: 13px; letter-spacing: 0.14em; color: var(--muted); }
+.bazi-cast-line { color: var(--text); animation: bazi-cast-in 0.7s ease both; }
+@keyframes bazi-cast-in { from { opacity: 0; transform: translateY(4px); } }
+.bazi-cast button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; opacity: 0.7; }
+.bazi-cast button:hover { color: var(--accent); opacity: 1; }
+@media print { .bazi-cast { display: none; } }
 
 .ts-kicker { font-family: 'Cormorant Garamond', var(--font-title); font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); margin-left: 0.5em; }
 .bazi-hero-title { text-align: center; }
