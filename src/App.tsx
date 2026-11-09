@@ -435,7 +435,7 @@ export function App() {
             </Suspense>
           )}
         </main>
-        {realm && <TianshuAtmosphere realm={realm} />}
+        {realm && <TianshuAtmosphere realm={realm} page={tab} />}
         <PageNav page={tab} onPick={goTab} className="at-foot" />
         {!footShown && (
           <button
