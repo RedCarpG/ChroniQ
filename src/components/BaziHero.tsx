@@ -8,6 +8,9 @@
 // stroke), then the month it was born in, then the four pillars, then the 刑冲合会 between them — a line
 // under the dial saying each. On the dial, where today stands in the year (此刻).
 import { useMemo, type ReactNode } from 'react'
+// 站酷小薇, the scene's lettering (tianshu.css): slender and sharp, as 瘦金 is; only for 天书's 八字,
+// and, cut by character ranges, only the characters shown are fetched
+import '@fontsource/zcool-xiaowei/400.css'
 import { SolarDay } from 'tyme4ts'
 import type { BaziChart, ElementName } from '../lib/bazi'
 import { baziReading, DAY_MASTER_IMAGE } from '../lib/baziReading'
