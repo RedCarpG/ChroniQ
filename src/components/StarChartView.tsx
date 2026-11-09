@@ -49,7 +49,7 @@ import { starPrompt } from '../lib/ai/prompts'
 import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
-import { CastLine } from './CastLine'
+import { StarHero } from './StarHero'
 import { useCasting } from './useCasting'
 
 // 生辰星空, shared with the 八字 page: loaded apart, as it brings the star catalogue
@@ -87,8 +87,14 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
   // The chart's own birthplace, shared with 八字 / 紫微 and saved with the chart
   const place = input.place ?? DEFAULT_PLACE
   const chart = useMemo(() => buildStarChart(input, place, settings), [input, place, settings])
-  // 行运 / 推运: a moment to compare with the natal chart, read in the birthplace's time zone.
-  const [mode, setMode] = useState<'natal' | OverlayKind | 'composite'>('natal')
+  // 简洁 / 详细, as on the other charts; 天书's 简洁 is a scene of the natal chart alone (StarHero)
+  const [fullChart, toggleFullChart] = useChartFull()
+  const tianshu = useSettings().uiStyle === 'tianshu'
+  const scene = tianshu && !fullChart
+  // 行运 / 推运: a moment to compare with the natal chart, read in the birthplace's time zone. The
+  // comparisons are for 详细: the scene shows the natal chart, the one chosen kept for coming back.
+  const [pickedMode, setMode] = useState<'natal' | OverlayKind | 'composite'>('natal')
+  const mode = scene ? 'natal' : pickedMode
   const [when, setWhen] = useState(nowLocal)
   // 合盘: the other person, remembered between visits
   const [partner, setPartnerState] = useState<Partner>(() => loadPartner(input, place))
@@ -123,9 +129,6 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
   const sun = byKey('sun')
   const moon = byKey('moon')
   const asc = byKey('asc')
-  // 简洁 / 详细, as on the other charts
-  const [fullChart, toggleFullChart] = useChartFull()
-  const tianshu = useSettings().uiStyle === 'tianshu'
 
   // The sky at birth behind the page; a natal body pointed at in the wheel or the table is picked out in it
   const moment = useMemo(
@@ -133,8 +136,9 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
     [chart.utc, place.latitude, place.longitude],
   )
   const skyFocus = focus && 'planet' in focus && focus.layer === 'natal' ? focus.planet : null
-  // 天书's 起盘: the Sun, the Moon, the Ascendant, the other bodies in their houses, then the aspects
-  const cast = useCasting(`${chart.utc.getTime()} ${place.latitude} ${place.longitude}`, 5, tianshu)
+  // 天书's 起盘, in the scene: the Sun, the Moon, the Ascendant, the other bodies in their houses, then
+  // the aspects. 详细 is for reading the chart, and shows it whole at once
+  const cast = useCasting(`${chart.utc.getTime()} ${place.latitude} ${place.longitude}`, 5, scene)
   const others = chart.points.filter((p) => !['sun', 'moon', 'asc', 'mc', 'node', 'southNode'].includes(p.key)).length
   const aspects = chart.aspects.filter((a) => !['asc', 'mc'].includes(a.a.key) && !['asc', 'mc'].includes(a.b.key)).length
   const captions = [
@@ -174,40 +178,30 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           ['star-reading', t('解读')],
           ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
           ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
-          ['star-houses', t('宫位')],
+          ...(fullChart ? [['star-houses', t('宫位')] as [string, string]] : []),
         ]}
       />
 
-      <section className="card" id="star-natal" data-stage={cast.stageAttr}>
-        {/* 天书: the chart's title, the Sun's heart and the Ascendant's face */}
-        {tianshu && (
-          <div className="st-hero">
-            <span className="ts-kicker" aria-hidden="true">
-              Natal Chart
-            </span>
-            <h3>{t('{sun}之心 · {asc}之貌', { sun: t(SIGNS[sun.sign]), asc: t(SIGNS[asc.sign]) })}</h3>
-            <CastLine cast={cast} captions={captions} />
+      {/* 天书's 简洁 is a scene of its own (StarHero); its 详细, the chart to read, without the scene */}
+      <section className={`card${scene ? ' scene' : ''}`} id="star-natal" data-stage={cast.stageAttr}>
+        {/* The big three: in 天书 they are in the scene, and in 详细 the table's first rows */}
+        {!tianshu && (
+          <div className="big-three">
+            {(
+              [
+                [sun, t('太阳')],
+                [moon, t('月亮')],
+                [asc, t('上升')],
+              ] as const
+            ).map(([pt, label]) => (
+              <div key={label} className={`b3 el-${SIGN_ELEMENT[pt.sign]}`}>
+                <small className="muted">{label}</small>
+                <span className="b3-glyph">{SIGN_GLYPHS[pt.sign]}</span>
+                <strong>{signName(t, pt.sign)}</strong>
+              </div>
+            ))}
           </div>
         )}
-        <div className="big-three">
-          {(
-            [
-              [sun, t('太阳'), 'SOL', t('核心的你'), 'cast-l1'],
-              [moon, t('月亮'), 'LUNA', t('内心的你'), 'cast-l2'],
-              [asc, t('上升'), 'ORIENS', t('外在的你'), 'cast-l3'],
-            ] as const
-          ).map(([pt, label, latin, who, layer]) => (
-            <div key={label} className={`b3 el-${SIGN_ELEMENT[pt.sign]} ${layer}`}>
-              <span className="b3-latin" aria-hidden="true">
-                {latin}
-              </span>
-              <small className="muted">{label}</small>
-              <span className="b3-glyph">{SIGN_GLYPHS[pt.sign]}</span>
-              <strong>{signName(t, pt.sign)}</strong>
-              <span className="b3-who">{who}</span>
-            </div>
-          ))}
-        </div>
         {fullChart && (
         <p className="muted row-note star-meta">
           {t('{place}（{coords}）· 按出生地时间 {offset}', {
@@ -221,6 +215,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         </p>
         )}
         <div className="overlay-bar">
+          {!scene && (
           <div className="seg small" role="group" aria-label={t('比较盘')}>
             {(
               [
@@ -236,6 +231,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
               </button>
             ))}
           </div>
+          )}
           {(mode === 'transit' || mode === 'progressed') && (
             <>
               <input
@@ -260,19 +256,40 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
           {tianshu && <BirthChip input={input} trueSolar={false} />}
           {tianshu && <SchoolsMenu panel={schoolsPanel} />}
-          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="star-view" />
+          <ChartViewSwitch
+            full={fullChart}
+            onToggle={() => (tianshu ? smoothUpdate('chart-view', toggleFullChart) : toggleFullChart())}
+            className="star-view"
+          />
         </div>
         {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} input={input} />}
         {(mode === 'transit' || mode === 'progressed') && !overlay && (
           <p className="muted row-note">{t('请选择出生之后的日期。')}</p>
         )}
-        <div className="star-layout">
-          <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} tianshu={tianshu} />
-          <div className="star-tables">
-            <PointTable chart={chart} hl={hl} hover={hover} full={fullChart} />
-            <SignBalance chart={chart} full={fullChart} tianshu={tianshu} />
+        {scene ? (
+          <StarHero
+            chart={chart}
+            place={place.name}
+            wheel={<StarWheel chart={chart} overlay={null} hl={hl} hover={hover} tianshu />}
+            balance={<SignBalance chart={chart} full={false} tianshu />}
+            cast={cast}
+            captions={captions}
+            pointAt={{
+              planet: (key) => hover({ planet: key, layer: 'natal' }),
+              house: (n) => hover({ house: n }),
+              aspect: (a) => hover({ aspect: a, cross: false }),
+            }}
+            lit={hl.aspect}
+          />
+        ) : (
+          <div className="star-layout">
+            <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} tianshu={tianshu} />
+            <div className="star-tables">
+              <PointTable chart={chart} hl={hl} hover={hover} full={fullChart} />
+              <SignBalance chart={chart} full={fullChart} tianshu={tianshu} />
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {overlay && (
@@ -291,7 +308,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       {compositeChart && <CompositeCard chart={compositeChart} partnerName={partnerLabel(t, partner.name)} settings={settings} />}
 
       {!fullChart ? (
-        <p className="muted row-note star-more">{t('十二宫宫头、全部相位和计算说明在「详细」里')}</p>
+        !tianshu && <p className="muted row-note star-more">{t('十二宫宫头、全部相位和计算说明在「详细」里')}</p>
       ) : (
       <section className="card" id="star-houses">
         <h3 className="section-title">

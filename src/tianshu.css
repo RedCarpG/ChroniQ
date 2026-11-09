@@ -136,6 +136,7 @@
 .birth-chip {
   display: inline-flex; align-items: baseline; gap: 10px; padding: 4px 0; border: 0; background: none; cursor: pointer;
   font-family: var(--font-title); font-size: 13px; letter-spacing: 0.12em; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: lining-nums;
 }
 .birth-chip:hover { color: var(--text); }
 .birth-chip-edit { color: var(--accent); border-bottom: 1px solid var(--edge); }
@@ -289,9 +290,9 @@
   .bz-links { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; max-width: 260px; text-align: right; }
 }
 
-/* 简洁 ↔ 详细 (smoothUpdate 'bazi'): the scene and the table crossfade */
-:root[data-vt='bazi']::view-transition-old(root) { animation: ts-fade-out 0.3s ease both; }
-:root[data-vt='bazi']::view-transition-new(root) { animation: ts-fade-in 0.45s ease 0.15s both; }
+/* 简洁 ↔ 详细 (smoothUpdate 'chart-view'): the scene and the full chart crossfade */
+:root[data-vt='chart-view']::view-transition-old(root) { animation: ts-fade-out 0.3s ease both; }
+:root[data-vt='chart-view']::view-transition-new(root) { animation: ts-fade-in 0.45s ease 0.15s both; }
 @keyframes ts-fade-out { to { opacity: 0; } }
 @keyframes ts-fade-in { from { opacity: 0; } }
 
@@ -375,20 +376,64 @@
 :root[data-style] #ziwei-board .palace .mutagen { transition: opacity 0.9s ease; }
 
 /* ---------- 星盘 ---------- */
-.b3-latin, .b3-who { display: none; }
-.st-hero { text-align: center; margin: 4px 0 20px; }
-.st-hero h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(22px, 5.6vw, 30px); font-weight: 600; letter-spacing: 0.24em; }
-/* The big three as arched windows */
-:root[data-style] .big-three { gap: 12px; max-width: 520px; margin: 0 auto; }
-:root[data-style] .b3 {
-  position: relative; padding: 20px 4px 14px; border: 1px solid rgb(220 188 124 / 0.3); border-bottom: 0; border-radius: 80px 80px 0 0;
-  background: linear-gradient(180deg, rgb(111 143 240 / 0.14), transparent 80%); box-shadow: none;
+/* 简洁: the scene (StarHero), laid out as 八字's is but read across: the wheel in the middle, the chart's
+   name and the four elements at the top corners, the big three and the closest aspects at the foot */
+#star-natal.scene .overlay-bar { justify-content: flex-end; }
+.star-scene { position: relative; display: grid; justify-items: center; margin: 0 -16px; padding: 4px 0 12px; overflow: hidden; overflow: clip; }
+.star-scene .st-wheel { width: min(600px, 100%); }
+.star-scene .star-wheel { display: block; width: 100%; max-width: none; }
+/* The degrees are for reading the chart, in 详细 */
+.star-scene .star-wheel .planet-deg { display: none; }
+.st-title { order: -1; margin: 0 0 14px; text-align: center; }
+.st-title h3 { display: grid; margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(24px, 6vw, 34px); font-weight: 500; letter-spacing: 0.24em; line-height: 1.35; }
+.st-title h3 span:first-child { color: var(--text); text-shadow: 0 0 18px rgb(160 180 255 / 0.45); }
+.st-title h3 span + span { font-size: 0.8em; color: var(--accent); }
+.st-title p { margin: 8px 0 0; font-size: 13px; letter-spacing: 0.16em; color: var(--muted); }
+/* The four elements, smaller, without the planets under each: what they come to is said under them */
+.st-elements { order: 9; width: min(300px, 100%); margin-top: 18px; }
+.st-elements .sign-alchemy { margin: 0; }
+.st-elements :is(.sa-el small, .sign-alchemy-note) { display: none; }
+.st-elements .sa-el svg { width: 30px; height: 30px; }
+.st-elements .sa-el b { font-size: 28px; }
+.st-elements .sign-alchemy-verdict { margin: 10px 0 0; font-size: 12.5px; line-height: 1.8; }
+/* The big three, standing as 八字's pillars do: each sign's glyph in its element's colour */
+.st-three { display: flex; gap: 30px; margin-top: 18px; }
+.st-light { display: grid; justify-items: center; cursor: default; }
+.st-light i { font-style: normal; font-family: 'Cormorant Garamond', var(--font-title); font-size: 11px; letter-spacing: 0.4em; margin-left: 0.4em; color: var(--accent); }
+.st-light b { margin-top: 2px; font-size: 40px; font-weight: 400; line-height: 1.25; text-shadow: 0 0 16px currentColor; }
+.st-light strong { font-family: var(--font-title); font-size: 16px; font-weight: 500; letter-spacing: 0.16em; color: var(--text); }
+.st-light span { margin-top: 3px; font-size: 11.5px; letter-spacing: 0.08em; color: var(--muted); }
+.st-light:hover strong { color: var(--accent); }
+.st-light em { font-style: normal; }
+/* In English: the title closer set, and each light's name over what it is, so the three stay narrow */
+:root[lang='en'] .st-title h3 { letter-spacing: 0.06em; }
+:root[lang='en'] .st-three { gap: 22px; }
+:root[lang='en'] .st-light > span { display: grid; justify-items: center; text-align: center; }
+:root[lang='en'] .st-light .st-sep { display: none; }
+/* The closest aspects, in the wheel's colours: each lighting its line when pointed at */
+/* Counts and orbs in lining figures: Cormorant's old-style 1 reads as an I */
+.st-aspects { font-variant-numeric: lining-nums; }
+.st-aspects { order: 10; display: grid; justify-items: center; gap: 3px; margin-top: 16px; font-family: var(--font-title); font-size: 13px; letter-spacing: 0.12em; color: var(--muted); text-align: center; }
+.st-aspects > span { color: var(--text); letter-spacing: 0.2em; }
+.st-aspects > small { font-size: 11.5px; }
+.st-aspects ul { display: grid; gap: 3px; margin: 6px 0 0; padding: 0; list-style: none; }
+.st-aspects li { color: var(--text); cursor: default; }
+.st-aspects li b { margin: 0 3px; font-weight: 400; }
+.st-aspects li.tone-soft b { color: #9fb4ff; }
+.st-aspects li.tone-hard b { color: #ff8a73; }
+.st-aspects li.tone-major b { color: var(--accent); }
+.st-aspects li small { margin-left: 8px; font-size: 11px; color: var(--muted); }
+.st-aspects li:is(:hover, .on) { color: var(--accent); }
+@media (min-width: 900px) {
+  .star-scene { min-height: 700px; align-content: center; }
+  /* on a narrower screen, the wheel smaller, leaving the corners their room */
+  .star-scene .st-wheel { width: min(600px, 100% - 440px); }
+  .st-title { position: absolute; left: 3%; top: 4px; margin: 0; text-align: left; }
+  .st-title .ts-kicker { margin-left: 0; }
+  .st-elements { position: absolute; right: 3%; top: 4px; width: 250px; margin: 0; }
+  .st-three { position: absolute; left: 3%; bottom: 10px; margin: 0; }
+  .st-aspects { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; text-align: right; }
 }
-:root[data-style] .b3-latin { display: block; font-family: 'Cormorant Garamond', var(--font-title); font-size: 11px; letter-spacing: 0.4em; margin-left: 0.4em; color: var(--accent); }
-:root[data-style] .b3 small { display: none; }
-:root[data-style] .b3-glyph { margin: 6px 0 2px; font-size: 32px; color: var(--text); text-shadow: 0 0 18px rgb(160 180 255 / 0.9); }
-:root[data-style] .b3 strong { font-family: var(--font-title); letter-spacing: 0.16em; }
-:root[data-style] .b3-who { display: block; margin-top: 4px; font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
 /* The wheel, engraved in gold and lit */
 :root[data-style] .star-wheel { --plate: transparent; background: radial-gradient(circle closest-side, rgb(6 6 26 / 0.66) 92%, transparent 100%); border-radius: 50%; }
 :root[data-style] .star-wheel .sign-band { stroke: rgb(220 188 124 / 0.32); }
@@ -414,7 +459,7 @@
 .sign-alchemy-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; }
 .sa-el { display: grid; justify-items: center; align-content: start; gap: 2px; padding: 0 2px; }
 .sa-el svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; filter: drop-shadow(0 0 6px currentColor); }
-.sa-el b { font-family: 'Cormorant Garamond', var(--font-title); font-size: 36px; font-weight: 500; line-height: 1; margin-top: 6px; }
+.sa-el b { font-family: 'Cormorant Garamond', var(--font-title); font-size: 36px; font-weight: 500; line-height: 1; margin-top: 6px;; font-variant-numeric: lining-nums; }
 .sa-el.most b { text-shadow: 0 0 18px currentColor; }
 .sa-el .tip-label { font-size: 12px; letter-spacing: 0.16em; color: var(--text); }
 .sa-el i { font-style: normal; font-family: 'Cormorant Garamond', var(--font-title); font-size: 10px; letter-spacing: 0.32em; color: var(--muted); }
