@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
+import { BaziHero } from './BaziHero'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
@@ -49,7 +50,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
   const aiPrompt = useMemo(() => baziPrompt(chart), [chart])
   const term = useTerm()
   const t = useT()
-  const { language, birthSky } = useSettings()
+  const { language, birthSky, uiStyle } = useSettings()
+  const tianshu = uiStyle === 'tianshu'
   // The moment of birth on the clock at the birthplace (the sky as it was; 真太阳时 is for the 八字)
   const moment = useMemo(() => {
     const place = input.place ?? DEFAULT_PLACE
@@ -235,6 +237,9 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="natal-view" />
         </div>
 
+        {/* 天书: the dial and the pillars as a scene; the table under it in 详细 */}
+        {tianshu && <BaziHero chart={chart} full={fullChart} />}
+        {(!tianshu || fullChart) && (
         <HighlightScope pillars={chart.pillars} relations={chart.relations}>
           <PillarTable
             pillars={chart.pillars}
@@ -267,6 +272,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
 
           <Relations title={term('原局刑冲合会')} items={chart.relations} schools={schools} />
         </HighlightScope>
+        )}
 
         {fullChart && (
         <dl className="kv inline">

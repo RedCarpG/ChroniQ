@@ -18,7 +18,8 @@ import { loadZiweiSchools, saveZiweiSchools, type ZiweiSchoolSettings } from './
 import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/starPrefs'
 import { DEFAULT_PLACE, type Place } from './lib/place'
 import { toUtc } from './lib/timeZone'
-import { applyScale, applyTheme, loadSettings, saveSettings, type Settings } from './lib/settings'
+import { TianshuAtmosphere } from './components/TianshuAtmosphere'
+import { applyScale, applyStyle, loadSettings, saveSettings, TIANSHU_REALM, type Settings } from './lib/settings'
 import { SettingsContext } from './settingsContext'
 import { hantReady, loadHant } from './lib/hant'
 import { startHantDom } from './hantDom'
@@ -168,7 +169,6 @@ export function App() {
   // App sits outside the settings context it provides, so it reads the language itself
   const t = (text: string, vars?: Vars) => translate(settings.language, text, vars)
   const [creditBefore, creditAfter] = t('历法数据由 {lib} 提供 · 仅供参考').split('{lib}')
-  useEffect(() => applyTheme(settings.theme), [settings.theme])
   useEffect(() => {
     document.documentElement.lang = settings.language === 'en' ? 'en' : settings.language === 'zh-Hant' ? 'zh-Hant' : 'zh-CN'
   }, [settings.language])
@@ -226,6 +226,9 @@ export function App() {
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])
+  // 界面风格: the 天书 look draws the 命理 pages by night, over an atmosphere of its own (TianshuAtmosphere)
+  const realm = settings.uiStyle === 'tianshu' ? TIANSHU_REALM[tab] : undefined
+  useEffect(() => applyStyle(settings.uiStyle, tab, settings.theme), [settings.uiStyle, tab, settings.theme])
   // The top bar, folded up on the full-screen pages (each visit starts folded): the mouse at the top of the
   // screen brings it down, and it goes again a moment after the mouse leaves it, unless one of its
   // menus is open or it holds the focus; on a touch screen, the small tabs pull it down and fold it up
@@ -432,6 +435,7 @@ export function App() {
             </Suspense>
           )}
         </main>
+        {realm && <TianshuAtmosphere realm={realm} />}
         <PageNav page={tab} onPick={goTab} className="at-foot" />
         {!footShown && (
           <button
