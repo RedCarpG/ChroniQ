@@ -4,6 +4,16 @@
 // Shared words defined elsewhere (组合盘, 星盘, the house-system labels in
 // schools.ts) are not repeated here.
 export const STAR: Record<string, string> = {
+  阳性: 'Masculine',
+  阴性: 'Feminine',
+  没有: 'none',
+  '热情、行动、自信': 'Warmth, action, confidence',
+  '务实、稳定、耐心': 'Practical, steady, patient',
+  '思考、交流、好奇': 'Thinking, talking, curious',
+  '情感、直觉、体贴': 'Feeling, intuition, care',
+  '按太阳到冥王星十颗星计，不含交点、上升和天顶': 'Counting the ten planets, Sun to Pluto; not the nodes, Ascendant or Midheaven',
+  '十二宫宫头、全部相位和计算说明在「详细」里': 'The house cusps, every aspect and how the chart is worked out are under Details',
+
   // Planets and points (BODY_INFO names, and the angles)
   太阳: 'Sun',
   月亮: 'Moon',

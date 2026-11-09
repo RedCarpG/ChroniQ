@@ -33,6 +33,7 @@ import { AiAnalysis } from './AiAnalysis'
 import { RightDrawer } from './RightDrawer'
 import { ziweiPrompt } from '../lib/ai/prompts'
 import { ZiweiReadingCard } from './ChartReadingCards'
+import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { SanFangTip, StarTip } from './ZiweiTips'
 import type { Settings } from '../lib/settings'
 
@@ -117,6 +118,8 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const palacePick = usePick<string>()
   const active = palacePick.active
   const [mode, setModeState] = useState<BoardMode>(loadMode)
+  // 简洁 / 详细, as on the other charts
+  const [fullChart, toggleFullChart] = useChartFull()
   const setMode = (next: BoardMode) => {
     setModeState(next)
     try {
@@ -438,6 +441,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
       />
       <section className="card" id="ziwei-board">
         <div className="zw-toolbar">
+          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} />
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
             {(
               [
@@ -463,6 +467,9 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                 role={roles?.get(p.branch)}
                 fly={flies && (p.branch === active ? 'src' : flyInto(flies, p.branch))}
                 showSelf={mode === 'feihua'}
+                full={fullChart}
+                // 四化飞星 goes by the palaces' stems: shown then in 简洁 too
+                showStem={fullChart || mode === 'feihua'}
                 layers={layers}
                 pick={palacePick.props}
                 lit={!!litPattern?.palaces.includes(p.branch)}
@@ -805,11 +812,17 @@ function PalaceView({
   role,
   fly,
   showSelf,
+  full,
+  showStem,
   layers,
   pick,
   lit,
 }: {
   palace: ZiweiPalace
+  /** 详细: the 杂曜 and the 长生十二神 too */
+  full: boolean
+  /** The palace's 干支 */
+  showStem: boolean
   role?: Role
   /** One of the palaces of the 格局 picked out */
   lit?: boolean
@@ -858,11 +871,13 @@ function PalaceView({
             <StarItem key={s.name} star={s} layers={layers} {...marks(s.name)} />
           ))}
         </div>
-        <div className="stars-adj">
-          {p.adjective.map((s) => (
-            <StarTip key={s.name} star={s} className="star-name" />
-          ))}
-        </div>
+        {full && (
+          <div className="stars-adj">
+            {p.adjective.map((s) => (
+              <StarTip key={s.name} star={s} className="star-name" />
+            ))}
+          </div>
+        )}
         {flowStars.length > 0 && (
           <div className="stars-flow">
             {flowStars.map(({ kind, star: s }) => (
@@ -891,12 +906,14 @@ function PalaceView({
           {term(p.name)}
           {p.isBody && <span className="body-tag">{term('身')}</span>}
         </span>
-        <span className="palace-gz">
-          {p.stem}
-          {p.branch}
-        </span>
+        {showStem && (
+          <span className="palace-gz">
+            {p.stem}
+            {p.branch}
+          </span>
+        )}
       </div>
-      <span className="palace-cs">{term(p.changsheng)}</span>
+      {full && <span className="palace-cs">{term(p.changsheng)}</span>}
     </div>
   )
 }

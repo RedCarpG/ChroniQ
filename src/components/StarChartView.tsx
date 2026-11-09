@@ -46,6 +46,7 @@ import { RightDrawer } from './RightDrawer'
 import { starPrompt } from '../lib/ai/prompts'
 import { StarReadingCard } from './ChartReadingCards'
 import { PlacePicker } from './PlacePicker'
+import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 
 // 生辰星空, shared with the 八字 page: loaded apart, as it brings the star catalogue
 const BirthSky = lazy(() => import('./BirthSky').then((m) => ({ default: m.BirthSky })))
@@ -118,12 +119,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
   const sun = byKey('sun')
   const moon = byKey('moon')
   const asc = byKey('asc')
-  const bodies = chart.points.filter((p) => p.key !== 'asc' && p.key !== 'mc')
-  // Element balance over the ten planets
-  const elements = (['fire', 'earth', 'air', 'water'] as Element[]).map((e) => ({
-    e,
-    n: bodies.filter((p) => p.key !== 'node' && p.key !== 'southNode' && SIGN_ELEMENT[p.sign] === e).length,
-  }))
+  // 简洁 / 详细, as on the other charts
+  const [fullChart, toggleFullChart] = useChartFull()
 
   // The sky at birth behind the page; a natal body pointed at in the wheel or the table is picked out in it
   const moment = useMemo(
@@ -172,6 +169,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
             )
           })}
         </div>
+        {fullChart && (
         <p className="muted row-note star-meta">
           {t('{place}（{coords}）· 按出生地时间 {offset}', {
             place: t(place.name),
@@ -182,6 +180,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           {t(STAR_SCHOOLS.houses.options.find((o) => o.value === settings.houses)?.label ?? '')}
           {chart.housesFallback && t('（极圈内无法使用普拉西度，已改用等宫制）')}
         </p>
+        )}
         <div className="overlay-bar">
           <div className="seg small" role="group" aria-label={t('比较盘')}>
             {(
@@ -219,6 +218,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
               </button>
             </>
           )}
+          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="star-view" />
         </div>
         {(mode === 'synastry' || mode === 'composite') && <PartnerPicker partner={partner} onChange={setPartner} input={input} />}
         {(mode === 'transit' || mode === 'progressed') && !overlay && (
@@ -227,14 +227,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         <div className="star-layout">
           <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
           <div className="star-tables">
-            <PointTable chart={chart} hl={hl} hover={hover} />
-            <div className="element-bars">
-              {elements.map(({ e, n }) => (
-                <span key={e} className={`el-${e}`}>
-                  {t(ELEMENT_NAME[e])} <b>{n}</b>
-                </span>
-              ))}
-            </div>
+            <PointTable chart={chart} hl={hl} hover={hover} full={fullChart} />
+            <SignBalance chart={chart} full={fullChart} />
           </div>
         </div>
       </section>
@@ -254,6 +248,9 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
 
       {compositeChart && <CompositeCard chart={compositeChart} partnerName={partnerLabel(t, partner.name)} settings={settings} />}
 
+      {!fullChart ? (
+        <p className="muted row-note star-more">{t('十二宫宫头、全部相位和计算说明在「详细」里')}</p>
+      ) : (
       <section className="card" id="star-houses">
         <h3 className="section-title">
           <TitleMark />
@@ -283,6 +280,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           {t('仅供参考')}
         </p>
       </section>
+      )}
 
       {/* At the right edge, opened over the page when wanted */}
       <RightDrawer label={t('AI 解读')}>
@@ -297,12 +295,16 @@ function PointTable({
   chart,
   hl,
   hover,
+  full = true,
 }: {
   chart: StarChart
   hl: Highlight
   hover: (f: NonNullable<Focus>) => Record<string, unknown>
+  /** With the nodes, the 上升 and the 天顶 (详细); without, the ten planets */
+  full?: boolean
 }) {
   const t = useT()
+  const points = full ? chart.points : chart.points.filter((p) => !EXTRA_POINTS.includes(p.key))
   return (
     <table className="star-table">
       <thead>
@@ -313,7 +315,7 @@ function PointTable({
         </tr>
       </thead>
       <tbody>
-        {chart.points.map((p) => (
+        {points.map((p) => (
           <tr
             key={p.key}
             className={hl.row(p) ? 'on' : undefined}
@@ -383,6 +385,53 @@ function AspectList({
 }
 
 /** ☌合: an aspect's glyph and name (合相 … have their own entries, as titles) */
+/** Points that are not planets: in 详细 only, and not counted in the balance */
+const EXTRA_POINTS: ChartPoint['key'][] = ['node', 'southNode', 'asc', 'mc']
+const ELEMENT_COLOUR: Record<Element, string> = { fire: 'var(--fire)', earth: 'var(--wood)', air: 'var(--metal)', water: 'var(--water)' }
+const ELEMENT_NOTE: Record<Element, string> = {
+  fire: '热情、行动、自信',
+  earth: '务实、稳定、耐心',
+  air: '思考、交流、好奇',
+  water: '情感、直觉、体贴',
+}
+
+/**
+ * How the ten planets fall among the four elements, each with its count, a bar and the planets in it:
+ * what a newcomer reads first. 详细 adds the modes (基本 / 固定 / 变动) and 阳性 / 阴性.
+ */
+function SignBalance({ chart, full }: { chart: StarChart; full: boolean }) {
+  const t = useT()
+  const planets = chart.points.filter((p) => !EXTRA_POINTS.includes(p.key))
+  const elements = (['fire', 'earth', 'air', 'water'] as Element[]).map((e) => ({ e, list: planets.filter((p) => SIGN_ELEMENT[p.sign] === e) }))
+  const most = Math.max(...elements.map((x) => x.list.length))
+  const tally = (names: string[], of: (sign: number) => number) => names.map((name, i) => `${t(name)} ${planets.filter((p) => of(p.sign) === i).length}`).join(' · ')
+  return (
+    <div className="sign-balance">
+      <span className="sign-balance-title">{t('元素')}</span>
+      {elements.map(({ e, list }) => (
+        <div key={e} className={`sign-balance-row${list.length === 0 ? ' none' : ''}${list.length === most ? ' most' : ''}`}>
+          <InfoTip className={`el-${e}`} label={t(ELEMENT_NAME[e])} title={t(ELEMENT_NAME[e])}>
+            <span>{t(ELEMENT_NOTE[e])}</span>
+          </InfoTip>
+          <span className="track" aria-hidden="true">
+            <span className="fill" style={{ width: `${(list.length / planets.length) * 100}%`, background: ELEMENT_COLOUR[e] }} />
+          </span>
+          <b>{list.length}</b>
+          <small className="muted">{list.length ? list.map((p) => t(p.name)).join(t('、')) : t('没有')}</small>
+        </div>
+      ))}
+      {full && (
+        <p className="muted sign-balance-more">
+          {tally(['基本', '固定', '变动'], (sign) => sign % 3)}
+          <br />
+          {tally(['阳性', '阴性'], (sign) => sign % 2)}
+        </p>
+      )}
+      <small className="muted">{t('按太阳到冥王星十颗星计，不含交点、上升和天顶')}</small>
+    </div>
+  )
+}
+
 const aspectChip = (t: T, a: Aspect) => t('{glyph}{name}', { glyph: a.type.glyph, name: t(a.type.name) })
 
 /**
