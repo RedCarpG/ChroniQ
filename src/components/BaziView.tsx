@@ -1,5 +1,5 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
-import { useStoredFlag } from './useStoredFlag'
+import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { FortuneRow } from './FortuneRow'
 import { TitleMark } from './Logo'
 import { BaziReadingCard } from './BaziReadingCard'
@@ -68,7 +68,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     chart.decades.findIndex((d) => d.startYear <= thisYear && thisYear <= d.endYear),
   )
   // 简洁 (the stars, the 干支, 藏干, 五行 and 刑冲合会) or 详细 (all the rest too), for 原局 and 岁运 alike
-  const [fullChart, toggleFullChart] = useStoredFlag('chroniq-bazi-full', false)
+  const [fullChart, toggleFullChart] = useChartFull()
   const [picked, setPicked] = useState<number | null>(null)
   const decadeIndex = picked ?? currentDecade
   const decade = chart.decades[decadeIndex]
@@ -232,14 +232,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
               {term('农历')} {term(chart.lunarText)}
             </div>
           </div>
-          <div className="seg small natal-view" role="group" aria-label={t('显示内容')}>
-            <button type="button" className={fullChart ? undefined : 'on'} aria-pressed={!fullChart} onClick={() => fullChart && toggleFullChart()}>
-              {t('简洁')}
-            </button>
-            <button type="button" className={fullChart ? 'on' : undefined} aria-pressed={fullChart} onClick={() => fullChart || toggleFullChart()}>
-              {t('详细')}
-            </button>
-          </div>
+          <ChartViewSwitch full={fullChart} onToggle={toggleFullChart} className="natal-view" />
         </div>
 
         <HighlightScope pillars={chart.pillars} relations={chart.relations}>
