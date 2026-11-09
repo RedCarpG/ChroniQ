@@ -262,6 +262,7 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
   const flies = mode === 'feihua' && active ? chart.palaces[active].flies : null
   const boardRef = useRef<HTMLDivElement>(null)
   const boardSize = useSize(boardRef)
+  const summary = mode === 'feihua' ? <FeiHuaSummary chart={chart} active={active} /> : <SanFangSummary chart={chart} active={active} />
 
   // The 运限 rows (dozens of tyme4ts dates) only change with the picks, not with a palace being
   // hovered: made again only when what they show changes
@@ -493,12 +494,12 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                 <dd className="zc-extra">{solarText(input, english)}</dd>
                 {chart.trueSolar && (
                   <>
-                    <dt>{t('真太阳时')}</dt>
-                    <dd>{solarText(chart.trueSolar.time, english)}</dd>
+                    <dt className="zc-birth">{t('真太阳时')}</dt>
+                    <dd className="zc-birth">{solarText(chart.trueSolar.time, english)}</dd>
                   </>
                 )}
-                <dt>{term('农历')}</dt>
-                <dd>
+                <dt className="zc-birth">{term('农历')}</dt>
+                <dd className="zc-birth">
                   {term(chart.lunarText)} {term(chart.time)}
                 </dd>
                 <dt>{term('四柱')}</dt>
@@ -515,14 +516,12 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
                   {term(chart.zodiac)} · {t(chart.sign)}
                 </dd>
               </dl>
-              {mode === 'feihua' ? (
-                <FeiHuaSummary chart={chart} active={active} />
-              ) : (
-                <SanFangSummary chart={chart} active={active} />
-              )}
+              {/* 天书: the ring holds only the chart's particulars; what a palace is, under the board */}
+              {!tianshu && summary}
             </div>
           </div>
         </div>
+        {tianshu && <div className="zw-summary-below">{summary}</div>}
         {active && (
           <PalaceDetail
             chart={chart}
