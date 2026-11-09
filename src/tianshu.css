@@ -97,11 +97,11 @@
   --bs-figure: rgb(216 191 140 / 0.34); --bs-label: rgb(216 191 140 / 0.58);
 }
 
-/* The top bar, as an old plate's head: the name in gold, no mark; the pages as words, the one shown
+/* The top bar, as an old plate's head: the mark and the name in gold; the pages as words, the one shown
    marked with a diamond rather than underlined; no rule under the bar */
 :root[data-style] .topbar { background: none; }
 :root[data-style] .topbar h1 { color: var(--accent); letter-spacing: 0.3em; }
-:root[data-style] .topbar h1 .logo, :root[data-style] .topbar .brand-en { display: none; }
+:root[data-style] .topbar .brand-en { display: none; }
 :root[data-style] :is(.page-nav-group-btn, .page-nav-item)::after { display: none; }
 :root[data-style] .page-nav-group-btn { font-size: 15px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); }
 :root[data-style] .page-nav-group.open > .page-nav-group-btn { color: var(--text); }
@@ -109,6 +109,18 @@
 :root[data-style] .page-nav-item.on { font-weight: 500; }
 :root[data-style] .page-nav-item.on::before { content: '◆'; display: inline-block; margin-right: 6px; font-size: 7px; vertical-align: 2px; }
 :root[data-style] .topbar-right { opacity: 0.75; }
+/* The 命理 pages fold the bar up, as the 天象 page does (App: fold-bar): it lies over the page, fixed at
+   the top, wherever the page is scrolled, and the page leaves room at its top for the small tab */
+:root[data-style] .app.fold-bar .topbar {
+  position: fixed; top: 8px; left: 50%; z-index: 25; width: min(calc(100% - 16px), 1088px); margin: 0; padding: 8px 14px 10px; border-radius: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat, color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: blur(6px); transition: transform 0.25s ease, opacity 0.25s ease;
+}
+:root[data-style] .app.fold-bar.bar-folded .topbar { transform: translate(-50%, calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+:root[data-style] .app.fold-bar > main { padding-top: 22px; }
+:root[data-style] .topbar-fold { background: color-mix(in srgb, var(--bg) 88%, transparent); border-color: var(--edge); }
+@media (prefers-reduced-motion: reduce) { :root[data-style] .app.fold-bar .topbar { transition: none; } }
 
 /* The birth form folds to one line at any width, tapped to change it: the chart is what the page is */
 :root[data-style] .bazi-form-summary {
@@ -169,6 +181,8 @@
 .bazi-dial .bd-link { fill: currentColor; }
 .bazi-dial .bd-link-line { fill: none; stroke: currentColor; stroke-width: 1; stroke-opacity: 0.9; filter: drop-shadow(0 0 3px currentColor); }
 .bazi-dial .bd-link.soft .bd-link-line { stroke-dasharray: 3 4; stroke-opacity: 0.7; }
+/* The names, with a dark edge, so a line under them does not cross their letters */
+.bazi-dial .bd-link-name { font-size: 11.5px; letter-spacing: 1.5px; text-anchor: middle; fill: currentColor; paint-order: stroke; stroke: rgb(10 8 6 / 0.9); stroke-width: 3.2px; stroke-linejoin: round; }
 /* The heart: a ring of light, the 日主 in it */
 .bazi-dial .bd-heart { fill: rgb(10 8 6 / 0.62); stroke: var(--accent); stroke-width: 1; filter: drop-shadow(0 0 8px rgb(220 188 124 / 0.8)); }
 .bazi-dial .bd-heart-line { fill: none; stroke: var(--accent); stroke-opacity: 0.3; }

@@ -83,6 +83,52 @@ export function BaziDial({
   // One line for each relation between branches (亥卯 半合 twice, with two 亥, is drawn once)
   const links = relations.filter((r, i, all) => r.on === 'branch' && all.findIndex((o) => o.on === 'branch' && o.text === r.text) === i)
   const dayMaster = pillars[2].stem
+  // Each relation's name goes by its line, but outside the heart and clear of the others: from where it
+  // would sit, it is moved round the circle a step at a time until it has room
+  const taken: { x: number; y: number; w: number }[] = []
+  const placeName = (x: number, y: number, name: string): [number, number] => {
+    const w = name.length * 13 + 8
+    const r = Math.max(Math.hypot(x - C, y - C), R_HEART + 28)
+    const a = Math.atan2(y - C, x - C)
+    const free = (px: number, py: number) => taken.every((o) => Math.abs(o.x - px) > (o.w + w) / 2 || Math.abs(o.y - py) > 16)
+    for (let k = 0; k < 40; k++) {
+      const turn = Math.ceil(k / 2) * (k % 2 ? 1 : -1) * 0.12
+      const [px, py] = [C + Math.cos(a + turn) * r, C + Math.sin(a + turn) * r]
+      if (free(px, py)) {
+        taken.push({ x: px, y: py, w })
+        return [px, py]
+      }
+    }
+    return [C + Math.cos(a) * r, C + Math.sin(a) * r]
+  }
+  const linkViews = links.map((r, k) => {
+    const branches = r.text.slice(0, r.members.length)
+    const name = r.text.slice(r.members.length)
+    const idx = [...branches].map((b) => RING.indexOf(b))
+    const pts = idx.map((i) => at(i, R_LINK))
+    const el = elementOf(r.text)
+    const colour = r.kind === '冲' ? 'var(--ts-vermilion)' : el ? EL_VAR[el] : 'var(--accent)'
+    const soft = r.kind === '刑' || r.kind === '害' || r.kind === '破'
+    if (idx.every((i) => i === idx[0])) {
+      // the same branch twice (自刑): two marks side by side, the name inside them
+      const [x, y] = pts[0]
+      return { key: k, name, colour, soft, self: true, d: '', marks: [[x - 6, y], [x + 6, y]], at: placeName(C + (x - C) * 0.82, C + (y - C) * 0.82, name) }
+    }
+    // A two-branch link bows towards the heart, its name on the curve's middle; a 冲 runs straight
+    // across, and a three-branch one through the heart, their names along the way to the first or middle
+    const ctrl: [number, number] = pts.length === 2 ? [((pts[0][0] + pts[1][0]) / 2) * 0.4 + C * 0.6, ((pts[0][1] + pts[1][1]) / 2) * 0.4 + C * 0.6] : [C, C]
+    const d =
+      r.kind === '冲'
+        ? `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`
+        : pts.length === 3
+          ? `M${pts[0][0]} ${pts[0][1]} Q${C} ${C} ${pts[1][0]} ${pts[1][1]} Q${C} ${C} ${pts[2][0]} ${pts[2][1]}`
+          : `M${pts[0][0]} ${pts[0][1]} Q${ctrl[0]} ${ctrl[1]} ${pts[1][0]} ${pts[1][1]}`
+    const towards = r.kind === '冲' ? pts[0] : pts.length === 3 ? pts[1] : null
+    const mid: [number, number] = towards
+      ? [C + (towards[0] - C) * 0.72, C + (towards[1] - C) * 0.72]
+      : [0.25 * pts[0][0] + 0.5 * ctrl[0] + 0.25 * pts[1][0], 0.25 * pts[0][1] + 0.5 * ctrl[1] + 0.25 * pts[1][1]]
+    return { key: k, name, colour, soft, self: false, d, marks: pts, at: placeName(mid[0], mid[1], name) }
+  })
   return (
     <svg className="bazi-dial" viewBox="-24 -24 648 648" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
       <circle cx={C} cy={C} r={R_RIM} className="bd-plate" />
@@ -201,52 +247,15 @@ export function BaziDial({
             </g>
           )
         })()}
-      {/* 刑冲合会 between the branches */}
-      {links.map((r, k) => {
-        const branches = r.text.slice(0, r.members.length)
-        const name = r.text.slice(r.members.length)
-        const idx = [...branches].map((b) => RING.indexOf(b))
-        const pts = idx.map((i) => at(i, R_LINK))
-        const el = elementOf(r.text)
-        const colour = r.kind === '冲' ? 'var(--ts-vermilion)' : el ? EL_VAR[el] : 'var(--accent)'
-        if (idx.every((i) => i === idx[0])) {
-          // the same branch twice (自刑): two marks side by side
-          const [x, y] = pts[0]
-          return (
-            <g key={k} className="bd-link self cast-l4" style={{ color: colour }}>
-              <circle cx={x - 6} cy={y} r="3" />
-              <circle cx={x + 6} cy={y} r="3" />
-              <text x={C + (x - C) * 0.82} y={C + (y - C) * 0.82 + 4} className="bd-note">
-                {name}
-              </text>
-            </g>
-          )
-        }
-        // A two-branch link bows towards the heart; its name sits on the curve's middle
-        const ctrl: [number, number] = pts.length === 2 ? [((pts[0][0] + pts[1][0]) / 2) * 0.4 + C * 0.6, ((pts[0][1] + pts[1][1]) / 2) * 0.4 + C * 0.6] : [C, C]
-        const d =
-          r.kind === '冲'
-            ? `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`
-            : pts.length === 3
-              ? `M${pts[0][0]} ${pts[0][1]} Q${C} ${C} ${pts[1][0]} ${pts[1][1]} Q${C} ${C} ${pts[2][0]} ${pts[2][1]}`
-              : `M${pts[0][0]} ${pts[0][1]} Q${ctrl[0]} ${ctrl[1]} ${pts[1][0]} ${pts[1][1]}`
-        const soft = r.kind === '刑' || r.kind === '害' || r.kind === '破'
-        const mid =
-          r.kind === '冲' || pts.length !== 2
-            ? [C, C - 86]
-            : [0.25 * pts[0][0] + 0.5 * ctrl[0] + 0.25 * pts[1][0], 0.25 * pts[0][1] + 0.5 * ctrl[1] + 0.25 * pts[1][1]]
-        return (
-          <g key={k} className={`bd-link cast-l4${soft ? ' soft' : ''}`} style={{ color: colour }}>
-            <path d={d} className="bd-link-line" />
-            {pts.map(([x, y], j) => (
-              <circle key={j} cx={x} cy={y} r="3" />
-            ))}
-            <text x={mid[0]} y={mid[1] - 7} className="bd-note">
-              {name}
-            </text>
-          </g>
-        )
-      })}
+      {/* 刑冲合会 between the branches: the lines here, their names over everything (below) */}
+      {linkViews.map((v) => (
+        <g key={v.key} className={`bd-link cast-l4${v.soft ? ' soft' : ''}${v.self ? ' self' : ''}`} style={{ color: v.colour }}>
+          {v.d && <path d={v.d} className="bd-link-line" />}
+          {v.marks.map(([x, y], j) => (
+            <circle key={j} cx={x} cy={y} r="3" />
+          ))}
+        </g>
+      ))}
       {/* The 日主 at the heart */}
       <g className="cast-l1">
         <circle cx={C} cy={C} r={R_HEART} className="bd-heart" />
@@ -255,6 +264,12 @@ export function BaziDial({
           {dayMaster.char}
         </text>
       </g>
+      {/* The names of the 刑冲合会, last, so the heart covers none */}
+      {linkViews.map((v) => (
+        <text key={v.key} x={v.at[0]} y={v.at[1] + 4} className="bd-link-name cast-l4" style={{ color: v.colour }}>
+          {v.name}
+        </text>
+      ))}
     </svg>
   )
 }
