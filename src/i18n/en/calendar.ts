@@ -1,5 +1,10 @@
 // English for the 日历 page.
 export const CALENDAR: Record<string, string> = {
+  // 天书's 今日 (TodayScene)
+  '{duty}日': '{duty} day',
+  '{ganzhi}年': 'the {ganzhi} year',
+  '月相{name}': 'Moon: {name}',
+  '年、月、日三柱': 'The year, month and day pillars',
   // Header and navigation
   年份: 'Year',
   月份: 'Month',

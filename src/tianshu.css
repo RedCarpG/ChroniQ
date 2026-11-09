@@ -532,3 +532,100 @@
 .sign-alchemy-verdict { margin: 18px 8px 0; text-align: center; font-size: 13.5px; line-height: 1.9; color: var(--muted); }
 .sign-alchemy-verdict b { color: var(--text); font-weight: 600; }
 .sign-alchemy-note { display: block; margin-top: 8px; text-align: center; font-size: 11px; opacity: 0.7; }
+
+/* ---------- 今日 (TodayScene): the day as one page of the almanac ---------- */
+.today-page.scene { row-gap: 26px; }
+.today-scene {
+  --font-title: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', serif;
+  grid-column: 1 / -1; position: relative; display: grid; justify-items: center; gap: 18px; padding: 8px 0 22px;
+  font-family: var(--font-title);
+  background: linear-gradient(90deg, transparent, var(--ts-hair) 20%, var(--ts-hair) 80%, transparent) bottom / 100% 1px no-repeat;
+}
+.td-day { display: flex; align-items: flex-start; gap: 34px; }
+.td-num { display: grid; justify-items: center; }
+.td-num b { font-variant-numeric: lining-nums; font-family: 'Cormorant Garamond', serif; font-size: clamp(120px, 16vw, 200px); font-weight: 400; line-height: 0.92; color: var(--text); text-shadow: 0 0 40px rgb(235 227 207 / 0.25); }
+.td-num span { margin-top: 14px; font-variant-numeric: lining-nums; font-size: 14px; letter-spacing: 0.3em; color: var(--muted); white-space: nowrap; }
+.td-moon { display: grid; justify-items: center; gap: 8px; margin-top: 46px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.td-moon svg { width: 76px; height: 76px; filter: drop-shadow(0 0 10px rgb(239 226 191 / 0.25)); }
+.td-moon small { font-size: 12px; letter-spacing: 0.16em; }
+.td-moon:hover small { color: var(--accent); }
+.td-lunar { writing-mode: vertical-rl; display: flex; flex-direction: column; gap: 10px; letter-spacing: 0.3em; line-height: 1.5; }
+.td-lunar b { font-size: 38px; font-weight: 400; color: var(--accent); text-shadow: 0 0 18px rgb(220 188 124 / 0.35); }
+.td-lunar small { font-size: 15px; color: var(--muted); }
+/* The year's, month's and day's pillars, the day's set apart in gold as 八字's 日柱 is */
+.td-pillars { display: flex; gap: 40px; }
+.td-pillars > div { display: grid; justify-items: center; }
+.td-pillars small { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); }
+.td-pillars .d small { color: var(--accent); }
+.td-pillars b { font-size: 40px; font-weight: 400; line-height: 1.12; text-shadow: 0 0 16px currentColor; }
+.td-pillars > div > small + b { margin-top: 6px; }
+/* Down the sides, in columns: the day's particulars on the left, the 宜 and 忌 on the right */
+.td-margin, .td-yiji > div { writing-mode: vertical-rl; display: flex; flex-direction: column; letter-spacing: 0.3em; line-height: 1.5; }
+.td-margin { gap: 12px; font-size: 15px; color: var(--muted); }
+.td-margin .ts-kicker { display: none; }
+.td-margin b { font-size: 19px; font-weight: 400; color: var(--text); }
+.td-margin .td-festival { color: var(--accent); }
+.td-yiji { display: flex; gap: 26px; }
+.td-yiji > div { gap: 12px; align-items: center; font-size: 18px; }
+.td-yiji i { writing-mode: horizontal-tb; display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 4px; border: 1px solid currentColor; border-radius: 3px; font-style: normal; font-size: 20px; letter-spacing: 0; }
+.td-yi { color: var(--text); } .td-yi i { color: #8fc79a; box-shadow: 0 0 10px rgb(143 199 154 / 0.3); }
+.td-ji { color: var(--muted); } .td-ji i { color: #ff8a73; box-shadow: 0 0 10px rgb(255 138 115 / 0.3); }
+.td-hint { margin: 0; font-size: 12.5px; letter-spacing: 0.08em; color: var(--muted); }
+/* In English the words run across */
+:root[lang='en'] :is(.td-lunar, .td-margin, .td-yiji > div) { writing-mode: horizontal-tb; letter-spacing: 0.06em; }
+:root[lang='en'] .td-lunar { align-self: center; }
+:root[lang='en'] .td-yiji > div { flex-direction: row; flex-wrap: wrap; gap: 6px 12px; }
+@media (min-width: 900px) {
+  .today-scene { min-height: 470px; align-content: start; }
+  .td-margin { position: absolute; left: 3%; top: 12px; }
+  .td-yiji { position: absolute; right: 3%; top: 12px; flex-direction: row-reverse; }
+  :root[lang='en'] .td-margin { width: 220px; }
+  :root[lang='en'] .td-yiji { flex-direction: column; width: 230px; }
+}
+@media (max-width: 899px) {
+  .td-margin, .td-yiji { writing-mode: horizontal-tb; }
+  .td-margin { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 14px; writing-mode: horizontal-tb; letter-spacing: 0.1em; }
+  .td-yiji { flex-direction: column; gap: 8px; }
+  .td-yiji > div { writing-mode: horizontal-tb; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px 12px; letter-spacing: 0.1em; font-size: 15px; }
+  .td-yiji i { width: 26px; height: 26px; font-size: 15px; margin: 0; }
+  .td-day { gap: 12px; max-width: 100%; }
+  .td-num b { font-size: 96px; }
+  .td-num span { max-width: 150px; white-space: normal; text-align: center; font-size: 11.5px; letter-spacing: 0.12em; line-height: 1.6; }
+  .td-lunar b { font-size: 28px; }
+  .td-lunar small { font-size: 13px; }
+  .td-moon { margin-top: 20px; }
+  .td-moon svg { width: 46px; height: 46px; }
+  .td-margin { max-width: 100%; }
+  .td-pillars { gap: 30px; }
+  .td-pillars b { font-size: 32px; }
+}
+
+/* ---------- 日历: the month in gold lines ---------- */
+/* No tiles: the days on the night, a faint gold hairline between them; the lunar dates in 站酷小薇; the day
+   picked framed in gold light rather than filled; the weekend and the tones only a warm wash */
+:root[data-style='east'] { --weekend: rgb(220 188 124 / 0.045); }
+:root[data-style] .app.page-calendar { --font-lunar: 'ZCOOL XiaoWei', 'Noto Serif SC', serif; }
+:root[data-style] .grid.days { gap: 0; }
+:root[data-style] .grid.days .day { border: 0; border-radius: 0; box-shadow: inset -1px -1px 0 rgb(220 188 124 / 0.1); }
+:root[data-style] .grid.days .day:hover { background: rgb(220 188 124 / 0.06); }
+:root[data-style] .month-outline path { fill: rgb(10 8 6 / 0.35); stroke: rgb(220 188 124 / 0.5); stroke-width: 1; }
+:root[data-style] .day .num { font-family: 'Cormorant Garamond', var(--font-title); font-size: 24px; font-weight: 500; font-variant-numeric: lining-nums; }
+:root[data-style] .day .sub { font-family: var(--font-lunar); font-size: 13px; letter-spacing: 0.1em; }
+:root[data-style] .day .gz { font-family: var(--font-lunar); letter-spacing: 0.12em; }
+:root[data-style] .day.weekend .num { color: #c9b48a; }
+:root[data-style] .week-titles div { font-family: var(--font-lunar); letter-spacing: 0.3em; }
+:root[data-style] .week-titles { border-bottom: 1px solid rgb(220 188 124 / 0.3); margin-bottom: 4px; }
+/* The day picked (today, at first): a frame of gold light, its number gold */
+:root[data-style] .grid.days .day.selected {
+  background: radial-gradient(circle at 50% 45%, rgb(220 188 124 / 0.16), transparent 72%);
+  box-shadow: inset 0 0 0 1px rgb(220 188 124 / 0.75), inset 0 0 16px rgb(220 188 124 / 0.18), 0 0 16px rgb(220 188 124 / 0.3);
+}
+:root[data-style] .day.selected .num { color: var(--accent); text-shadow: 0 0 14px rgb(220 188 124 / 0.6); }
+:root[data-style] .day.selected :is(.sub, .gz) { color: var(--text); }
+:root[data-style] .day.selected .mine-line { color: var(--text); }
+:root[data-style] .day.today:not(.selected) { box-shadow: inset 0 0 0 1px rgb(220 188 124 / 0.45); }
+/* The day's detail: the lunar date in gold, the pillars as lit characters, without plates */
+:root[data-style] .detail .lunar-line { font-family: 'Noto Serif SC', var(--font-title); font-weight: 500; font-size: 19px; letter-spacing: 0.12em; color: var(--accent); }
+:root[data-style] .day-pillar { background: none; padding: 2px 0; }
+:root[data-style] .day-pillar .char { font-family: var(--font-lunar); font-size: 36px; font-weight: 400; line-height: 1.12; text-shadow: 0 0 14px currentColor; }
+:root[data-style] .detail-hero .big { font-family: 'Cormorant Garamond', serif; font-weight: 400; font-variant-numeric: lining-nums; }
