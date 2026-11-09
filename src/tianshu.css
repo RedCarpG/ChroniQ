@@ -182,3 +182,50 @@
 .sf-resting .sf-tag { display: none; }
 :root[data-style] .sf-resting .palace:not(.sf-self, .sf-opposite, .sf-trine) { opacity: 0.62; }
 :root[data-style] .sf-tag { background: rgb(220 188 124 / 0.14); }
+
+/* ---------- 星盘 ---------- */
+.b3-latin, .b3-who { display: none; }
+.st-hero { text-align: center; margin: 4px 0 20px; }
+.st-hero h3 { margin: 8px 0 0; font-family: var(--font-title); font-size: clamp(22px, 5.6vw, 30px); font-weight: 600; letter-spacing: 0.24em; }
+/* The big three as arched windows */
+:root[data-style] .big-three { gap: 12px; max-width: 520px; margin: 0 auto; }
+:root[data-style] .b3 {
+  position: relative; padding: 20px 4px 14px; border: 1px solid rgb(220 188 124 / 0.3); border-bottom: 0; border-radius: 80px 80px 0 0;
+  background: linear-gradient(180deg, rgb(111 143 240 / 0.14), transparent 80%); box-shadow: none;
+}
+:root[data-style] .b3-latin { display: block; font-family: 'Cormorant Garamond', var(--font-title); font-size: 11px; letter-spacing: 0.4em; margin-left: 0.4em; color: var(--accent); }
+:root[data-style] .b3 small { display: none; }
+:root[data-style] .b3-glyph { margin: 6px 0 2px; font-size: 32px; color: var(--text); text-shadow: 0 0 18px rgb(160 180 255 / 0.9); }
+:root[data-style] .b3 strong { font-family: var(--font-title); letter-spacing: 0.16em; }
+:root[data-style] .b3-who { display: block; margin-top: 4px; font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+/* The wheel, engraved in gold and lit */
+:root[data-style] .star-wheel { --plate: transparent; background: radial-gradient(circle closest-side, rgb(6 6 26 / 0.66) 92%, transparent 100%); border-radius: 50%; }
+:root[data-style] .star-wheel .sign-band { stroke: rgb(220 188 124 / 0.32); }
+:root[data-style] .star-wheel .band-fire { fill: rgb(239 107 85 / 0.08); }
+:root[data-style] .star-wheel .band-earth { fill: rgb(121 192 142 / 0.07); }
+:root[data-style] .star-wheel .band-air { fill: rgb(239 230 207 / 0.06); }
+:root[data-style] .star-wheel .band-water { fill: rgb(126 166 240 / 0.09); }
+:root[data-style] .star-wheel .ring { stroke: rgb(220 188 124 / 0.45); }
+:root[data-style] .star-wheel .cusp { stroke: rgb(235 227 207 / 0.35); }
+:root[data-style] .star-wheel .cusp.angle { stroke: rgb(235 227 207 / 0.75); }
+:root[data-style] .star-wheel .tick { stroke: var(--accent); opacity: 0.5; }
+:root[data-style] .star-wheel .planet-glyph-svg { filter: drop-shadow(0 0 5px currentColor); }
+:root[data-style] .star-wheel .aspect-line { stroke-width: 1; filter: drop-shadow(0 0 3px currentColor); }
+:root[data-style] .star-wheel .aspect-line.tone-soft { stroke: #9fb4ff; color: #9fb4ff; }
+:root[data-style] .star-wheel .aspect-line.tone-hard { stroke: #ff8a73; color: #ff8a73; }
+:root[data-style] .star-wheel .aspect-line.tone-major { color: var(--accent); }
+/* The four elements, as the alchemists drew them */
+.sign-alchemy { margin-top: 18px; }
+.sign-alchemy-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; }
+.sa-el { display: grid; justify-items: center; align-content: start; gap: 2px; padding: 0 2px; }
+.sa-el svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; filter: drop-shadow(0 0 6px currentColor); }
+.sa-el b { font-family: 'Cormorant Garamond', var(--font-title); font-size: 36px; font-weight: 500; line-height: 1; margin-top: 6px; }
+.sa-el.most b { text-shadow: 0 0 18px currentColor; }
+.sa-el .tip-label { font-size: 12px; letter-spacing: 0.16em; color: var(--text); }
+.sa-el i { font-style: normal; font-family: 'Cormorant Garamond', var(--font-title); font-size: 10px; letter-spacing: 0.32em; color: var(--muted); }
+.sa-el small { margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.sa-el.none { opacity: 0.32; }
+.sa-el.none svg { filter: none; }
+.sign-alchemy-verdict { margin: 18px 8px 0; text-align: center; font-size: 13.5px; line-height: 1.9; color: var(--muted); }
+.sign-alchemy-verdict b { color: var(--text); font-weight: 600; }
+.sign-alchemy-note { display: block; margin-top: 8px; text-align: center; font-size: 11px; opacity: 0.7; }

@@ -121,6 +121,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
   const asc = byKey('asc')
   // 简洁 / 详细, as on the other charts
   const [fullChart, toggleFullChart] = useChartFull()
+  const tianshu = useSettings().uiStyle === 'tianshu'
 
   // The sky at birth behind the page; a natal body pointed at in the wheel or the table is picked out in it
   const moment = useMemo(
@@ -153,21 +154,33 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       />
 
       <section className="card" id="star-natal">
+        {/* 天书: the chart's title, the Sun's heart and the Ascendant's face */}
+        {tianshu && (
+          <div className="st-hero">
+            <span className="ts-kicker" aria-hidden="true">
+              Natal Chart
+            </span>
+            <h3>{t('{sun}之心 · {asc}之貌', { sun: t(SIGNS[sun.sign]), asc: t(SIGNS[asc.sign]) })}</h3>
+          </div>
+        )}
         <div className="big-three">
-          {[
-            [sun, t('太阳')],
-            [moon, t('月亮')],
-            [asc, t('上升')],
-          ].map(([p, label]) => {
-            const pt = p as ChartPoint
-            return (
-              <div key={label as string} className={`b3 el-${SIGN_ELEMENT[pt.sign]}`}>
-                <small className="muted">{label as string}</small>
-                <span className="b3-glyph">{SIGN_GLYPHS[pt.sign]}</span>
-                <strong>{signName(t, pt.sign)}</strong>
-              </div>
-            )
-          })}
+          {(
+            [
+              [sun, t('太阳'), 'SOL', t('核心的你')],
+              [moon, t('月亮'), 'LUNA', t('内心的你')],
+              [asc, t('上升'), 'ORIENS', t('外在的你')],
+            ] as const
+          ).map(([pt, label, latin, who]) => (
+            <div key={label} className={`b3 el-${SIGN_ELEMENT[pt.sign]}`}>
+              <span className="b3-latin" aria-hidden="true">
+                {latin}
+              </span>
+              <small className="muted">{label}</small>
+              <span className="b3-glyph">{SIGN_GLYPHS[pt.sign]}</span>
+              <strong>{signName(t, pt.sign)}</strong>
+              <span className="b3-who">{who}</span>
+            </div>
+          ))}
         </div>
         {fullChart && (
         <p className="muted row-note star-meta">
@@ -228,7 +241,7 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
           <StarWheel chart={chart} overlay={overlay} hl={hl} hover={hover} />
           <div className="star-tables">
             <PointTable chart={chart} hl={hl} hover={hover} full={fullChart} />
-            <SignBalance chart={chart} full={fullChart} />
+            <SignBalance chart={chart} full={fullChart} tianshu={tianshu} />
           </div>
         </div>
       </section>
@@ -388,6 +401,9 @@ function AspectList({
 /** Points that are not planets: in 详细 only, and not counted in the balance */
 const EXTRA_POINTS: ChartPoint['key'][] = ['node', 'southNode', 'asc', 'mc']
 const ELEMENT_COLOUR: Record<Element, string> = { fire: 'var(--fire)', earth: 'var(--wood)', air: 'var(--metal)', water: 'var(--water)' }
+const ELEMENT_LATIN: Record<Element, string> = { fire: 'IGNIS', earth: 'TERRA', air: 'AER', water: 'AQUA' }
+/** What a chart without the element is short of */
+const ELEMENT_LACK: Record<Element, string> = { fire: '冲劲与热情', earth: '耐心与务实', air: '理性与交流', water: '感受与共情' }
 const ELEMENT_NOTE: Record<Element, string> = {
   fire: '热情、行动、自信',
   earth: '务实、稳定、耐心',
@@ -399,12 +415,54 @@ const ELEMENT_NOTE: Record<Element, string> = {
  * How the ten planets fall among the four elements, each with its count, a bar and the planets in it:
  * what a newcomer reads first. 详细 adds the modes (基本 / 固定 / 变动) and 阳性 / 阴性.
  */
-function SignBalance({ chart, full }: { chart: StarChart; full: boolean }) {
+function SignBalance({ chart, full, tianshu = false }: { chart: StarChart; full: boolean; tianshu?: boolean }) {
   const t = useT()
   const planets = chart.points.filter((p) => !EXTRA_POINTS.includes(p.key))
   const elements = (['fire', 'earth', 'air', 'water'] as Element[]).map((e) => ({ e, list: planets.filter((p) => SIGN_ELEMENT[p.sign] === e) }))
   const most = Math.max(...elements.map((x) => x.list.length))
   const tally = (names: string[], of: (sign: number) => number) => names.map((name, i) => `${t(name)} ${planets.filter((p) => of(p.sign) === i).length}`).join(' · ')
+  if (tianshu) {
+    // 天书: the four as the alchemists drew them, a large count under each, then what it comes to
+    const top = elements.filter((x) => x.list.length === most)
+    const none = elements.filter((x) => x.list.length === 0)
+    return (
+      <div className="sign-alchemy">
+        <div className="sign-alchemy-row">
+          {elements.map(({ e, list }) => (
+            <div key={e} className={`sa-el${list.length === 0 ? ' none' : ''}${list.length === most ? ' most' : ''}`} style={{ color: ELEMENT_COLOUR[e] }}>
+              <svg viewBox="0 0 46 46" aria-hidden="true">
+                <path d={e === 'fire' || e === 'air' ? 'M23 6 L40 36 L6 36 Z' : 'M23 40 L40 10 L6 10 Z'} />
+                {(e === 'air' || e === 'earth') && <line x1="12" x2="34" y1={e === 'air' ? 25 : 21} y2={e === 'air' ? 25 : 21} />}
+              </svg>
+              <b>{list.length}</b>
+              <InfoTip label={t(ELEMENT_NAME[e])} title={t(ELEMENT_NAME[e])}>
+                <span>{t(ELEMENT_NOTE[e])}</span>
+              </InfoTip>
+              <i aria-hidden="true">{ELEMENT_LATIN[e]}</i>
+              <small>{list.length ? list.map((p) => t(p.name)).join(' ') : t('没有')}</small>
+            </div>
+          ))}
+        </div>
+        <p className="sign-alchemy-verdict">
+          <b>{t('{element}最多', { element: top.map((x) => t(ELEMENT_NAME[x.e])).join(t('、')) })}</b>
+          {t('：{note}', { note: top.map((x) => t(ELEMENT_NOTE[x.e])).join(t('；')) })}
+          {none.length > 0 && (
+            <>
+              <br />
+              <b>{t('没有{element}', { element: none.map((x) => t(ELEMENT_NAME[x.e])).join(t('、')) })}</b>
+              {t('：少一些{lack}', { lack: none.map((x) => t(ELEMENT_LACK[x.e])).join(t('、')) })}
+            </>
+          )}
+        </p>
+        {full && (
+          <p className="muted sign-balance-more">
+            {tally(['基本', '固定', '变动'], (sign) => sign % 3)} · {tally(['阳性', '阴性'], (sign) => sign % 2)}
+          </p>
+        )}
+        <small className="muted sign-alchemy-note">{t('按太阳到冥王星十颗星计，不含交点、上升和天顶')}</small>
+      </div>
+    )
+  }
   return (
     <div className="sign-balance">
       <span className="sign-balance-title">{t('元素')}</span>
