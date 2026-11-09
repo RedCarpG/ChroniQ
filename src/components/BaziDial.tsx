@@ -1,12 +1,13 @@
-// 天书's 八字: the chart as a gold 罗盘, south up, its rings engraved as on a dark plate. Outermost the
-// 六十甲子, laid out as a 罗盘's 透地六十龙: each 地支's sector holds the five 甲子 of that branch (the 午
-// sector 甲午 丙午 戊午 庚午 壬午), so each pillar is lit where it stands among the sixty, its name
-// outside the rim, a dashed line running from it to the heart. Inside, the twelve 地支 in their boxes
-// between the spokes, those the pillars stand on edged in vermilion; the month of birth (月令) marked on
-// its ring; the chart's 刑冲合会 between the branches (合 and 会 arcs, 冲 straight across, 刑 害 破
-// dashed); the 日主 at the heart; and on the rim, where today stands in the year (此刻). What the chart
-// does not use (the other 甲子 and 地支) is dimmed, so its own stand out. Everything it shows is in the
-// chart; nothing is there for show.
+// 天书's 八字: the chart as a 罗盘 drawn in fine lines of gold light over a see-through plate, south up.
+// Outermost the 六十甲子, laid out as a 罗盘's 透地六十龙: each 地支's sector holds the five 甲子 of that
+// branch (the 午 sector 甲午 丙午 戊午 庚午 壬午), so each pillar glows where it stands among the sixty,
+// its name outside the rim, a line running from it to the heart; the day pillar, whose stem is the 日主,
+// in the 日主's gold and joined to it by a solid line, the others in vermilion and dashed. Inside, the
+// twelve 地支 between the spokes, those the pillars stand on lit; the month of birth (月令) marked on its
+// ring; the chart's 刑冲合会 between the branches (合 and 会 arcs, 冲 straight across, 刑 害 破 dashed); the
+// 日主 at the heart; and on the rim, where today stands in the year (此刻). What the chart does not use
+// (the other 甲子 and 地支) is faint, so its own stand out. Everything it shows is in the chart; nothing
+// is there for show.
 // Each part is marked with the layer it comes in on when the chart is cast (BaziHero): cast-l1 the 日主
 // and its own pillar, cast-l2 the month, cast-l3 the other pillars, cast-l4 the 刑冲合会 and 此刻.
 import type { ElementName, Pillar } from '../lib/bazi'
@@ -84,12 +85,6 @@ export function BaziDial({
   const dayMaster = pillars[2].stem
   return (
     <svg className="bazi-dial" viewBox="-24 -24 648 648" role="img" aria-label={pillars.map((p) => p.stem.char + p.branch.char).join(' ')}>
-      <defs>
-        {/* Cut into the metal: a dark edge under every line */}
-        <filter id="bd-engrave" x="-5%" y="-5%" width="110%" height="110%">
-          <feDropShadow dx="0.7" dy="0.9" stdDeviation="0.35" floodColor="#000" floodOpacity="0.9" />
-        </filter>
-      </defs>
       <circle cx={C} cy={C} r={R_RIM} className="bd-plate" />
       {/* The rim's ticks, a degree apart, turning slowly */}
       <g className="bd-turn">
@@ -99,7 +94,7 @@ export function BaziDial({
           return <line key={k} x1={C + Math.cos(a) * R_RIM} y1={C + Math.sin(a) * R_RIM} x2={C + Math.cos(a) * (R_RIM - l)} y2={C + Math.sin(a) * (R_RIM - l)} className={k % 5 ? 'bd-tick' : 'bd-tick major'} />
         })}
       </g>
-      <g className="bd-engraved" filter="url(#bd-engrave)">
+      <g className="bd-lines">
         {/* The 六十甲子: a sector of five for each branch, the dark and the light sectors in turn */}
         {[...RING].map((b, i) => (
           <path key={b} d={cell(i - 0.5, i + 0.5, R_JIAZI_OUT, R_JIAZI_IN)} className={`bd-sector${i % 2 ? ' alt' : ''}`} />
@@ -131,7 +126,11 @@ export function BaziDial({
             const [x, y] = at(i, 0)
             const mine = onJiazi.get(s + b)
             return (
-              <g key={s + b} className={`bd-jiazi${mine ? ` mine ${layer(Math.min(...mine))}` : ''}`} transform={`rotate(${deg(i).toFixed(2)} ${x} ${y})`}>
+              <g
+                key={s + b}
+                className={`bd-jiazi${mine ? ` mine ${layer(Math.min(...mine))}${mine.includes(2) ? ' day' : ''}` : ''}`}
+                transform={`rotate(${deg(i).toFixed(2)} ${x} ${y})`}
+              >
                 {mine && <path d={cell(-0.1, 0.1, R_JIAZI_OUT - 2, R_JIAZI_IN + 2)} />}
                 <text x={C} y={C - 263}>
                   {s}
@@ -149,7 +148,7 @@ export function BaziDial({
         const i = jiaziAt(gz[0], gz[1])
         const [x, y] = at(i, R_RIM + 14)
         return (
-          <text key={gz} x={x} y={y + 4} className={`bd-pillar-name ${layer(Math.min(...ks))}`}>
+          <text key={gz} x={x} y={y + 4} className={`bd-pillar-name ${layer(Math.min(...ks))}${ks.includes(2) ? ' day' : ''}`}>
             {t('{pillars}柱', { pillars: ks.map((k) => term(pillars[k].label.slice(0, 1))).join('·') })}
           </text>
         )
@@ -172,7 +171,7 @@ export function BaziDial({
         const i = jiaziAt(p.stem.char, p.branch.char)
         const [x1, y1] = at(i, R_JIAZI_IN - 2)
         const [x2, y2] = at(i, R_HEART + 4)
-        return <line key={p.label} x1={x1} y1={y1} x2={x2} y2={y2} className={`bd-thread ${layer(k)}`} />
+        return <line key={p.label} x1={x1} y1={y1} x2={x2} y2={y2} className={`bd-thread ${layer(k)}${k === 2 ? ' day' : ''}`} />
       })}
       {/* The 地支 in their boxes, upright; those the pillars stand on edged in vermilion */}
       {[...RING].map((b, i) => {
