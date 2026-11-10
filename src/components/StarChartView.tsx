@@ -444,7 +444,8 @@ function AspectList({
 /** ☌合: an aspect's glyph and name (合相 … have their own entries, as titles) */
 /** Points that are not planets: in 详细 only, and not counted in the balance */
 const EXTRA_POINTS: ChartPoint['key'][] = ['node', 'southNode', 'asc', 'mc']
-const ELEMENT_COLOUR: Record<Element, string> = { fire: 'var(--fire)', earth: 'var(--wood)', air: 'var(--metal)', water: 'var(--water)' }
+// 风象 in its own yellow where the look sets one (天书's --air), else in the 金 colour, a yellow in 经典
+const ELEMENT_COLOUR: Record<Element, string> = { fire: 'var(--fire)', earth: 'var(--wood)', air: 'var(--air, var(--metal))', water: 'var(--water)' }
 const ELEMENT_LATIN: Record<Element, string> = { fire: 'IGNIS', earth: 'TERRA', air: 'AER', water: 'AQUA' }
 /** What a chart without the element is short of */
 const ELEMENT_LACK: Record<Element, string> = { fire: '冲劲与热情', earth: '耐心与务实', air: '理性与交流', water: '感受与共情' }
