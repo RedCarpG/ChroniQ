@@ -3268,3 +3268,11 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   background: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .chart-view .cv-icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+
+/* The scenes (简洁, 今日's almanac page) and the skies (天象, 观月, 太阳系) are to look at and drag, not to
+   read off: a drag over them, or a slip of the mouse, selects nothing and leaves no blue box on the
+   lettering. Their figures stay selectable to copy: the panel at the side, the tables, the fields. */
+:is(.card.scene, .today-scene, .sky-stage, .imm-stage) { user-select: none; -webkit-user-select: none; }
+:is(.card.scene, .today-scene, .sky-stage, .imm-stage) :is(.imm-panel-body, .imm-sheet-body, .star-table, .sky-detail, .sky-event, input, textarea, [contenteditable]) {
+  user-select: text; -webkit-user-select: text;
+}
