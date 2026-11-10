@@ -15,7 +15,8 @@
     "gen:constellations": "vite-node scripts/gen-constellations.ts",
     "build:core": "vite build --config core/vite.config.ts && tsc -p core/tsconfig.json && node core/fix-dts.mjs",
     "pack:core": "npm run build:core && npm pack ./core --pack-destination core",
-    "check:core": "tsc -p core/consumer/tsconfig.json"
+    "check:core": "tsc -p core/consumer/tsconfig.json",
+    "build:skill": "node core/skill/build.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

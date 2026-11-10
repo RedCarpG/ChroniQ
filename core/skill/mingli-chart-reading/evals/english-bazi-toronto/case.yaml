@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: english-bazi-toronto
+expected_outcome: |
+  Answers in English with the Chinese terms kept and glossed. Casts the BaZi and the natal chart with the script (Toronto, America/Toronto). Tells the user that the birth falls on the day of 立春 and that by the actual moment the year and month pillars would be 乙亥 and 戊寅 while the chart as cast reads 甲戌 and 丁丑, and reads with that in mind; the Day Master 丙火 is the same either way. Gives the rising sign as Capricorn (摩羯座 19°).

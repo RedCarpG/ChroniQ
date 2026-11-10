@@ -1,7 +1,7 @@
 // What ChroniQ works out, as plain Chinese text to hand to an AI (or read aloud): a day's 黄历, a
 // 八字, 紫微, 星盘 or 七政四余 chart in full, and the sky's coming events. The app draws all of this; these say it
 // in words, complete enough that a model can read the chart without casting it itself.
-import { SolarDay } from 'tyme4ts'
+import { SixtyCycleYear, SolarDay } from 'tyme4ts'
 import {
   formatCoords,
   formatLon,
@@ -14,11 +14,13 @@ import {
 } from './astrology'
 import type { StarSettings } from './starPrefs'
 import { buildDayDetail } from './calendar'
-import type { BaziChart, Glyph } from './bazi'
+import { flowMonths, fortunePillars, fortuneRelations, type BaziChart, type FortuneColumn, type Glyph, type Pillar } from './bazi'
 import type { BaziReading } from './baziReading'
 import { moonOf } from './moon'
+import { isPair, SIX_CLASH, type Relation } from './relations'
+import { DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
 import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from './skyEvents'
-import type { ZiweiChart, ZiweiStar } from './ziwei'
+import type { LayerKind, ZiweiChart, ZiweiLayer, ZiweiStar } from './ziwei'
 import { ZONES, type MansionZone } from './mansions'
 import { CI, FOUR, PALACES, QIZHENG_INFO, SEVEN, type QizhengBody, type QizhengChart } from './qizheng'
 import { QIZHENG_SCHOOLS, type QizhengSchoolSettings } from './qizhengSchools'
@@ -55,6 +57,13 @@ export function almanacText(year: number, month: number, day: number): string {
 
 const glyphText = (g: Glyph) => `${g.char}${g.element}${g.tenStar ? `（${g.tenStar}）` : ''}`
 
+/** A pillar's 天干, 地支, 藏干 and all reckoned on it, as one line reads it */
+const pillarText = (p: Pillar) =>
+  `天干 ${glyphText(p.stem)}，地支 ${glyphText(p.branch)}，藏干 ${list(p.hidden.map(glyphText))}；` +
+  `纳音 ${p.sound}，星运 ${p.terrain}，自坐 ${p.selfTerrain}，空亡 ${p.empty || '无'}；神煞 ${list(p.shenSha.map((s) => s.name))}`
+
+const relationText = (r: Relation) => `${r.text}（${r.members.join('、')}）`
+
 const TENDENCY: Record<BaziReading['tendency'], string> = { strong: '日主偏旺', weak: '日主偏弱', balanced: '比较平衡' }
 
 /** A 八字 chart in full: the four pillars with all that is reckoned on them, the 大运, and (given a
@@ -65,17 +74,12 @@ export function baziText(chart: BaziChart, reading?: BaziReading): string {
     ...(chart.trueSolar ? [`按真太阳时：${chart.trueSolar.text}`] : []),
     `日主：${glyphText(chart.dayMaster)}`,
     '四柱：',
-    ...chart.pillars.map(
-      (p) =>
-        `  ${p.label} ${p.stem.char}${p.branch.char}：天干 ${glyphText(p.stem)}，地支 ${glyphText(p.branch)}，` +
-        `藏干 ${list(p.hidden.map(glyphText))}；纳音 ${p.sound}，星运 ${p.terrain}，自坐 ${p.selfTerrain}，` +
-        `空亡 ${p.empty || '无'}；神煞 ${list(p.shenSha.map((s) => s.name))}`,
-    ),
+    ...chart.pillars.map((p) => `  ${p.label} ${p.stem.char}${p.branch.char}：${pillarText(p)}`),
     `胎元 ${chart.fetalOrigin} · 胎息 ${chart.fetalBreath} · 命宫 ${chart.ownSign} · 身宫 ${chart.bodySign}`,
     `五行个数：${Object.entries(chart.elementCount)
       .map(([e, n]) => `${e}${n}`)
       .join(' ')}`,
-    `干支关系：${list(chart.relations.map((r) => `${r.text}（${r.members.join('、')}）`))}`,
+    `干支关系：${list(chart.relations.map(relationText))}`,
     `起运：${chart.startText}`,
     `大运：${chart.decades.map((d) => `${d.ganzhi}（${d.startAge}–${d.endAge}岁，${d.startYear}–${d.endYear}）`).join('，')}`,
   ]
@@ -91,6 +95,86 @@ export function baziText(chart: BaziChart, reading?: BaziReading): string {
             `当前大运：${reading.decade.ganzhi}${reading.decade.tenStar ? `（${reading.decade.tenStar}）` : ''}，${reading.decade.from}–${reading.decade.to}`,
           ]
         : []),
+    )
+  }
+  return lines.join('\n')
+}
+
+/** A moment to read 岁运 for: a year (the 干支 year from its 立春), or a day in it */
+export interface FortuneWhen {
+  year: number
+  month?: number
+  day?: number
+}
+
+/** When the 大运 of a chart begins: its year, on the month and day of the first 交运 */
+const decadeStart = (chart: BaziChart, i: number) =>
+  Date.UTC(chart.decades[i].startYear, chart.start.month - 1, chart.start.day)
+
+/**
+ * 岁运 against a 八字: the 大运 running then, the 流年 (and, given a day, its 流月 and 流日), each with
+ * its 十神, 藏干, 纳音 and 神煞 as the four pillars have them, the 太岁, and how they 刑冲合会 the four
+ * pillars and each other. For a year alone, the twelve 流月 follow, each with what it does to the
+ * four pillars. What a reading of a year, or of 「今年适合换工作吗」, rests on.
+ */
+export function fortuneText(chart: BaziChart, when: FortuneWhen, schools: SchoolSettings = DEFAULT_SCHOOLS): string {
+  const birthYear = parseInt(chart.solarText, 10)
+  const day = when.month && when.day ? SolarDay.fromYmd(when.year, when.month, when.day).getSixtyCycleDay() : null
+  const yearGz = day ? day.getYear().getName() : SixtyCycleYear.fromYear(when.year).getSixtyCycle().getName()
+  // The 干支 year a day falls in starts at 立春, so early in January it is still last year's
+  const year = day ? day.getSixtyCycleMonth().getSixtyCycleYear().getYear() : when.year
+  const at = day ? Date.UTC(when.year, when.month! - 1, when.day!) : null
+  const index = chart.decades.findLastIndex((_, i) => (at === null ? chart.decades[i].startYear <= year : decadeStart(chart, i) <= at))
+  const decade = index >= 0 ? chart.decades[index] : undefined
+  const handover = `${chart.decades[0].startYear}年${chart.start.month}月${chart.start.day}日`
+
+  const columns: FortuneColumn[] = [
+    ...(decade ? [{ label: '大运', ganzhi: decade.ganzhi }] : []),
+    { label: '流年', ganzhi: yearGz },
+    ...(day ? [{ label: '流月', ganzhi: day.getMonth().getName() }, { label: '流日', ganzhi: day.getSixtyCycle().getName() }] : []),
+  ]
+  const pillars = fortunePillars(chart, columns, schools)
+  const of = (label: string) => pillars[columns.findIndex((c) => c.label === label)]
+
+  const title = day ? `${when.year}年${when.month}月${when.day}日` : `${when.year}年`
+  const lines = [`岁运（${title}）：`]
+  if (decade) {
+    const changes = at === null && index > 0 && decade.startYear === year
+    lines.push(
+      `  大运 ${decade.ganzhi}（${decade.startYear}–${decade.endYear}，${decade.startAge}–${decade.endAge}岁）：${pillarText(of('大运'))}` +
+        (changes ? `。这一年${chart.start.month}月${chart.start.day}日交运，之前仍走${chart.decades[index - 1].ganzhi}大运` : ''),
+    )
+  } else lines.push(`  尚未起运（${handover}交运），还在童限`)
+  if (at === null && index === 0 && decade!.startYear === year) lines.push(`  这一年${chart.start.month}月${chart.start.day}日起运，之前在童限`)
+  lines.push(`  流年 ${yearGz}（${year}年立春起，虚岁 ${year - birthYear + 1}）：${pillarText(of('流年'))}`)
+  if (day) {
+    const first = day.getSixtyCycleMonth().getFirstDay().getSolarDay()
+    lines.push(
+      `  流月 ${day.getMonth().getName()}（${first.getMonth()}月${first.getDay()}日${first.getTerm().getName()}起）：${pillarText(of('流月'))}`,
+      `  流日 ${day.getSixtyCycle().getName()}：${pillarText(of('流日'))}`,
+    )
+  }
+  const natal = chart.pillars[0].branch.char
+  const taiSui = yearGz[1] === natal ? '本命年（流年地支与年支相同）' : SIX_CLASH.some((p) => isPair(p, natal, yearGz[1])) ? '冲太岁（流年地支冲年支）' : ''
+  if (taiSui) lines.push(`  太岁：${taiSui}`)
+  lines.push(`岁运与原局、岁运之间的刑冲合会：${list(fortuneRelations(chart, columns, schools).map(relationText))}`)
+
+  if (!day) {
+    const months = flowMonths(year, chart.dayMaster.char)
+    const monthPillars = fortunePillars(chart, months.map((m) => ({ label: '流月', ganzhi: m.ganzhi })), schools)
+    lines.push(
+      '流月（以节为界）：',
+      ...months.map((m, i) => {
+        const [mm, dd] = m.start.split('/')
+        // 子月 and 丑月 reach into the next year
+        const next = i >= 10 && Number(mm) <= 2 ? `${year + 1}年` : ''
+        const p = monthPillars[i]
+        const rel = fortuneRelations(chart, [{ label: '流月', ganzhi: m.ganzhi }], schools)
+        return (
+          `  ${m.ganzhi[1]}月 ${m.ganzhi}（${next}${mm}月${dd}日起）：天干 ${glyphText(p.stem)}，地支 ${glyphText(p.branch)}` +
+          `（本气 ${p.hidden[0] ? glyphText(p.hidden[0]) : '无'}）；与原局 ${list(rel.map(relationText))}`
+        )
+      }),
     )
   }
   return lines.join('\n')
@@ -135,6 +219,49 @@ export function ziweiText(chart: ZiweiChart, patterns: ZiweiPattern[] = []): str
           (p.plus.length ? ` 加分：${list(p.plus)}。` : '') +
           (p.minus.length ? ` 破格：${list(p.minus)}。` : ''),
       ),
+    )
+  }
+  return lines.join('\n')
+}
+
+const LAYER_NAME: Record<LayerKind, string> = { decadal: '大限', yearly: '流年', monthly: '流月', daily: '流日', hourly: '流时' }
+const LAYER_ORDER = ['命宫', '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移', '仆役', '官禄', '田宅', '福德', '父母']
+
+/**
+ * 紫微 运限 in words (lib/ziwei buildHoroscope): for each layer asked for (大限, 流年 …), where its
+ * 命宫 falls on the natal board, which natal palace each of its twelve palaces is, its 四化 and the
+ * natal palace each transformed star sits in, and its 流耀. `year` is the lunar year the 运限 are for.
+ */
+export function ziweiHoroscopeText(
+  chart: ZiweiChart,
+  layers: Partial<Record<LayerKind, ZiweiLayer>>,
+  year: number,
+): string {
+  const natal = (branch: string) => `${chart.palaces[branch].name}${chart.palaces[branch].name === '命宫' ? '' : '宫'}`
+  const where = (star: string) => {
+    const p = Object.values(chart.palaces).find((q) => [...q.major, ...q.minor, ...q.adjective].some((s) => s.name === star))
+    return p ? `本命${natal(p.branch)}` : '盘上未列出'
+  }
+  const decade = chart.decades.find((d) => d.years.includes(year))
+  const lines = [`运限（农历 ${year} 年，虚岁 ${year - chart.birthYear + 1}）：`]
+  for (const kind of ['decadal', 'yearly', 'monthly', 'daily', 'hourly'] as LayerKind[]) {
+    const layer = layers[kind]
+    if (!layer) continue
+    const name = LAYER_NAME[kind]
+    const byName = Object.fromEntries(Object.entries(layer.palaceNames).map(([b, n]) => [n, b]))
+    const mutagens = ['禄', '权', '科', '忌'].flatMap((m) => {
+      const star = Object.keys(layer.mutagens).find((s) => layer.mutagens[s] === m)
+      return star ? [`${star}化${m}（${where(star)}）`] : []
+    })
+    const stars = Object.entries(layer.stars).flatMap(([b, s]) => (s.length ? [`${s.map((x) => x.name).join('、')}在本命${natal(b)}`] : []))
+    const range = kind === 'decadal' && decade ? `，${decade.range[0]}–${decade.range[1]}岁` : ''
+    // The layer's 命宫 is where its palace names put it: for 大限 and 流年 on the 运限's own 地支, for
+    // 流月 and 流日 counted on from the 流年 (斗君), not on the month's or the day's
+    const ming = byName['命宫'] ?? layer.branch
+    lines.push(
+      `  ${name} ${layer.stem}${layer.branch}${range}：${name}命宫在本命${natal(ming)}（${ming}）；` +
+        `${name}四化 ${list(mutagens)}；${kind === 'decadal' ? '运曜' : '流耀'} ${stars.join('，') || '无'}`,
+      `    ${name}十二宫：${LAYER_ORDER.filter((n) => byName[n]).map((n) => `${n}=本命${natal(byName[n])}`).join('，')}`,
     )
   }
   return lines.join('\n')

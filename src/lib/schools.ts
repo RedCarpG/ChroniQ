@@ -101,6 +101,21 @@ export const SCHOOLS: { [K in SchoolKey]: SchoolInfo<K> } = {
   },
 }
 
+/**
+ * 交节对照: how a birth is set against the 节 that turn the month pillar (and at 立春 the year's).
+ * Not one of SCHOOLS, as ChroniQ itself always compares the time it casts by (the clock, or 真太阳时)
+ * with the 节 in 北京时间; a program picks the other on BaziInput.jie. The two differ only for a birth
+ * within a few hours of a 节 whose time zone or 真太阳时 puts it on the other side.
+ */
+export const JIE_SCHOOL: { title: string; summary: string; options: { value: 'local' | 'instant'; label: string; source: string }[] } = {
+  title: '交节对照',
+  summary: '出生离交节只差几小时时，年柱、月柱按哪个时刻和交节时刻比。海外出生、或用真太阳时的，两种比法可能落在交节两边。',
+  options: [
+    { value: 'instant', label: '按实际时刻', source: '节气是天文时刻：拿出生的实际时刻（世界时）和交节时刻比，与出生地的时区、真太阳时无关' },
+    { value: 'local', label: '按排盘时间', source: 'ChroniQ 默认的做法：把排盘用的钟表时间或真太阳时直接和北京时间的交节时刻比' },
+  ],
+}
+
 const STORAGE_KEY = 'bazi-schools'
 
 export function loadSchools(): SchoolSettings {

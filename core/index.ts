@@ -11,6 +11,8 @@ export {
   buildBazi,
   flowMonths,
   flowDays,
+  fortunePillars,
+  fortuneRelations,
   ELEMENTS,
   type BaziChart,
   type BaziInput,
@@ -18,12 +20,22 @@ export {
   type Glyph,
   type ElementName,
   type DecadeInfo,
+  type FortuneColumn,
 } from '../src/lib/bazi'
+export { type Relation } from '../src/lib/relations'
 export { baziReading, type BaziReading } from '../src/lib/baziReading'
-export { DEFAULT_SCHOOLS, SCHOOLS, type SchoolSettings } from '../src/lib/schools'
+export { DEFAULT_SCHOOLS, SCHOOLS, JIE_SCHOOL, type SchoolSettings } from '../src/lib/schools'
 
 // 紫微
-export { buildZiwei, buildHoroscope, type ZiweiChart, type ZiweiPalace, type ZiweiStar } from '../src/lib/ziwei'
+export {
+  buildZiwei,
+  buildHoroscope,
+  type ZiweiChart,
+  type ZiweiPalace,
+  type ZiweiStar,
+  type ZiweiLayer,
+  type LayerKind,
+} from '../src/lib/ziwei'
 export { findPatterns, type ZiweiPattern } from '../src/lib/ziweiPatterns'
 export { DEFAULT_ZIWEI_SCHOOLS, ZIWEI_SCHOOLS, type ZiweiSchoolSettings } from '../src/lib/ziweiSchools'
 
@@ -58,7 +70,9 @@ export { DEFAULT_QIZHENG_SCHOOLS, QIZHENG_SCHOOLS, type QizhengSchoolSettings } 
 // Places (for 真太阳时, 星盘 houses and the sky), and a birth as people say it
 export { CITIES, type City } from '../src/lib/solarTime'
 export { DEFAULT_PLACE, cityPlace, type Place } from '../src/lib/place'
-export { findCity, lunarToSolar } from '../src/lib/birth'
+export { findCity, lunarToSolar, solarToLunar, birthNotes, type BirthNote } from '../src/lib/birth'
+export { WORLD_CITIES } from '../src/lib/worldCities'
+export { toUtc, type ZonedTime } from '../src/lib/timeZone'
 
 // 天象
 export { computeSkyEvents, type SkyEvent, type SkyEventKind, type SkyPlaceLike } from '../src/lib/skyEvents'
@@ -69,7 +83,9 @@ export {
   almanac,
   almanacText,
   baziText,
+  fortuneText,
   ziweiText,
+  ziweiHoroscopeText,
   starChartText,
   qizhengText,
   skyEventTitle,

@@ -22,8 +22,8 @@ npm install https://github.com/RedCarpG/ChroniQ/releases/download/core-v0.1.0/ch
 ```ts
 import {
   almanacText,
-  buildBazi, baziReading, baziText,
-  buildZiwei, findPatterns, ziweiText, DEFAULT_ZIWEI_SCHOOLS,
+  buildBazi, baziReading, baziText, fortuneText, birthNotes,
+  buildZiwei, findPatterns, ziweiText, buildHoroscope, ziweiHoroscopeText, DEFAULT_ZIWEI_SCHOOLS,
   buildStarChart, transits, starChartText, DEFAULT_STAR_SETTINGS, findCity, lunarToSolar,
   buildQizheng, qizhengText, DEFAULT_QIZHENG_SCHOOLS,
   upcomingSkyEvents, skyEventText, DEFAULT_PLACE,
@@ -65,6 +65,28 @@ for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(sk
 结构化的数据也都导出了（`buildDayDetail`、`BaziChart`、`ZiweiChart`、`computeSkyEvents`、`computeTonight`、`QizhengChart` 等），见 `dist/types/core/index.d.ts`。
 八字、紫微、七政四余的流派选项（`SCHOOLS`、`ZIWEI_SCHOOLS`、`QIZHENG_SCHOOLS`）和网页「设置」里的一样，不传时用默认值。
 
+预测和出生时间的检查也有文字版：
+
+```ts
+fortuneText(bazi, { year: 2026 })                  // 当年的大运（交运日期）、流年、太岁、与原局的刑冲合会，和十二个流月
+fortuneText(bazi, { year: 2026, month: 11, day: 10 }) // 某一天：大运、流年、流月、流日
+ziweiHoroscopeText(ziwei, buildHoroscope(input, DEFAULT_ZIWEI_SCHOOLS, { year: 2026, month: 6, day: 1, hour: 0 }), 2026)
+// 大限、流年……各自的命宫在本命哪一宫、十二宫对照、四化落宫、流耀
+birthNotes({ ...input, place, trueSolar: true })   // [{ kind: 'dst', text: '出生时北京实行夏令时（UTC+9）……' }, …]
+// 夏令时跳过的时刻（抛出 RangeError）或重复的时刻、交节附近、真太阳时换了柱、时辰交界、晚子时；时辰不详时（第三个参数 false）三柱能说什么
+buildBazi({ ...input, place, trueSolar: true, jie: 'instant' })
+// 年柱、月柱和起运按出生的实际时刻对照交节（JIE_SCHOOL）。网页的做法（默认 'local'）是把排盘时间直接和北京时间的交节时刻比，
+// 海外出生或用真太阳时、又离交节只差几小时的，两种会落在交节两边
+```
+
+## Claude Code skill：命理排盘与解读
+
+`core/skill/mingli-chart-reading/` 是一个 Claude Code skill，和这个包一起发布、用同一个版本号。装上以后，用户报出生信息或问运势时，Claude 用 skill 里的脚本排盘，再照盘解读，不自己排。它能排八字（时辰不详时排三柱，加流年、流月、流日）、紫微（加大限、流年）、星盘（本命、行运、推运、合盘）、七政四余、黄历和天象，并回答「今年适合换工作吗」这类问题。解读的要求、流派分歧和英文术语都写在 skill 里。
+
+- **脚本**：`scripts/chart.ts` 加上它用到的这个包和三个库，打成一个 `scripts/chart.mjs`（约 1.3 MB）。装上就能用 node 运行，不需要 npm install，不联网，也不写文件。参数用 `node chart.mjs --help` 查看，输出就是上面那些文字函数写的纯文本。
+- **安装**：从 Release 下载 `mingli-chart-reading-<版本>.zip`，解压到 `~/.claude/skills/`，得到 `~/.claude/skills/mingli-chart-reading/`。
+- **构建**：`npm run build:skill` 构建到 `core/skill/dist/mingli-chart-reading/`：SKILL.md 和 references 原样复制，脚本打包。`core/__tests__/skill.test.ts` 会测试脚本的参数和输出，也会构建一份，用 node 实际运行。
+
 ## 开发
 
 在 ChroniQ 仓库根目录：
@@ -72,9 +94,10 @@ for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(sk
 - `npm run build:core`：打包到 `core/dist`（一个 ES 模块加类型声明）
 - `npm run pack:core`：打包并生成 `core/chroniq-core-<版本>.tgz`
 - `npm run check:core`：在打好的包上，按 Node 项目（`NodeNext`）的方式检查类型能不能用（`core/consumer/`）
+- `npm run build:skill`：构建 Claude Code skill 到 `core/skill/dist`
 - 测试和网页的一起跑（`npm test`），`core/__tests__` 是在 Node 里跑的，保证离开浏览器也能用
 
-发布新版：改 `core/package.json` 的 `version`，合进 `main` 后打标签 `core-v<版本>` 并推送，GitHub Actions 会打包并建好 Release。
+发布新版：改 `core/package.json` 的 `version`，合进 `main` 后打标签 `core-v<版本>` 并推送，GitHub Actions 会打包并建好 Release，附上包的 tgz 和 skill 的 zip。
 
 ## 许可
 
