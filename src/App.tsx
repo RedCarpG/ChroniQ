@@ -71,11 +71,23 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const shared = parseShareHash(location.hash)
 if (location.hash) history.replaceState(null, '', location.pathname + location.search)
 
+// The page open, kept for this browser tab only: a reload (更新 to a new version, or the browser's own)
+// comes back to it rather than to 日历. A new tab or window starts at 日历 as before.
+const PAGE_KEY = 'chroniq-page'
+function lastPage(): Tab | null {
+  try {
+    const page = sessionStorage.getItem(PAGE_KEY) as Tab | null
+    return page && TAB_ORDER.includes(page) ? page : null
+  } catch {
+    return null
+  }
+}
+
 export function App() {
   const online = useOnline()
   const updateReady = useUpdateReady()
   const [loadError, setLoadError] = useState(false)
-  const [tab, setTab] = useState<Tab>(shared?.tab ?? 'calendar')
+  const [tab, setTab] = useState<Tab>(() => shared?.tab ?? lastPage() ?? 'calendar')
   // Switching pages slides the old one out and the new one in, towards the
   // side of the new tab (styles.css: [data-vt='page']).
   // Opened from 天象预告: the moment the sky page starts at, for that visit
@@ -145,6 +157,13 @@ export function App() {
   })
   // Remember the latest birth data so the chart is back after a reload.
   useEffect(() => saveLastInput(baziInput), [baziInput])
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(PAGE_KEY, tab)
+    } catch {
+      // storage refused (a private window): a reload goes to 日历
+    }
+  }, [tab])
   const [schools, setSchools] = useState<SchoolSettings>(loadSchools)
   const changeSchools = (next: SchoolSettings) => {
     setSchools(next)
