@@ -62,10 +62,15 @@ export function PageNav({ page, onPick, className }: { page: Page; onPick: (page
       m.style.translate = `${((b.left - a.left) / zoom).toFixed(1)}px ${((b.top + b.height / 2 - a.top) / zoom).toFixed(1)}px`
     }
     place()
-    // the group's width slides for 0.28 s: follow it, then settle
-    const timers = [80, 160, 300].map((ms) => window.setTimeout(place, ms))
+    // The groups' widths slide as one opens and another folds, and not always when expected (a page
+    // change can hold the slide back): follow their sizes as they change, until they settle. Without
+    // ResizeObserver, a few tries over the slide's 0.28 s.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place)
+    nav.querySelectorAll('.page-nav-pages').forEach((g) => observer?.observe(g))
+    const timers = observer ? [] : [80, 160, 300].map((ms) => window.setTimeout(place, ms))
     window.addEventListener('resize', place)
     return () => {
+      observer?.disconnect()
       timers.forEach(clearTimeout)
       window.removeEventListener('resize', place)
     }
