@@ -25,13 +25,18 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
     <>
     <div className={`ts-atmos ts-${realm} ts-page-${page}`} aria-hidden="true">
       <div className="ts-mist" />
-      {/* 八字, 紫微 and the 历法 pages (今日, 日历): a thin fog, in drifts, moving slowly across */}
-      {(page === 'bazi' || page === 'ziwei' || page === 'today' || page === 'calendar') && (
+      {/* 八字, 紫微, 星盘 and the 历法 pages (今日, 日历): a thin fog, in drifts, moving slowly across; at a
+          depth of its own (useParallax), so it slides against the stars behind it */}
+      {(page === 'bazi' || page === 'ziwei' || page === 'qizheng' || page === 'today' || page === 'calendar' || page === 'star') && (
         <svg className="ts-fog">
           <filter id="ts-fog" x="0" y="0" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0055" numOctaves="4" seed="11" />
-            {/* warm grey, there only where the noise is thick */}
-            <feColorMatrix values="0 0 0 0 0.66  0 0 0 0 0.6  0 0 0 0 0.5  1.6 0 0 0 -0.62" />
+            {/* there only where the noise is thick: warm grey in the east, a cool violet grey in the west */}
+            <feColorMatrix
+              values={
+                realm === 'east' ? '0 0 0 0 0.66  0 0 0 0 0.6  0 0 0 0 0.5  1.6 0 0 0 -0.62' : '0 0 0 0 0.56  0 0 0 0 0.56  0 0 0 0 0.74  1.6 0 0 0 -0.64'
+              }
+            />
           </filter>
           <rect width="100%" height="100%" filter="url(#ts-fog)" />
         </svg>

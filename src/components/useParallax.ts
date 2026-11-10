@@ -9,6 +9,8 @@ import { useEffect } from 'react'
 const LAYERS: [string, number][] = [
   ['.birth-sky', -1],
   ['.ts-atmos', -0.45],
+  // the fog, in the atmosphere but nearer than its stars and mist: with the pointer, a little (0.8 - 0.45)
+  ['.ts-fog', 0.8],
   // the 紫微 board by its scrolling wrapper, which moving the board inside would give a scrollbar
   ['.bazi-hero-dial, .ziwei-scroll, .star-wheel', 0.22],
 ]
