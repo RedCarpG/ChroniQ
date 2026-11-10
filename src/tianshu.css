@@ -628,7 +628,11 @@
    is what the page sets around the scene: the toolbar over it, the card's padding (and 紫微's credit);
    the window is divided by --ui-zoom, the page being zoomed (styles.css: 显示大小). */
 @media (min-width: 900px) {
-  :is(.bazi-scene, .star-scene) { --scene-h: clamp(460px, 100svh / var(--ui-zoom, 1) - var(--scene-room, 140px), 700px); min-height: var(--scene-h); }
+  :is(.bazi-scene, .star-scene, .tl-scene) { --scene-h: clamp(460px, 100svh / var(--ui-zoom, 1) - var(--scene-room, 140px), var(--scene-max, 700px)); min-height: var(--scene-h); }
+  .tl-scene { --scene-max: 730px; }
+  /* 时间轴: the room over the scroll (the ink, the columns down each side) gives first; then the scroll
+     itself, narrower and so lower (its drawing is 1000 × 262), leaving the corners at the foot their room */
+  .tl-scroll-scene { justify-self: center; width: min(100%, (var(--scene-h) - 270px) * 1000 / 262); margin-top: max(170px, var(--scene-h) - 430px); }
   .ziwei-scene { --scene-room: 172px; }
   .bazi-scene .bazi-hero-dial { width: min(600px, 100%, var(--scene-h) - 100px); }
   .qz-scene .bazi-hero-dial { width: min(620px, 100%, var(--scene-h) - 80px); }
