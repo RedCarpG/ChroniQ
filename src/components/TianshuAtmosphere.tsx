@@ -41,6 +41,16 @@ export function TianshuAtmosphere({ realm, page }: { realm: 'east' | 'west'; pag
           <circle key={d.key} cx={d.cx} cy={d.cy} r={d.r} fill={d.fill} opacity={d.opacity} style={{ animationDelay: `${-d.delay}s` }} />
         ))}
       </svg>
+      {/* The east: the long soft fibres of 宣纸, very faint, drawn once */}
+      {realm === 'east' && (
+        <svg className="ts-paper">
+          <filter id="ts-paper" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035 0.11" numOctaves="2" seed="4" />
+            <feColorMatrix values="0 0 0 0 0.93  0 0 0 0 0.86  0 0 0 0 0.7  0 0 0 1.4 -0.78" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#ts-paper)" />
+        </svg>
+      )}
       <svg className="ts-grain">
         <filter id="ts-grain">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" />

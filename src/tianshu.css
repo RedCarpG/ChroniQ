@@ -716,3 +716,31 @@
 }
 @keyframes ts-meteor { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: 380px 150px; } }
 @media print { .ts-glow, .ts-meteor { display: none; } }
+
+/* ---------- Ink and paper (the east): decoration only, faint, never read as the chart ---------- */
+/* 宣纸's fibres over the night (TianshuAtmosphere), drawn once; not printed */
+.ts-paper { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.16; mix-blend-mode: screen; pointer-events: none; }
+/* The 八字 scene: the 日主 brushed large and faint over the dial's heart */
+.bazi-hero-dial { position: relative; }
+.bz-ink {
+  position: absolute; left: 50%; top: 50%; translate: -50% -52%; pointer-events: none; user-select: none;
+  font-family: 'Ma Shan Zheng', serif; font-size: min(300px, 50vw); line-height: 1; color: #e8d6b0; opacity: 0.06; mix-blend-mode: screen;
+}
+/* and in the margin, a reader's note in brown ink: what 《滴天髓》 says of the 日主; smaller and fainter than
+   the scene's own words, and only where there is room for it */
+.bz-note { display: none; }
+@media (min-width: 1100px) {
+  .bz-note {
+    display: flex; position: absolute; right: calc(3% + 74px); top: 47%; margin: 0; flex-direction: column; gap: 10px;
+    writing-mode: vertical-rl; font-family: 'Ma Shan Zheng', serif; font-size: 17px; line-height: 1.35; letter-spacing: 0.14em;
+    color: #b98a5a; opacity: 0.62; pointer-events: none; user-select: none;
+  }
+  .bz-note span:first-child { font-size: 14px; opacity: 0.8; }
+}
+/* A dry brush stroke under the section titles, in the same brown ink, as a scholar's mark; a picture, drawn once */
+:root[data-style='east'] :is(.section-title, .chart-reading h3) { position: relative; }
+:root[data-style='east'] :is(.section-title, .chart-reading h3)::after {
+  content: ''; position: absolute; left: -4px; bottom: -11px; width: 120px; height: 12px; pointer-events: none; opacity: 0.55;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9 0.06' numOctaves='2' seed='2' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='3'/%3E%3CfeComposite in2='n' operator='in'/%3E%3C/filter%3E%3Cpath d='M3 7 C 30 3 70 5 116 3' stroke='%23c69a62' stroke-width='7' stroke-linecap='round' fill='none' filter='url(%23d)'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+}
+@media print { .ts-paper, .bz-ink, .bz-note { display: none; } }

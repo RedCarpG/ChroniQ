@@ -10,9 +10,13 @@ import { useMemo, type ReactNode } from 'react'
 // 站酷小薇, the scene's lettering (tianshu.css): slender and sharp, as 瘦金 is; only for 天书's 八字,
 // and, cut by character ranges, only the characters shown are fetched
 import '@fontsource/zcool-xiaowei/400.css'
+// 马善政, a brush hand, for the scene's ink: the 日主 brushed faintly over the dial and the 《滴天髓》 note in the
+// margin (decoration, kept faint, so it is never read as the chart); cut by character ranges as 站酷小薇 is
+import '@fontsource/ma-shan-zheng/400.css'
 import { SolarDay } from 'tyme4ts'
 import type { BaziChart, ElementName } from '../lib/bazi'
 import { baziReading, DAY_MASTER_IMAGE } from '../lib/baziReading'
+import { DITIANSUI } from '../lib/ditiansui'
 import { monthBuildOf } from '../lib/dipper'
 import { hanNumber } from '../lib/hanNumber'
 import { useSettings, useT, useTerm } from '../settingsContext'
@@ -56,6 +60,10 @@ export function BaziHero({ chart, moment, place }: { chart: BaziChart; moment?: 
   const dial = (
     <div className="bazi-hero-dial">
       <BaziDial pillars={chart.pillars} relations={chart.relations} today={now} />
+      {/* the 日主 brushed large and faint over the dial's heart, as ink soaked into the paper */}
+      <span className="bz-ink" aria-hidden="true">
+        {dm.char}
+      </span>
     </div>
   )
   const most =
@@ -104,6 +112,14 @@ export function BaziHero({ chart, moment, place }: { chart: BaziChart; moment?: 
           </div>
         ))}
       </div>
+      {/* In the margin, as a reader's note: what 《滴天髓》 says of this 日主 (decoration: faint, and not on a phone) */}
+      {!en && DITIANSUI[dm.char] && (
+        <p className="bz-note" aria-hidden="true">
+          <span>滴天髓曰</span>
+          <span>{DITIANSUI[dm.char].slice(0, 2).join('　')}</span>
+          <span>{DITIANSUI[dm.char].slice(2).join('　')}</span>
+        </p>
+      )}
       <div className="bz-links cast-l4">
         <span>{linked ? t('刑冲合会{count}道', { count: num(linked) }) : t('原局没有刑冲合会')}</span>
         {linked > 0 && <span>{chart.relations.map((r) => term(r.text)).join(' · ')}</span>}
