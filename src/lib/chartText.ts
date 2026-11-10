@@ -1,5 +1,5 @@
 // What ChroniQ works out, as plain Chinese text to hand to an AI (or read aloud): a day's 黄历, a
-// 八字, 紫微 or 星盘 chart in full, and the sky's coming events. The app draws all of this; these say it
+// 八字, 紫微, 星盘 or 七政四余 chart in full, and the sky's coming events. The app draws all of this; these say it
 // in words, complete enough that a model can read the chart without casting it itself.
 import { SolarDay } from 'tyme4ts'
 import {
@@ -19,6 +19,9 @@ import type { BaziReading } from './baziReading'
 import { moonOf } from './moon'
 import { computeSkyEvents, type SkyEvent, type SkyPlaceLike } from './skyEvents'
 import type { ZiweiChart, ZiweiStar } from './ziwei'
+import { ZONES, type MansionZone } from './mansions'
+import { CI, FOUR, PALACES, QIZHENG_INFO, SEVEN, type QizhengBody, type QizhengChart } from './qizheng'
+import { QIZHENG_SCHOOLS, type QizhengSchoolSettings } from './qizhengSchools'
 import type { ZiweiPattern } from './ziweiPatterns'
 
 const list = (items: string[], none = '无') => (items.length ? items.join('、') : none)
@@ -226,6 +229,14 @@ export function upcomingSkyEvents(from: Date, days: number, place: SkyPlaceLike)
 
 // ---- 星盘 ----
 
+/** Where a birth was, then: 1990年5月17日 10:30（当地时间，UTC+9，夏令时）· 北京（39°54′N 116°24′E） */
+function birthLine(utc: Date, offsetMinutes: number, dst: boolean, place: { name: string; latitude: number; longitude: number }): string {
+  const wall = new Date(utc.getTime() + offsetMinutes * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const when = `${wall.getUTCFullYear()}年${wall.getUTCMonth() + 1}月${wall.getUTCDate()}日 ${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}`
+  return `${when}（当地时间，${formatOffset(offsetMinutes)}${dst ? '，夏令时' : ''}）· ${place.name}（${formatCoords(place.latitude, place.longitude)}）`
+}
+
 const HOUSE_SYSTEM: Record<StarSettings['houses'], string> = {
   placidus: '普拉西度制',
   whole: '整宫制',
@@ -241,15 +252,12 @@ const aspectText = (a: Aspect) => `${a.a.name} ${a.type.name} ${a.b.name}（差 
 /** A 星盘 in full: when and where, each planet's sign, degree and house, the angles, the house
  *  cusps, the elements and the aspects, tightest first; and (given one) a 行运, 推运 or 合盘 laid over it */
 export function starChartText(chart: StarChart, settings: StarSettings, overlay?: Overlay | null): string {
-  const wall = new Date(chart.utc.getTime() + chart.offsetMinutes * 60_000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const when = `${wall.getUTCFullYear()}年${wall.getUTCMonth() + 1}月${wall.getUTCDate()}日 ${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}`
   const bodies = chart.points.filter((p) => p.key !== 'asc' && p.key !== 'mc')
   const counted = bodies.filter((p) => p.key !== 'node' && p.key !== 'southNode')
   const tally = (names: string[], of: (p: ChartPoint) => number) =>
     names.map((n, i) => `${n}${counted.filter((p) => of(p) === i).length}`).join(' ')
   const lines = [
-    `出生：${when}（当地时间，${formatOffset(chart.offsetMinutes)}${chart.dst ? '，夏令时' : ''}）· ${chart.place.name}（${formatCoords(chart.place.latitude, chart.place.longitude)}）`,
+    `出生：${birthLine(chart.utc, chart.offsetMinutes, chart.dst, chart.place)}`,
     `宫位制：${chart.housesFallback ? `${HOUSE_SYSTEM.equal}（出生地太靠近极圈，普拉西度制算不出）` : HOUSE_SYSTEM[settings.houses]} · 月交点：${settings.node === 'true' ? '真交点' : '平交点'}`,
     `上升 ${formatLon(chart.asc, sign)} · 天顶 ${formatLon(chart.mc, sign)}`,
     '行星：',
@@ -277,5 +285,61 @@ export function starChartText(chart: StarChart, settings: StarSettings, overlay?
           .join('，')}`,
       )
   }
+  return lines.join('\n')
+}
+
+// ---- 七政四余 ----
+
+/** 命宫, 财帛宫 …: the palace names as the chart is read aloud */
+const palaceName = (k: number) => (k === 0 ? PALACES[0] : `${PALACES[k]}宫`)
+const ciText = (k: number) => `${CI[k].name}之次（${CI[k].branch}）`
+
+/** One body: its 宿 and how far in (古度, and degrees of RA), its 次 and palace */
+const qizhengBodyText = (b: QizhengBody) => {
+  const info = QIZHENG_INFO[b.key]
+  const name = info.old !== info.name ? `${info.name}（${info.old}，五行属${info.element}）` : `${info.name}（五行属${info.element}）`
+  return (
+    `${name}：${b.mansion.name}（${b.mansion.animal}）入宿 ${b.du.toFixed(1)} 古度（赤经 ${b.into.toFixed(1)}°），` +
+    `黄经 ${b.lon.toFixed(1)}°，在${ciText(b.ci)}，落${palaceName(b.palace)}` +
+    (b.retro ? '，逆行' : '') +
+    (b.reckoned ? '（依流派推算，天上没有对应的天体）' : '')
+  )
+}
+
+/** A 七政四余 chart in full: when and where, the 命宫 and 命度, each of the 七政 and the 四余 in its 宿,
+ *  次 and palace, the twelve palaces from the 命宫 with what is in each, how the 七政 fall among the four
+ *  quarters, and the 流派 it was cast by */
+export function qizhengText(chart: QizhengChart, schools: QizhengSchoolSettings): string {
+  const by = (key: string) => chart.bodies.find((b) => b.key === key)
+  const name = (b: QizhengBody) => QIZHENG_INFO[b.key].name
+  const zones: MansionZone[] = ['east', 'north', 'west', 'south']
+  const seven = SEVEN.map(by).filter((b): b is QizhengBody => !!b)
+  const four = FOUR.map(by).filter((b): b is QizhengBody => !!b)
+  const inMing = chart.bodies.filter((b) => b.palace === 0)
+  const lines = [
+    `${chart.gender === '男' ? '乾造' : '坤造'}（${chart.gender}命）`,
+    `出生：${birthLine(chart.utc, chart.offsetMinutes, chart.dst, chart.place)}`,
+    `命宫：${CI[chart.mingCi].name}之次（${CI[chart.mingCi].branch}宫），上升点黄经 ${chart.asc.toFixed(1)}°，命度在${chart.ascMansion.name}；` +
+      (inMing.length ? `${list(inMing.map(name))}守命` : '命宫无星守'),
+    '七政（日、月、五星，天文算出的地心视位置，按赤经归入二十八宿，入宿度为古度，周天 365¼ 度）：',
+    ...seven.map((b) => `  ${qizhengBodyText(b)}`),
+    '四余：',
+    ...four.map((b) => `  ${qizhengBodyText(b)}`),
+    '十二宫（从命宫起，顺黄道往东）：',
+    ...PALACES.map((palace, k) => {
+      const ci = (chart.mingCi + k) % 12
+      return `  ${palace}（${CI[ci].name} · ${CI[ci].branch}）：${list(chart.bodies.filter((b) => b.palace === k).map(name))}`
+    }),
+    `七政所在的四象：${zones
+      .map((z) => {
+        const here = seven.filter((b) => b.mansion.zone === z)
+        return `${ZONES[z].name} ${here.length}${here.length ? `（${here.map(name).join('、')}）` : ''}`
+      })
+      .join('，')}`,
+    `流派：${(Object.keys(QIZHENG_SCHOOLS) as (keyof QizhengSchoolSettings)[])
+      .map((key) => `${QIZHENG_SCHOOLS[key].title}取${QIZHENG_SCHOOLS[key].options.find((o) => o.value === schools[key])!.label}`)
+      .join('；')}`,
+    '十二次按黄道从春分点起每 30° 一次（清代《时宪历》的分法），命宫取上升点所在的次；月孛取月亮的平远地点。',
+  ]
   return lines.join('\n')
 }

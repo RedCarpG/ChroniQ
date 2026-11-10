@@ -3,7 +3,7 @@
 ChroniQ（星曆）的计算部分，单独打成一个包，给别的程序用（比如聊天机器人、桌面助手、自动化脚本）：
 
 - 某一天的**黄历**：农历、干支、节气、节日、月相、建除、值神、星宿、宜忌、吉神凶煞
-- **八字**排盘和旺衰简析，**紫微**排盘和格局，**星盘**（西洋占星：本命、行运、推运、合盘）
+- **八字**排盘和旺衰简析，**紫微**排盘和格局，**星盘**（西洋占星：本命、行运、推运、合盘），**七政四余**（出生时的真实星空归入二十八宿）
 - 一段时间内的**天象**：日月食、流星雨、冲日、大距、行星相合、超级月亮
 - 以上全部都能写成**一段中文纯文字**，直接交给 AI 读，或者念出来
 
@@ -25,6 +25,7 @@ import {
   buildBazi, baziReading, baziText,
   buildZiwei, findPatterns, ziweiText, DEFAULT_ZIWEI_SCHOOLS,
   buildStarChart, transits, starChartText, DEFAULT_STAR_SETTINGS, findCity, lunarToSolar,
+  buildQizheng, qizhengText, DEFAULT_QIZHENG_SCHOOLS,
   upcomingSkyEvents, skyEventText, DEFAULT_PLACE,
 } from 'chroniq-core'
 
@@ -52,13 +53,17 @@ starChartText(star, DEFAULT_STAR_SETTINGS) // 行星星座度数和宫位、上�
 starChartText(star, DEFAULT_STAR_SETTINGS, transits(star, new Date(), DEFAULT_STAR_SETTINGS)) // 加上此刻的行运
 lunarToSolar(1990, 4, 23) // { year: 1990, month: 5, day: 17 }
 
+// 七政四余（和星盘一样要出生地；用当地钟表时间，不用真太阳时）
+const qizheng = buildQizheng({ ...input, place }, DEFAULT_QIZHENG_SCHOOLS)
+qizhengText(qizheng, DEFAULT_QIZHENG_SCHOOLS) // 命宫和命度、七政四余各在哪一宿几度、哪一次哪一宫、逆行，十二宫，四象分布，流派
+
 // 接下来 30 天的天象（地点要有经纬度和时区）
 for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(skyEventText(e, DEFAULT_PLACE.timeZone))
 // 11/18 05:51 · 狮子座流星雨 · 东南方 高 70° · 理想条件下每小时约 15 颗；月光干扰小。
 ```
 
-结构化的数据也都导出了（`buildDayDetail`、`BaziChart`、`ZiweiChart`、`computeSkyEvents`、`computeTonight` 等），见 `dist/types/core/index.d.ts`。
-八字、紫微的流派选项（`SCHOOLS`、`ZIWEI_SCHOOLS`）和网页「设置」里的一样，不传时用默认值。
+结构化的数据也都导出了（`buildDayDetail`、`BaziChart`、`ZiweiChart`、`computeSkyEvents`、`computeTonight`、`QizhengChart` 等），见 `dist/types/core/index.d.ts`。
+八字、紫微、七政四余的流派选项（`SCHOOLS`、`ZIWEI_SCHOOLS`、`QIZHENG_SCHOOLS`）和网页「设置」里的一样，不传时用默认值。
 
 ## 开发
 

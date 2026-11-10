@@ -1,5 +1,5 @@
 // chroniq-core: ChroniQ's reckoning without its pages, for other programs (Node or a browser) —
-// the 黄历 of a day, 八字, 紫微 and 星盘 charts, the sky's events, and all of it as plain Chinese text
+// the 黄历 of a day, 八字, 紫微, 星盘 and 七政四余 charts, the sky's events, and all of it as plain Chinese text
 // to hand to an AI. The same code the app runs (src/lib), so both always agree.
 
 // 黄历
@@ -40,6 +40,21 @@ export {
 } from '../src/lib/astrology'
 export { DEFAULT_STAR_SETTINGS, STAR_SCHOOLS, type StarSettings, type StarPlace } from '../src/lib/starPrefs'
 
+// 七政四余 (the real sky at birth, placed in the 28 mansions)
+export {
+  buildQizheng,
+  CI,
+  PALACES,
+  QIZHENG_INFO,
+  SEVEN,
+  FOUR,
+  type QizhengChart,
+  type QizhengBody,
+  type QizhengKey,
+} from '../src/lib/qizheng'
+export { MANSIONS, ZONES, type Mansion, type MansionZone } from '../src/lib/mansions'
+export { DEFAULT_QIZHENG_SCHOOLS, QIZHENG_SCHOOLS, type QizhengSchoolSettings } from '../src/lib/qizhengSchools'
+
 // Places (for 真太阳时, 星盘 houses and the sky), and a birth as people say it
 export { CITIES, type City } from '../src/lib/solarTime'
 export { DEFAULT_PLACE, cityPlace, type Place } from '../src/lib/place'
@@ -56,6 +71,7 @@ export {
   baziText,
   ziweiText,
   starChartText,
+  qizhengText,
   skyEventTitle,
   skyEventText,
   upcomingSkyEvents,

@@ -4,7 +4,9 @@ import { buildBazi } from '../../bazi'
 import { buildZiwei } from '../../ziwei'
 import { DEFAULT_ZIWEI_SCHOOLS } from '../../ziweiSchools'
 import { findPatterns } from '../../ziweiPatterns'
-import { baziPrompt, dayPrompt, promptForPasting, starPrompt, systemPrompt, ziweiPrompt } from '../prompts'
+import { baziPrompt, dayPrompt, promptForPasting, qizhengPrompt, starPrompt, systemPrompt, ziweiPrompt } from '../prompts'
+import { buildQizheng } from '../../qizheng'
+import { DEFAULT_QIZHENG_SCHOOLS } from '../../qizhengSchools'
 import { buildStarChart, synastry } from '../../astrology'
 import { DEFAULT_PLACE } from '../../place'
 import { DEFAULT_STAR_SETTINGS } from '../../starPrefs'
@@ -107,6 +109,11 @@ describe('AI prompts', () => {
     const star = buildStarChart(INPUT, DEFAULT_PLACE, DEFAULT_STAR_SETTINGS)
     expect(starPrompt(star, DEFAULT_STAR_SETTINGS)).toContain('请解读这张本命盘')
     expect(starPrompt(star, DEFAULT_STAR_SETTINGS, synastry(star, star))).toContain('合盘：对方的行星')
+    const qizheng = qizhengPrompt(buildQizheng(INPUT, DEFAULT_QIZHENG_SCHOOLS), DEFAULT_QIZHENG_SCHOOLS)
+    expect(qizheng).toContain('这是一张七政四余命盘')
+    expect(qizheng).toMatch(/^ {2}太阳（五行属火）：\S+宿/m)
+    expect(qizheng).toContain('请解读这张盘：先看命宫所在的次')
+    expect(systemPrompt('zh')).toContain('七政四余')
   })
 
   it('read a day alone, or with a chart and what ChroniQ found between them', () => {

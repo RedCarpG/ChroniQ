@@ -14,12 +14,15 @@ import { ZONES } from '../lib/mansions'
 import { DEFAULT_PLACE } from '../lib/place'
 import { buildQizheng, CI, FOUR, mansionArcs, PALACES, QIZHENG_INFO, SEVEN, type QizhengBody, type QizhengChart, type QizhengKey } from '../lib/qizheng'
 import { QIZHENG_SCHOOLS, type QizhengSchoolSettings } from '../lib/qizhengSchools'
+import { qizhengPrompt } from '../lib/ai/prompts'
 import { useSettings, useT, useTerm } from '../settingsContext'
 import { BirthChip, BirthForm } from './BirthForm'
+import { AiAnalysis } from './AiAnalysis'
 import { CastLine } from './CastLine'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { QizhengReadingCard } from './ChartReadingCards'
 import { TitleMark } from './Logo'
+import { RightDrawer } from './RightDrawer'
 import { DrawerBirth } from './SavedCharts'
 import { SchoolSettingsPanel } from './Schools'
 import { SchoolsMenu } from './SchoolsMenu'
@@ -360,6 +363,7 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
   const t = useT()
   const { birthSky, uiStyle } = useSettings()
   const chart = useMemo(() => buildQizheng(input, schools), [input, schools])
+  const aiPrompt = useMemo(() => qizhengPrompt(chart, schools), [chart, schools])
   const [fullChart, toggleFullChart] = useChartFull()
   const tianshu = uiStyle === 'tianshu'
   const scene = tianshu && !fullChart
@@ -413,6 +417,11 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
         )}
       </section>
       <QizhengReadingCard chart={chart} />
+
+      {/* At the right edge, opened over the page when wanted */}
+      <RightDrawer label={t('AI 解读')}>
+        <AiAnalysis id="qizheng-ai" prompt={aiPrompt} />
+      </RightDrawer>
     </div>
   )
 }
