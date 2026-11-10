@@ -41,7 +41,8 @@ export function SectionNav({ items }: { items: [id: string, label: string][] }) 
     }
   }, [ids])
 
-  if (!slot) return null
+  // One section (简洁 is the natal chart alone) has nothing to jump between
+  if (!slot || items.length < 2) return null
   return createPortal(
     <nav className="section-nav" aria-label={t('页面导航')}>
       <button type="button" className="section-nav-end" title={t('回到顶端')} aria-label={t('回到顶端')} onClick={() => scrollToY(0)}>

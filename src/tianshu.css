@@ -539,6 +539,17 @@
   .st-three { position: absolute; left: 3%; bottom: 10px; margin: 0; }
   .st-aspects { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; text-align: right; }
 }
+/* 简洁 is one screen and no more: on a shorter window (a laptop, a browser with its bars) the scene,
+   and the chart in it, come down with the window, so nothing is left below to scroll to. --scene-room
+   is what the page sets around the scene: the toolbar over it, the card's padding (and 紫微's credit);
+   the window is divided by --ui-zoom, the page being zoomed (styles.css: 显示大小). */
+@media (min-width: 900px) {
+  :is(.bazi-scene, .star-scene) { --scene-h: clamp(460px, 100svh / var(--ui-zoom, 1) - var(--scene-room, 140px), 700px); min-height: var(--scene-h); }
+  .ziwei-scene { --scene-room: 172px; }
+  .bazi-scene .bazi-hero-dial { width: min(600px, 100%, var(--scene-h) - 100px); }
+  .qz-scene .bazi-hero-dial { width: min(620px, 100%, var(--scene-h) - 80px); }
+  .star-scene .st-wheel { width: min(600px, 100% - 440px, var(--scene-h) - 100px); }
+}
 /* The wheel, engraved in gold and lit */
 :root[data-style] .star-wheel { --plate: transparent; background: radial-gradient(circle closest-side, rgb(6 6 26 / 0.66) 92%, transparent 100%); border-radius: 50%; }
 :root[data-style] .star-wheel .sign-band { stroke: rgb(220 188 124 / 0.32); }
