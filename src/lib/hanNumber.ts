@@ -8,3 +8,8 @@ export function hanNumber(n: number): string {
   const ones = n % 10
   return `${tens > 1 ? DIGITS[tens] : ''}十${ones ? DIGITS[ones] : ''}`
 }
+
+/** A year, digit by digit, for text set vertically: 2026 → 二〇二六 */
+export function hanDigits(n: number): string {
+  return String(n).replace(/\d/g, (d) => DIGITS[Number(d)])
+}

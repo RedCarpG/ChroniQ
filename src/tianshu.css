@@ -313,6 +313,65 @@
   .bz-links { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; max-width: 260px; text-align: right; }
 }
 
+/* ---------- 时间轴 (TimelineScene): one life as a long scroll, in 八字's places ---------- */
+.tl-head .birth-chip { margin-left: auto; }
+.timeline-page .card.scene .tl-head { justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 0; }
+.tl-scene { --font-title: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', serif; --tl-xian: #b99be8; position: relative; display: grid; justify-items: center; margin: 0 -16px; padding: 4px 0 12px; overflow: hidden; overflow: clip; font-family: var(--font-title); }
+/* The scroll keeps its size on a phone and slides sideways */
+.tl-scroll-scene { width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tl-scroll-scene::-webkit-scrollbar { display: none; }
+.tl-scroll-svg { display: block; width: 100%; min-width: 760px; height: auto; overflow: visible; color: var(--accent); }
+.tl-scroll-svg text { font-family: var(--font-title); text-anchor: middle; fill: var(--text); }
+.tl-scroll-svg :is(.tl-s-yun, .tl-s-xian) .tl-s-name { font-size: 12px; letter-spacing: 0.2em; text-anchor: end; fill: var(--muted); }
+.tl-s-axis line:not(.rule) { stroke: rgb(220 188 124 / 0.4); stroke-width: 0.6; }
+.tl-s-axis line.major { stroke-width: 1; }
+.tl-s-axis .rule { stroke-width: 1.2; }
+.tl-s-decade text { font-size: 13px; fill: rgb(235 227 207 / 0.6); }
+.tl-scroll-svg .tl-s-decade .age { font-size: 11px; fill: var(--muted); }
+.tl-s-meets rect { fill: rgb(220 188 124 / 0.07); }
+.tl-s-halo { color: var(--accent); }
+/* 大运 in gold over the line, 大限 in 紫微's violet under it; the ones this year falls in, lit */
+.tl-s-yun path, .tl-s-xian path { fill: none; stroke-width: 0.8; }
+.tl-s-yun path { stroke: rgb(220 188 124 / 0.32); }
+.tl-s-xian path { stroke: rgb(185 155 232 / 0.32); }
+.tl-scroll-svg :is(.tl-s-yun, .tl-s-xian) text { font-size: 18px; letter-spacing: 0.12em; fill: rgb(235 227 207 / 0.72); }
+.tl-scroll-svg .tl-s-xian text { font-size: 15px; }
+.tl-s-yun .child path { stroke-dasharray: 2 3; }
+.tl-scroll-svg .tl-s-yun .child text { font-size: 12px; fill: var(--muted); }
+.tl-s-yun .on path { stroke: var(--accent); stroke-width: 1.4; }
+.tl-s-yun .on rect { fill: rgb(220 188 124 / 0.18); }
+.tl-scroll-svg .tl-s-yun .on text { font-size: 30px; fill: var(--accent); filter: drop-shadow(0 0 10px rgb(220 188 124 / 0.5)); }
+.tl-s-xian .on path { stroke: var(--tl-xian); stroke-width: 1.4; }
+.tl-s-xian .on rect { fill: rgb(185 155 232 / 0.16); }
+.tl-scroll-svg .tl-s-xian .on text { font-size: 21px; fill: #d6c2f5; filter: drop-shadow(0 0 8px rgb(185 155 232 / 0.5)); }
+/* The slow planets: Saturn gold, Uranus pale blue, Jupiter's return a ring */
+.tl-s-planets circle { fill: #e8c88a; }
+.tl-s-planets .uranusOpposition { fill: #9fe0ea; }
+.tl-s-planets .jupiterReturn { fill: var(--bg); stroke: rgb(220 188 124 / 0.7); stroke-width: 1; }
+.tl-s-planets .own { fill: rgb(235 227 207 / 0.4); }
+.tl-scroll-svg .tl-s-close { font-size: 12px; letter-spacing: 0.1em; text-anchor: start; fill: #e8c88a; }
+/* This year: a needle of light */
+.tl-s-now line { stroke: #f3dfb0; stroke-width: 0.8; }
+.tl-s-now .glow { stroke: var(--accent); stroke-width: 3; opacity: 0.7; filter: blur(3px); }
+.tl-s-now rect { fill: #f3dfb0; filter: drop-shadow(0 0 5px var(--accent)); }
+.tl-scroll-svg .tl-s-now text { font-size: 12px; letter-spacing: 0.3em; fill: var(--accent); }
+/* At the foot: what comes next */
+.tl-soon { display: grid; justify-items: center; gap: 4px; margin-top: 16px; font-size: 13px; letter-spacing: 0.2em; color: var(--muted); }
+.tl-soon span:first-child { color: var(--text); }
+.tl-ink { display: none; }
+@media (min-width: 900px) {
+  .tl-scene { min-height: 730px; align-content: start; }
+  .tl-scroll-scene { margin-top: 300px; }
+  .tl-soon { position: absolute; left: 3%; bottom: 14px; justify-items: start; margin: 0; }
+  /* the 大运 now, brushed large and faint over the page */
+  .tl-ink {
+    display: block; position: absolute; left: 50%; top: 10px; translate: -50% 0; pointer-events: none; user-select: none; white-space: nowrap;
+    font-family: 'Ma Shan Zheng', serif; font-size: 240px; line-height: 1; color: #e8d6b0; opacity: 0.05; mix-blend-mode: screen;
+  }
+}
+@media (min-width: 900px) { .bz-links.tl-meets { max-width: 380px; } }
+@media (min-width: 1100px) { .bz-note.tl-note { right: auto; left: calc(3% + 110px); top: 8px; bottom: auto; } }
+
 /* ---------- 七政四余 (QizhengView): the sky's round chart in gold light, in 八字's places ---------- */
 :root[data-style] #qizheng-chart.scene .qz-toolbar { justify-content: flex-end; }
 :root[data-style] .qz-wheel { --z-east: #79c08e; --z-south: #ef6b55; --z-west: #e9dfc8; --z-north: #7aa3e6; font-family: var(--font-title); }
@@ -790,9 +849,9 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9 0.06' numOctaves='2' seed='2' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='3'/%3E%3CfeComposite in2='n' operator='in'/%3E%3C/filter%3E%3Cpath d='M3 7 C 30 3 70 5 116 3' stroke='%23c69a62' stroke-width='7' stroke-linecap='round' fill='none' filter='url(%23d)'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
 }
 /* Each page's own motif, in the same faint manner, and only where there is room (decoration, never content):
-   紫微 its 星斗, 北斗 and 南斗, with the line 斗数 begins with; 今日 the day's 候 of the 七十二候; 时间轴 a
-   life's ages from 《论语》; 星盘, engraved, the Emerald Tablet's line */
-.zw-dipper, .zw-motto, .td-hou, .tl-motto, .st-motto { display: none; }
+   紫微 its 星斗, 北斗 and 南斗, with the line 斗数 begins with; 今日 the day's 候 of the 七十二候; 时间轴 (in
+   its scene) 《论语》's line for the age; 星盘, engraved, the Emerald Tablet's line */
+.zw-dipper, .zw-motto, .td-hou, .st-motto { display: none; }
 @media (min-width: 1100px) {
   .zw-dipper { display: block; position: absolute; width: 150px; height: auto; overflow: visible; pointer-events: none; opacity: 0.6; }
   .zw-dipper polyline { fill: none; stroke: var(--accent); stroke-opacity: 0.45; stroke-width: 0.8; }
@@ -807,10 +866,6 @@
   .zw-motto { left: calc(3% + 180px); top: 44%; font-size: 17px; }
   .td-hou { left: calc(3% + 4px); top: 280px; display: flex; gap: 8px; font-size: 15px; }
   .td-hou b { font-weight: 400; font-size: 22px; }
-  :root[data-style='east'] .tl-motto {
-    display: block; margin-left: auto; align-self: center; font-family: 'Ma Shan Zheng', serif; font-size: 16px; letter-spacing: 0.12em;
-    color: #b98a5a; opacity: 0.55; white-space: nowrap; pointer-events: none; user-select: none;
-  }
   .st-motto {
     display: block; position: absolute; left: 3%; top: 46%; max-width: 175px; margin: 0; pointer-events: none; user-select: none;
     font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; line-height: 1.5; letter-spacing: 0.06em; color: var(--accent); opacity: 0.45;
@@ -819,5 +874,5 @@
 }
 /* 繁體: 马善政 has the simplified characters only, and a note half in it and half in a fallback is broken;
    there the notes are in one 楷 hand that has the traditional ones */
-:root[lang='zh-Hant'] :is(.bz-note, .zw-motto, .td-hou, .tl-motto, .bz-ink) { font-family: 'Kaiti TC', 'BiauKai', 'DFKai-SB', 'STKaiti', 'KaiTi', serif; }
-@media print { .ts-paper, .bz-ink, .bz-note, .zw-dipper, .zw-motto, .td-hou, .tl-motto, .st-motto { display: none; } }
+:root[lang='zh-Hant'] :is(.bz-note, .zw-motto, .td-hou, .bz-ink, .tl-ink) { font-family: 'Kaiti TC', 'BiauKai', 'DFKai-SB', 'STKaiti', 'KaiTi', serif; }
+@media print { .ts-paper, .bz-ink, .tl-ink, .bz-note, .zw-dipper, .zw-motto, .td-hou, .st-motto { display: none; } }
