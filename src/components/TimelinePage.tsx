@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-// 马善政, the brush hand for the page's faint marginal note (tianshu.css); only the characters shown are fetched
+// 马善政, the brush hand for the scene's faint ink and marginal note (tianshu.css); only the characters shown are fetched
 import '@fontsource/ma-shan-zheng/400.css'
-import type { BaziInput } from '../lib/bazi'
+import { buildBazi, type BaziInput } from '../lib/bazi'
 import { buildLifeTimeline, yearOf, type PlanetEventKind, type TimelineSystem } from '../lib/lifeTimeline'
+import { DEFAULT_PLACE } from '../lib/place'
 import type { SchoolSettings } from '../lib/schools'
 import type { ZiweiSchoolSettings } from '../lib/ziweiSchools'
-import { useT, useTerm } from '../settingsContext'
+import { useSettings, useT, useTerm } from '../settingsContext'
+import { BirthChip } from './BirthForm'
+import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import type { Page } from './PageMenu'
+import { smoothUpdate } from './smoothUpdate'
+import { TimelineScene } from './TimelineScene'
 
 /** A year's width on the line (px): wider on a touch screen, so a finger can pick one */
 const YEAR_W = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches ? 24 : 15
@@ -27,7 +32,8 @@ const SYSTEM: Record<TimelineSystem, string> = { bazi: '八字', ziwei: '紫微'
 
 /**
  * 人生时间轴: the chart on screen's 大运, 大限 and slow-planet turning points on one line, with the
- * years where several meet picked out. The line scrolls sideways, starting at this year.
+ * years where several meet picked out. The line scrolls sideways, starting at this year. In 天书, 简洁
+ * is a scene of its own (TimelineScene), the life as one scroll; 详细 is the board and its tables.
  */
 export function TimelinePage({
   input,
@@ -43,6 +49,11 @@ export function TimelinePage({
   const t = useT()
   const term = useTerm()
   const line = useMemo(() => buildLifeTimeline(input, schools, ziweiSchools), [input, schools, ziweiSchools])
+  // 简洁 / 详细, one choice with the charts'; 天书's 简洁 is the scene, without the board
+  const tianshu = useSettings().uiStyle === 'tianshu'
+  const [fullChart, toggleFullChart] = useChartFull()
+  const scene = tianshu && !fullChart
+  const chart = useMemo(() => (scene ? buildBazi(input, schools) : null), [scene, input, schools])
   const thisYear = new Date().getFullYear()
   const first = line.birthYear
   const clamp = (y: number) => Math.min(line.lastYear, Math.max(first, y))
@@ -58,7 +69,8 @@ export function TimelinePage({
   useEffect(() => {
     const el = scroller.current
     if (el) el.scrollLeft = Math.max(0, x(clamp(thisYear)) - el.clientWidth / 2)
-  }, [first])
+    // the board is there again on coming back from the scene
+  }, [first, scene])
 
   const spanButton = (s: { from: number; to: number; label: string; ganzhi?: string }, kind: string, text: string) => (
     <button
@@ -74,18 +86,35 @@ export function TimelinePage({
     </button>
   )
 
+  const viewSwitch = tianshu && (
+    <>
+      {/* 天书: the birth, opening the 命盘 drawer, by the switch */}
+      <BirthChip input={input} />
+      <ChartViewSwitch full={fullChart} onToggle={() => smoothUpdate('chart-view', toggleFullChart)} className="natal-view" />
+    </>
+  )
+
+  if (scene && chart)
+    return (
+      <div className="timeline-page">
+        <section className="card scene" aria-label={t('人生时间轴')}>
+          <header className="tl-head">{viewSwitch}</header>
+          <TimelineScene line={line} chart={chart} place={(input.place ?? DEFAULT_PLACE).name} />
+        </section>
+      </div>
+    )
+
   return (
     <div className="timeline-page">
       <section className="card">
         <header className="tl-head">
           <h2 className="section-title">{t('人生时间轴')}</h2>
-          <span className="muted">
-            {t('{y}年{m}月{d}日出生 · 可在左侧「命盘」里换一张', { y: input.year, m: input.month, d: input.day })}
-          </span>
-          {/* 天书: a life's ages, as 《论语·为政》 has them, brushed faintly along the head (decoration) */}
-          <span className="tl-motto" aria-hidden="true">
-            吾十有五而志于学　三十而立　四十而不惑　五十而知天命　六十而耳顺　七十而从心所欲
-          </span>
+          {!tianshu && (
+            <span className="muted">
+              {t('{y}年{m}月{d}日出生 · 可在左侧「命盘」里换一张', { y: input.year, m: input.month, d: input.day })}
+            </span>
+          )}
+          {viewSwitch}
         </header>
         <div className="tl-board">
           <div className="tl-names" aria-hidden="true">
