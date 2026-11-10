@@ -74,9 +74,10 @@ ziweiHoroscopeText(ziwei, buildHoroscope(input, DEFAULT_ZIWEI_SCHOOLS, { year: 2
 // 大限、流年……各自的命宫在本命哪一宫、十二宫对照、四化落宫、流耀
 birthNotes({ ...input, place, trueSolar: true })   // [{ kind: 'dst', text: '出生时北京实行夏令时（UTC+9）……' }, …]
 // 夏令时跳过的时刻（抛出 RangeError）或重复的时刻、交节附近、真太阳时换了柱、时辰交界、晚子时；时辰不详时（第三个参数 false）三柱能说什么
-buildBazi({ ...input, place, trueSolar: true, jie: 'instant' })
-// 年柱、月柱和起运按出生的实际时刻对照交节（JIE_SCHOOL）。网页的做法（默认 'local'）是把排盘时间直接和北京时间的交节时刻比，
-// 海外出生或用真太阳时、又离交节只差几小时的，两种会落在交节两边
+buildBazi({ ...input, place, trueSolar: true, jie: 'local' })
+// 年柱、月柱和起运默认按出生的实际时刻对照交节（DEFAULT_JIE 'instant'，0.4.0 起，网页也这样排）。
+// 'local' 把排盘用的时间直接和北京时间的交节时刻比，等于直接查北京时间的万年历（0.4.0 以前的默认）：
+// 海外出生、夏令时出生或用真太阳时、又离交节只差几小时的，两种会落在交节两边，起运也略有不同（JIE_SCHOOL）
 ```
 
 ## Claude Code skill：命理排盘与解读

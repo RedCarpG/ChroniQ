@@ -4,7 +4,7 @@
 // alone. run.ts and other modules a script imports are bundled into it, not built on their own.
 // Out to core/skill/dist/<skill>/, which the core release zips (.github/workflows/core-release.yml),
 // or to the folder given as its argument (the core tests build into a temporary one).
-import { cpSync, existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
@@ -24,6 +24,9 @@ async function buildSkills(outDir) {
     const out = join(outDir, skill)
     // Not the test cases (evals/, for skill-creator and claude plugin eval): they stay in the repository
     cpSync(src, out, { recursive: true, filter: (path) => !path.endsWith('.ts') && relative(src, path).split(sep)[0] !== 'evals' })
+    // The text with LF line endings, as the release runner has it, also when built from a Windows checkout
+    for (const file of readdirSync(out, { recursive: true }).filter((f) => f.endsWith('.md')))
+      writeFileSync(join(out, file), readFileSync(join(out, file), 'utf8').replace(/\r\n/g, '\n'))
     for (const entry of ENTRIES[skill] ?? []) {
       await build({
         configFile: false,

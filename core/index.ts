@@ -24,7 +24,7 @@ export {
 } from '../src/lib/bazi'
 export { type Relation } from '../src/lib/relations'
 export { baziReading, type BaziReading } from '../src/lib/baziReading'
-export { DEFAULT_SCHOOLS, SCHOOLS, JIE_SCHOOL, type SchoolSettings } from '../src/lib/schools'
+export { DEFAULT_SCHOOLS, SCHOOLS, JIE_SCHOOL, DEFAULT_JIE, type SchoolSettings } from '../src/lib/schools'
 
 // 紫微
 export {

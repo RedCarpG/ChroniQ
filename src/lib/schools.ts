@@ -103,18 +103,22 @@ export const SCHOOLS: { [K in SchoolKey]: SchoolInfo<K> } = {
 
 /**
  * 交节对照: how a birth is set against the 节 that turn the month pillar (and at 立春 the year's).
- * Not one of SCHOOLS, as ChroniQ itself always compares the time it casts by (the clock, or 真太阳时)
- * with the 节 in 北京时间; a program picks the other on BaziInput.jie. The two differ only for a birth
- * within a few hours of a 节 whose time zone or 真太阳时 puts it on the other side.
+ * Not one of SCHOOLS: ChroniQ always sets a birth against the 节 by its actual moment, as a 节 is a
+ * moment in astronomy. 'local', what a 万年历 in 北京时间 gives, stays for a program to show on
+ * BaziInput.jie (chroniq-core's default before 0.4.0). The two differ only for a birth within a few
+ * hours of a 节 whose time zone, summer time or 真太阳时 puts it on the other side.
  */
 export const JIE_SCHOOL: { title: string; summary: string; options: { value: 'local' | 'instant'; label: string; source: string }[] } = {
   title: '交节对照',
-  summary: '出生离交节只差几小时时，年柱、月柱按哪个时刻和交节时刻比。海外出生、或用真太阳时的，两种比法可能落在交节两边。',
+  summary: '出生离交节只差几小时时，年柱、月柱和起运按哪个时刻和交节时刻比。海外出生、夏令时出生或用真太阳时的，两种比法可能落在交节两边。',
   options: [
-    { value: 'instant', label: '按实际时刻', source: '节气是天文时刻：拿出生的实际时刻（世界时）和交节时刻比，与出生地的时区、真太阳时无关' },
-    { value: 'local', label: '按排盘时间', source: 'ChroniQ 默认的做法：把排盘用的钟表时间或真太阳时直接和北京时间的交节时刻比' },
+    { value: 'instant', label: '按实际时刻', source: '节气是天文时刻：拿出生的实际时刻（世界时）和交节时刻比，与出生地的时区、夏令时、真太阳时无关' },
+    { value: 'local', label: '按排盘时间', source: '把排盘用的钟表时间或真太阳时直接和北京时间的交节时刻比，等于直接查北京时间的万年历' },
   ],
 }
+
+/** The 交节对照 a 八字 is cast by when BaziInput.jie is unset */
+export const DEFAULT_JIE: 'local' | 'instant' = 'instant'
 
 const STORAGE_KEY = 'bazi-schools'
 

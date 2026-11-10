@@ -5,7 +5,7 @@
 import { LunarDay, SolarDay, SolarTerm } from 'tyme4ts'
 import { buildBazi, effectiveTime, formatTime, type BaziChart, type BaziInput } from './bazi'
 import { cityPlace, DEFAULT_PLACE, type Place } from './place'
-import { DEFAULT_SCHOOLS, SCHOOLS, type SchoolSettings } from './schools'
+import { DEFAULT_JIE, DEFAULT_SCHOOLS, SCHOOLS, type SchoolSettings } from './schools'
 import { CITIES } from './solarTime'
 import { toUtc, zoneOffset } from './timeZone'
 import { WORLD_CITIES } from './worldCities'
@@ -133,12 +133,17 @@ export function birthNotes(input: BaziInput, schools: SchoolSettings = DEFAULT_S
     zoneOffset(Date.UTC(wall.year, 0, 1), place.timeZone),
     zoneOffset(Date.UTC(wall.year, 6, 1), place.timeZone),
   )
+  // 交节对照: by the actual moment, the year and month pillars and the 起运 take no part of the clock
+  const byMoment = (input.jie ?? DEFAULT_JIE) === 'instant'
   if (zoned.offsetMinutes > standard)
     note(
       'dst',
       input.trueSolar
         ? `出生时${place.name}实行夏令时（${utcOffset(zoned.offsetMinutes)}）：真太阳时从世界时算起，已扣除夏令时。`
-        : `出生时${place.name}实行夏令时（${utcOffset(zoned.offsetMinutes)}）：本盘按钟表时间排，没有扣除夏令时的一小时；按真太阳时排会自动扣除。各家做法不同。`,
+        : byMoment
+          ? `出生时${place.name}实行夏令时（${utcOffset(zoned.offsetMinutes)}）：本盘的日柱、时柱按钟表时间排，没有扣除夏令时的一小时；` +
+            '年柱、月柱和起运按出生的实际时刻定，不受影响。按真太阳时排会全部扣除。各家做法不同。'
+          : `出生时${place.name}实行夏令时（${utcOffset(zoned.offsetMinutes)}）：本盘按钟表时间排，没有扣除夏令时的一小时；按真太阳时排会自动扣除。各家做法不同。`,
     )
 
   const { corrected, time } = effectiveTime(input)
@@ -172,9 +177,9 @@ export function birthNotes(input: BaziInput, schools: SchoolSettings = DEFAULT_S
     const side = (utc: number) => (utc >= jie.utc ? '后' : '前')
     note(
       'jie',
-      input.jie === 'instant'
+      byMoment
         ? `出生的实际时刻在${jie.name}交节（${jieBeijing}）之${side(birthUtc)}，本盘按实际时刻对照，为 ${pillarNames(actual, turning)}；` +
-            `若把${which} ${formatTime(time)} 直接和北京时间的交节时刻比（ChroniQ 默认的做法），算在交节之${side(castUtc)}，则为 ${pillarNames(local, turning)}，` +
+            `若把${which} ${formatTime(time)} 直接和北京时间的交节时刻比（等于直接查北京时间的万年历），算在交节之${side(castUtc)}，则为 ${pillarNames(local, turning)}，` +
             '大运的顺逆和起运也会不同。解读前请向用户说明。'
         : `按出生的实际时刻，是在${jie.name}交节（${jieBeijing}）之${side(birthUtc)}，应为 ${pillarNames(actual, turning)}；` +
             `本盘把${which} ${formatTime(time)} 直接和北京时间的交节时刻比，算在交节之${side(castUtc)}，排成了 ${pillarNames(local, turning)}。` +

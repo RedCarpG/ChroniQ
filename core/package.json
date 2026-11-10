@@ -1,6 +1,6 @@
 {
   "name": "chroniq-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "ChroniQ's reckoning for other programs: 黄历, 八字, 紫微, 星盘, 七政四余 and the sky's events, with plain-text summaries for AI",
   "license": "UNLICENSED",
   "author": "RedCarpG",
