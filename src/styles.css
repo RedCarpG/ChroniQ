@@ -1283,7 +1283,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 /* Western elements: fire red, earth green, air gold, water blue */
 .el-fire { color: var(--fire); }
 .el-earth { color: var(--wood); }
-.el-air { color: var(--metal); }
+.el-air { color: var(--air, var(--metal)); }
 .el-water { color: var(--water); }
 .big-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .b3 {
@@ -1300,7 +1300,7 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .star-wheel .sign-band { stroke: var(--border); stroke-width: 0.6; }
 .star-wheel .band-fire { fill: color-mix(in srgb, var(--fire) 10%, var(--plate, var(--surface))); }
 .star-wheel .band-earth { fill: color-mix(in srgb, var(--wood) 10%, var(--plate, var(--surface))); }
-.star-wheel .band-air { fill: color-mix(in srgb, var(--metal) 12%, var(--plate, var(--surface))); }
+.star-wheel .band-air { fill: color-mix(in srgb, var(--air, var(--metal)) 12%, var(--plate, var(--surface))); }
 .star-wheel .band-water { fill: color-mix(in srgb, var(--water) 10%, var(--plate, var(--surface))); }
 .star-wheel .sign-glyph { font-size: 15px; fill: currentColor; }
 .star-wheel .tick { stroke: var(--muted); stroke-width: 0.5; opacity: 0.6; }
