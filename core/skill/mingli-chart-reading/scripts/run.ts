@@ -13,6 +13,7 @@ import {
   buildStarChart,
   buildZiwei,
   CITIES,
+  DEFAULT_JIE,
   DEFAULT_PLACE,
   DEFAULT_QIZHENG_SCHOOLS,
   DEFAULT_SCHOOLS,
@@ -195,10 +196,10 @@ function parseYears(text: string): number[] {
 // ---- 流派 ----
 
 type SchoolTable = Record<string, { title: string; summary: string; options: { value: string; label: string; source: string }[] }>
-// 交节对照 is not among ChroniQ's own 流派 (its pages always compare the time cast by): here it is,
-// and by the actual moment unless asked, as a 节 is a moment in astronomy
+// 交节对照 is not among the 流派 in ChroniQ's settings, as its pages always set a birth against the 节
+// by the actual moment. Here it can be switched, to show what a 万年历 in 北京时间 gives
 const BAZI_SCHOOLS = { ...SCHOOLS, jie: JIE_SCHOOL }
-const DEFAULT_BAZI = { ...DEFAULT_SCHOOLS, jie: 'instant' as const }
+const DEFAULT_BAZI = { ...DEFAULT_SCHOOLS, jie: DEFAULT_JIE }
 const SYSTEMS = {
   bazi: { name: '八字', table: BAZI_SCHOOLS as unknown as SchoolTable, defaults: DEFAULT_BAZI as unknown as Record<string, string> },
   ziwei: { name: '紫微', table: ZIWEI_SCHOOLS as unknown as SchoolTable, defaults: DEFAULT_ZIWEI_SCHOOLS as unknown as Record<string, string> },

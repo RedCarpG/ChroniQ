@@ -7,6 +7,7 @@ import {
   baziText,
   buildBazi,
   buildZiwei,
+  DEFAULT_JIE,
   DEFAULT_PLACE,
   DEFAULT_ZIWEI_SCHOOLS,
   findPatterns,
@@ -51,7 +52,8 @@ describe('chroniq-core', () => {
     const text = baziText(chart, baziReading(chart, 2026))
     expect(text).toContain('日主：壬水')
     for (const label of ['年柱 庚午', '月柱 辛巳', '日柱 壬午', '时柱 乙巳']) expect(text).toContain(label)
-    expect(text).toContain('当前大运：乙酉')
+    // The 起运 by the birth's actual moment, summer time taken off: 1997-01-02, so 2026 is still 甲申
+    expect(text).toContain('当前大运：甲申')
     expect(text).toMatch(/旺衰：日主偏(弱|旺)|旺衰：比较平衡/)
   })
 
@@ -123,8 +125,9 @@ describe('chroniq-core', () => {
   it('writes out the 岁运 of a year: the 大运 (and when it changes), the 流年 and its twelve 流月', () => {
     const chart = buildBazi(INPUT)
     const text = fortuneText(chart, { year: 2026 })
-    // 乙酉 begins on 1996-12-28's anniversary, so 2026 runs on 甲申 until then
-    expect(text).toMatch(/^ {2}大运 乙酉（2026–2035，37–46岁）：天干 乙木（伤官）.+这一年12月28日交运，之前仍走甲申大运$/m)
+    // 甲申 runs the whole year; 乙酉 begins on 1997-01-02's anniversary, so 2027 opens on 甲申
+    expect(text).toMatch(/^ {2}大运 甲申（2017–2026，28–37岁）：天干 甲木（食神）[^。]+$/m)
+    expect(fortuneText(chart, { year: 2027 })).toMatch(/^ {2}大运 乙酉（2027–2036，38–47岁）：天干 乙木（伤官）.+这一年1月2日交运，之前仍走甲申大运$/m)
     expect(text).toMatch(/^ {2}流年 丙午（2026年立春起，虚岁 37）：天干 丙火（偏财）/m)
     expect(text).toContain('太岁：本命年')
     expect(text).toMatch(/^岁运与原局、岁运之间的刑冲合会：.*壬丙相冲（日、流年）/m)
@@ -169,8 +172,11 @@ describe('chroniq-core', () => {
     const chengdu = birthNotes({ ...INPUT, year: 1993, month: 8, day: 21, hour: 7, minute: 40, gender: 0, place: findCity('成都')!, trueSolar: true })
     expect(chengdu.map((n) => n.text)).toEqual(['按真太阳时（06:34）为 时柱丁卯；按钟表时间（07:40）则为 时柱戊辰。本盘按真太阳时排。用不用真太阳时，各家做法不同，解读时要说明。'])
     // New York 22:00 on 5 May 1990 was after 立夏 (02:35 on the 6th in 北京), though its clock reads earlier
-    const ny = birthNotes({ ...INPUT, year: 1990, month: 5, day: 5, hour: 22, minute: 0, place: findCity('纽约')! })
-    expect(ny.find((n) => n.kind === 'jie')!.text).toMatch(/之后，应为 月柱辛巳；.+排成了 月柱庚辰/)
+    const nyBirth = { ...INPUT, year: 1990, month: 5, day: 5, hour: 22, minute: 0, place: findCity('纽约')! }
+    const ny = birthNotes(nyBirth)
+    expect(ny.find((n) => n.kind === 'jie')!.text).toMatch(/之后，本盘按实际时刻对照，为 月柱辛巳；.+（等于直接查北京时间的万年历），算在交节之前，则为 月柱庚辰/)
+    const nyLocal = birthNotes({ ...nyBirth, jie: 'local' })
+    expect(nyLocal.find((n) => n.kind === 'jie')!.text).toMatch(/之后，应为 月柱辛巳；.+排成了 月柱庚辰/)
     const edge = birthNotes({ ...INPUT, hour: 10, minute: 58 })
     expect(edge.find((n) => n.kind === 'hourEdge')!.text).toContain('之前为 时柱乙巳，之后为 时柱丙午')
     const late = birthNotes({ ...INPUT, hour: 23, minute: 30 })
@@ -179,16 +185,21 @@ describe('chroniq-core', () => {
     const open = birthNotes({ ...INPUT, month: 5, day: 6 }, undefined, false)
     expect(open.map((n) => n.kind)).toEqual(['noHour', 'jie'])
     expect(open[1].text).toMatch(/交立夏：出生在交节之前为 月柱庚辰，之后为 月柱辛巳/)
-    // 北京 kept summer time in May 1990; by the clock, it stays in
-    expect(birthNotes(INPUT).map((n) => n.text)).toEqual(['出生时北京实行夏令时（UTC+9）：本盘按钟表时间排，没有扣除夏令时的一小时；按真太阳时排会自动扣除。各家做法不同。'])
+    // 北京 kept summer time in May 1990: by the clock, it stays in the 日柱 and 时柱, while the 节 go by the moment
+    expect(birthNotes(INPUT).map((n) => n.text)).toEqual([
+      '出生时北京实行夏令时（UTC+9）：本盘的日柱、时柱按钟表时间排，没有扣除夏令时的一小时；年柱、月柱和起运按出生的实际时刻定，不受影响。按真太阳时排会全部扣除。各家做法不同。',
+    ])
+    expect(birthNotes({ ...INPUT, jie: 'local' })[0].text).toContain('本盘按钟表时间排，没有扣除夏令时的一小时')
     expect(birthNotes({ ...INPUT, year: 1995 })).toEqual([])
   })
 
-  it('sets a birth against the 节 by its actual moment when asked (BaziInput.jie)', () => {
+  it('sets a birth against the 节 by its actual moment, or as a 万年历 in 北京时间 would (BaziInput.jie)', () => {
     // Toronto, 06:15 on 4 Feb 1995: four hours after 立春 (15:12 in 北京), though its local time reads earlier
     const toronto = { year: 1995, month: 2, day: 4, hour: 6, minute: 15, gender: 1 as const, place: findCity('多伦多')!, trueSolar: true }
-    const local = buildBazi(toronto)
-    const instant = buildBazi({ ...toronto, jie: 'instant' })
+    const local = buildBazi({ ...toronto, jie: 'local' })
+    const instant = buildBazi(toronto)
+    expect(DEFAULT_JIE).toBe('instant')
+    expect(buildBazi({ ...toronto, jie: 'instant' })).toEqual(instant)
     expect(local.pillars.map((p) => p.stem.char + p.branch.char)).toEqual(['甲戌', '丁丑', '丙寅', '辛卯'])
     expect(instant.pillars.map((p) => p.stem.char + p.branch.char)).toEqual(['乙亥', '戊寅', '丙寅', '辛卯'])
     expect(instant.zodiac).toBe('猪')
@@ -196,12 +207,13 @@ describe('chroniq-core', () => {
     expect(instant.startText).toMatch(/^出生后0年0个月\d+天起运（1995年2月\d+日交运），逆排$/)
     expect(instant.decades[0].ganzhi).toBe('丁丑')
     expect(local.decades[0].ganzhi).toBe('戊寅')
-    const note = birthNotes({ ...toronto, jie: 'instant' }).find((n) => n.kind === 'jie')!.text
+    const note = birthNotes(toronto).find((n) => n.kind === 'jie')!.text
     expect(note).toMatch(/本盘按实际时刻对照，为 年柱乙亥、月柱戊寅；.+则为 年柱甲戌、月柱丁丑/)
     // Away from a 节, and in 北京时间 by the clock with no summer time, the two agree; in May 1990 China's
-    // clocks were an hour on, and the 起运 by the actual moment counts from an hour earlier
-    expect(buildBazi({ ...INPUT, year: 1995, jie: 'instant' })).toEqual(buildBazi({ ...INPUT, year: 1995 }))
-    expect(buildBazi({ ...INPUT, jie: 'instant' }).start).not.toEqual(buildBazi(INPUT).start)
+    // clocks were an hour on, and the 起运 by the actual moment counts from an hour earlier: some five days
+    expect(buildBazi({ ...INPUT, year: 1995, jie: 'local' })).toEqual(buildBazi({ ...INPUT, year: 1995 }))
+    const days = (c: ReturnType<typeof buildBazi>) => Date.UTC(c.start.year, c.start.month - 1, c.start.day) / 86400_000
+    expect(Math.abs(days(buildBazi(INPUT)) - days(buildBazi({ ...INPUT, jie: 'local' })))).toBe(5)
   })
 
   it('turns a 公历 date to the 农历 one', () => {

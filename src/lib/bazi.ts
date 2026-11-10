@@ -20,7 +20,7 @@ import {
   type DecadeFortune,
 } from 'tyme4ts'
 import { computeRelations, type Relation, type RelationMember } from './relations'
-import { DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
+import { DEFAULT_JIE, DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
 import { computeShenSha, type ShenSha } from './shensha'
 import { DEFAULT_PLACE, type Place } from './place'
 import { toTrueSolarTime, type WallTime } from './solarTime'
@@ -102,8 +102,9 @@ export interface BaziInput {
   place?: Place
   /** Cast 八字 / 紫微 from 真太阳时 at the birthplace instead of the clock time */
   trueSolar?: boolean
-  /** 交节对照 (schools JIE_SCHOOL): 'instant' takes the year and month pillars, and the 起运, from the
-   *  birth's actual moment against the 节; 'local' (ChroniQ's way, and the default) from the time cast by */
+  /** 交节对照 (schools JIE_SCHOOL): 'instant' (the default, DEFAULT_JIE) takes the year and month pillars,
+   *  and the 起运, from the birth's actual moment against the 节; 'local' from the time cast by, set
+   *  against the 节 in 北京时间 as a 万年历 would */
   jie?: 'local' | 'instant'
 }
 
@@ -179,10 +180,11 @@ export function buildBazi(input: BaziInput, schools: SchoolSettings = DEFAULT_SC
   const time = SolarTime.fromYmdHms(t.year, t.month, t.day, t.hour, t.minute, 0)
   const lunarHour = time.getLunarHour()
   let ec = lunarHour.getEightChar()
-  // tyme4ts sets a time against the 节 as if it were 北京时间. By the actual moment, the year and
-  // month pillars and the 起运 come from that moment on 北京's clock; the day and hour stay local.
+  // tyme4ts sets a time against the 节 as if it were 北京时间 without summer time. By the actual
+  // moment, the year and month pillars and the 起运 come from that moment on 北京's standard clock;
+  // the day and hour stay with the time cast by.
   let limitTime = time
-  if (input.jie === 'instant') {
+  if ((input.jie ?? DEFAULT_JIE) === 'instant') {
     const at = new Date(toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).date.getTime() + 8 * 3600_000)
     limitTime = SolarTime.fromYmdHms(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate(), at.getUTCHours(), at.getUTCMinutes(), 0)
     const byMoment = limitTime.getLunarHour().getEightChar()
