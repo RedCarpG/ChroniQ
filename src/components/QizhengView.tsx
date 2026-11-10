@@ -387,7 +387,6 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
       <SectionNav
         items={[
           ['qizheng-chart', t('盘面')],
-          ['qizheng-reading', t('解读')],
         ]}
       />
       <section className={`card${scene ? ' scene' : ''}`} id="qizheng-chart" data-stage={cast.stageAttr}>
@@ -416,10 +415,10 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
           </>
         )}
       </section>
-      <QizhengReadingCard chart={chart} />
 
       {/* At the right edge, opened over the page when wanted */}
-      <RightDrawer label={t('AI 解读')}>
+      <RightDrawer label={t('解读')}>
+        <QizhengReadingCard chart={chart} />
         <AiAnalysis id="qizheng-ai" prompt={aiPrompt} />
       </RightDrawer>
     </div>

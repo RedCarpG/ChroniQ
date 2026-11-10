@@ -223,7 +223,6 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       <SectionNav
         items={[
           ['bazi-natal', term('原局')],
-          ['bazi-reading', t('解读')],
           ...(tianshu && !fullChart ? [] : [['bazi-fortune', term('岁运')] as [string, string]]),
         ]}
       />
@@ -329,8 +328,6 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
         </dl>
         )}
       </section>
-
-      <BaziReadingCard chart={chart} />
 
       <section className={`card fortunes fortune-combo${sideOpen ? ' side-open' : ''}`} id="bazi-fortune">
         <button
@@ -508,7 +505,8 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       </section>
 
       {/* At the right edge, opened over the page when wanted */}
-      <RightDrawer label={t('AI 解读')}>
+      <RightDrawer label={t('解读')}>
+        <BaziReadingCard chart={chart} />
         <AiAnalysis id="bazi-ai" prompt={aiPrompt} />
       </RightDrawer>
     </div>

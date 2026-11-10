@@ -2903,7 +2903,9 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .page-nav-item.on { color: var(--accent); font-weight: 600; }
 .page-nav.at-foot { display: none; }
 @media (max-width: 860px) {
-  .app { --foot-nav-h: calc(46px + env(safe-area-inset-bottom)); padding-bottom: calc(16px + var(--foot-nav-h)); }
+  /* On :root, as the 解读 drawer (outside .app) stops above the bar too */
+  :root { --foot-nav-h: calc(46px + env(safe-area-inset-bottom)); }
+  .app { padding-bottom: calc(16px + var(--foot-nav-h)); }
   .page-nav.in-topbar { display: none; }
   .page-nav.at-foot {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; justify-content: center; gap: 0 4px;
@@ -3086,7 +3088,7 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 .ai-settings .row-note { margin: 0; font-size: 12px; }
 .ai-privacy { margin: 0; font-size: 12px; }
 
-/* ---------- A panel at the right edge (今日's AI 解读): opened over the page by a tab, pushing nothing ---------- */
+/* ---------- A panel at the right edge (解读: the 白话解读 and the AI's): opened over the page by a tab, pushing nothing ---------- */
 .right-drawer {
   --right-w: min(440px, calc(100vw - 48px));
   position: fixed; top: 0; bottom: 0; right: 0; z-index: 30; zoom: var(--ui-zoom); display: flex; align-items: center; pointer-events: none;
@@ -3114,8 +3116,17 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 8px; background: var(--accent-soft);
 }
 .ai-basis.none { border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); background: color-mix(in srgb, var(--bad) 10%, transparent); }
-/* The AI card's header keeps clear of the ✕ above it, so 设置 is not crowded against it */
-.right-drawer-panel .ai-head { padding-right: 52px; }
+/* The first card's heading keeps clear of the ✕ above it (so the AI card's 设置 is not crowded against it) */
+.right-drawer-close + .card > :first-child { padding-right: 52px; }
+/* 白话解读 first, then the AI's, a fine line between */
+.right-drawer-panel > .card + .card { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); border-radius: 0; }
+/* A narrow panel read at arm's length: smaller than the page's own cards */
+.right-drawer-panel h3 { font-size: 17px; }
+.right-drawer-panel .reading-list { font-size: 13.5px; line-height: 1.75; }
+.right-drawer-panel .ai-card :is(.ai-intro, .ai-note, .ai-thinking, .ai-question, .ai-error) { font-size: 13.5px; line-height: 1.7; }
+.right-drawer-panel .ai-text { gap: 12px; font-size: 14px; line-height: 1.8; }
+.right-drawer-panel .ai-text h4 { font-size: 15.5px; }
+.right-drawer-panel .ai-text h5 { font-size: 14.5px; }
 @media (max-width: 860px) { .right-drawer { bottom: var(--foot-nav-h, 0px); } }
 @media (prefers-reduced-motion: reduce) { .right-drawer { transition: none; } }
 @media print { .right-drawer { display: none; } }
@@ -3171,7 +3182,7 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 .zw-palace-detail { display: none; }
 /* 天象: the time bar's one-line summary, only on a phone (below) */
 .sky-time-fold { display: none; }
-/* Narrow screens: the tabs on the edges (命盘 and the page's own on the left, AI 解读 on the right) fit in
+/* Narrow screens: the tabs on the edges (命盘 and the page's own on the left, 解读 on the right) fit in
    the page's 16px margin as slim strips, so they no longer lie over the cards; the section links down the
    left edge go (the page scrolls under a thumb, and they had no room to be tapped) */
 @media (max-width: 600px) {

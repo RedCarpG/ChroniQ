@@ -478,7 +478,6 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
       <SectionNav
         items={[
           ['ziwei-board', t('盘面')],
-          ['ziwei-reading', t('解读')],
           // 简洁 (天书) is the scene and its reading: the 格局 and 运限 come with 详细
           ...(scene ? [] : ([['ziwei-patterns', term('格局')], ['ziwei-fortune', term('运限')]] as [string, string][])),
         ]}
@@ -659,14 +658,13 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
         </p>
       </section>
 
-      <ZiweiReadingCard chart={chart} />
-
       {!scene && <Patterns patterns={patterns} pick={patternPick.props} lit={litPattern?.name} />}
 
       {!scene && fortunes}
 
       {/* At the right edge, opened over the page when wanted */}
-      <RightDrawer label={t('AI 解读')}>
+      <RightDrawer label={t('解读')}>
+        <ZiweiReadingCard chart={chart} />
         <AiAnalysis id="ziwei-ai" prompt={aiPrompt} />
       </RightDrawer>
     </div>

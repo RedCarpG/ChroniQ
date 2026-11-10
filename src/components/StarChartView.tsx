@@ -175,7 +175,6 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       <SectionNav
         items={[
           ['star-natal', t('本命')],
-          ['star-reading', t('解读')],
           ...(overlay ? [['star-overlay', overlayTitle(t, overlay.kind)] as [string, string]] : []),
           ...(compositeChart ? [['star-composite', t('组合盘')] as [string, string]] : []),
           ...(fullChart ? [['star-houses', t('宫位')] as [string, string]] : []),
@@ -303,8 +302,6 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
         />
       )}
 
-      <StarReadingCard chart={chart} />
-
       {compositeChart && <CompositeCard chart={compositeChart} partnerName={partnerLabel(t, partner.name)} settings={settings} />}
 
       {!fullChart ? (
@@ -342,7 +339,8 @@ export function StarChartView({ input, onChange, settings, onSettingsChange }: P
       )}
 
       {/* At the right edge, opened over the page when wanted */}
-      <RightDrawer label={t('AI 解读')}>
+      <RightDrawer label={t('解读')}>
+        <StarReadingCard chart={chart} />
         <AiAnalysis id="star-ai" prompt={aiPrompt} />
       </RightDrawer>
     </div>
