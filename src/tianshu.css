@@ -103,32 +103,33 @@
 }
 
 /* The top bar, as an old plate's head: the mark and the name in gold; the pages as words, the one shown
-   marked with a diamond rather than underlined; no rule under the bar */
+   marked with a diamond rather than underlined; no rule under the bar. The lettering and the ◆ are 天书's
+   on every page (data-ui), the full-screen skies (天象, 观月, 太阳系) too, which have no data-style */
 :root[data-style] .topbar { background: none; }
-:root[data-style] .topbar h1 { color: var(--accent); letter-spacing: 0.3em; }
-:root[data-style] .topbar .brand-en { display: none; }
-:root[data-style] :is(.page-nav-group-btn, .page-nav-item)::after { display: none; }
-:root[data-style] .page-nav-group-btn { font-size: 15px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); }
-:root[data-style] .page-nav-group.open > .page-nav-group-btn { color: var(--text); }
-:root[data-style] .page-nav-item { font-size: 14px; letter-spacing: 0.24em; }
-:root[data-style] .page-nav-item.on { font-weight: 500; }
+:root:is([data-style], [data-ui='tianshu']) .topbar h1 { color: var(--accent); letter-spacing: 0.3em; }
+:root:is([data-style], [data-ui='tianshu']) .topbar .brand-en { display: none; }
+:root:is([data-style], [data-ui='tianshu']) :is(.page-nav-group-btn, .page-nav-item)::after { display: none; }
+:root:is([data-style], [data-ui='tianshu']) .page-nav-group-btn { font-size: 15px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); }
+:root:is([data-style], [data-ui='tianshu']) .page-nav-group.open > .page-nav-group-btn { color: var(--text); }
+:root:is([data-style], [data-ui='tianshu']) .page-nav-item { font-size: 14px; letter-spacing: 0.24em; }
+:root:is([data-style], [data-ui='tianshu']) .page-nav-item.on { font-weight: 500; }
 .page-nav { position: relative; }
 .page-nav-mark { display: none; }
 /* ① The ◆ by the current page: one mark gliding from page to page (PageNav sets where) */
-:root[data-style] .page-nav-mark {
+:root:is([data-style], [data-ui='tianshu']) .page-nav-mark {
   display: block; position: absolute; left: -2px; top: 0; z-index: 1; width: 5px; height: 5px; margin-top: -2.5px; pointer-events: none;
   rotate: 45deg; background: var(--accent); box-shadow: 0 0 8px var(--accent); opacity: 0;
   transition: translate 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.3s;
 }
-:root[data-style] .page-nav-mark.shown { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { :root[data-style] .page-nav-mark { transition: none; } }
-:root[data-style] .topbar-right { --tool-rest: 0.75; }
+:root:is([data-style], [data-ui='tianshu']) .page-nav-mark.shown { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { :root:is([data-style], [data-ui='tianshu']) .page-nav-mark { transition: none; } }
+:root:is([data-style], [data-ui='tianshu']) .topbar-right { --tool-rest: 0.75; }
 /* The bar's tools quieter than the page names: the buttons, not the group, so what they open (设置, the
    export menu) stays solid and readable over the page */
-:root[data-style] .topbar-right > :is(button, a),
-:root[data-style] .topbar-right > * > :is(button, a):first-child { opacity: var(--tool-rest); transition: opacity 0.2s; }
-:root[data-style] .topbar-right :is(button, a):is(:hover, :focus-visible, [aria-expanded='true']) { opacity: 1; }
-:root[data-style] .settings-panel { border-color: var(--edge); box-shadow: 0 14px 36px rgb(0 0 0 / 0.55); }
+:root:is([data-style], [data-ui='tianshu']) .topbar-right > :is(button, a),
+:root:is([data-style], [data-ui='tianshu']) .topbar-right > * > :is(button, a):first-child { opacity: var(--tool-rest); transition: opacity 0.2s; }
+:root:is([data-style], [data-ui='tianshu']) .topbar-right :is(button, a):is(:hover, :focus-visible, [aria-expanded='true']) { opacity: 1; }
+:root:is([data-style], [data-ui='tianshu']) .settings-panel { border-color: var(--edge); box-shadow: 0 14px 36px rgb(0 0 0 / 0.55); }
 /* The 命理 pages fold the bar up, as the 天象 page does (App: fold-bar): it lies over the page, fixed at
    the top, wherever the page is scrolled, and the page leaves room at its top for the small tab */
 :root[data-style] .app.fold-bar .topbar {
@@ -141,6 +142,30 @@
 :root[data-style] .app.fold-bar > main { padding-top: 22px; }
 :root[data-style] .topbar-fold { background: color-mix(in srgb, var(--bg) 88%, transparent); border-color: var(--edge); }
 @media (prefers-reduced-motion: reduce) { :root[data-style] .app.fold-bar .topbar { transition: none; } }
+
+/* ---------- 天象, 观月, 太阳系 in 天书: the real skies stay as they are; what lies over them is 天书's ---------- */
+/* (these pages have data-ui but no data-style: they keep their own night, and take 天书's gold, type and panels) */
+/* The bar over the sky: nearly solid, with the gold hairline under it */
+:root[data-ui='tianshu'] .app.immersive .topbar {
+  background: linear-gradient(90deg, var(--edge), transparent 70%) bottom / 100% 1px no-repeat, rgb(9 13 26 / 0.86);
+}
+/* Panels and bars solid enough that the sky never reads through their words; a gold hairline for an edge */
+:root[data-ui='tianshu'] .app.immersive :is(.imm-glass, .imm-panel:not(.closed), .imm-sheet) {
+  background: rgb(9 13 26 / 0.9); border-color: rgb(220 188 124 / 0.3); border-radius: 10px;
+}
+:root[data-ui='tianshu'] .app.immersive :is(.imm-when-pop, .sky-search-list, .sky-place-pop) { background: rgb(9 13 26 / 0.97); border-color: rgb(220 188 124 / 0.3); border-radius: 10px; }
+:root[data-ui='tianshu'] .app.immersive :is(.imm-panel-tab, .imm-zoom, .topbar-fold) { background: rgb(9 13 26 / 0.9); border-color: rgb(220 188 124 / 0.3); }
+:root[data-ui='tianshu'] .app.immersive .sky-search input { border-color: rgb(220 188 124 / 0.35); background: rgb(9 13 26 / 0.86); }
+/* Titles as 天书 sets them: spaced and in gold, a fading hairline under a panel's head */
+:root[data-ui='tianshu'] .app.immersive :is(.section-title, .imm-panel-head h3) { font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
+:root[data-ui='tianshu'] .app.immersive .imm-panel:not(.closed) .imm-panel-head {
+  padding-bottom: 8px; background: linear-gradient(90deg, var(--edge), transparent 80%) bottom / 100% 1px no-repeat;
+}
+:root[data-ui='tianshu'] .app.immersive .seg.small button.on { color: var(--accent); }
+/* Rows and tables ruled in faint gold */
+:root[data-ui='tianshu'] .app.immersive :is(.imm-panel, .imm-sheet, .sky-bodies) :is(th, td) { border-bottom-color: rgb(220 188 124 / 0.12); }
+/* 观月's phase, written large: in 站酷小薇, as 天书's scenes are (MoonPage imports it) */
+:root[data-ui='tianshu'] .moon-title .moon-name strong { font-family: 'ZCOOL XiaoWei', var(--font-title); font-weight: 400; letter-spacing: 0.16em; }
 
 /* The birth form in the 命盘 drawer (DrawerBirth): shown whole, its fields one under another */
 .drawer-sub { margin: 4px 0 0; font-family: var(--font-title); font-size: 13px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent); }

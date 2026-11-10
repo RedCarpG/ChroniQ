@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+// 站酷小薇, for the phase's name in 天书 (tianshu.css); only the characters shown are fetched
+import '@fontsource/zcool-xiaowei/400.css'
 import { SolarDay } from 'tyme4ts'
 import { enDate } from '../lib/calendar'
 import { mansionOf } from '../lib/mansions'
