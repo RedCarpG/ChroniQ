@@ -6,6 +6,8 @@
 // the left, standing as 八字's pillars do; the 格局 at the foot on the right. 详细 is the square board.
 // 起盘 (useCasting, four layers): the 命宫, its 三方四正, the other palaces, the 生年四化.
 import type { ReactNode } from 'react'
+// 马善政, the brush hand for the page's faint marginal note (tianshu.css); only the characters shown are fetched
+import '@fontsource/ma-shan-zheng/400.css'
 import type { ElementName } from '../lib/bazi'
 import { hanNumber } from '../lib/hanNumber'
 import { sanFangSiZheng, type ZiweiChart, type ZiweiPalace, type ZiweiStar } from '../lib/ziwei'
@@ -21,6 +23,24 @@ const MUTAGENS = ['禄', '权', '科', '忌']
 const SHORT: Record<string, string> = {
   紫微: '紫', 天机: '机', 太阳: '日', 武曲: '武', 天同: '同', 廉贞: '廉', 天府: '府',
   太阴: '月', 贪狼: '贪', 巨门: '巨', 天相: '相', 天梁: '梁', 七杀: '杀', 破军: '破',
+}
+
+/** 北斗's seven and 南斗's six (斗宿), as they lie in the sky, in a small box: the 星斗 of 斗数, drawn in the
+ * scene's margins (decoration, faint: tianshu.css .zw-dipper) */
+const BEI_DOU: [number, number][] = [[4, 10], [8, 34], [40, 44], [50, 20], [76, 16], [100, 18], [126, 40]]
+const NAN_DOU: [number, number][] = [[4, 30], [30, 40], [56, 32], [80, 18], [104, 26], [96, 4]]
+function Dipper({ stars, name, className }: { stars: [number, number][]; name: string; className: string }) {
+  return (
+    <svg className={`zw-dipper ${className}`} viewBox="0 0 132 64" aria-hidden="true">
+      <polyline points={stars.map((s) => s.join(',')).join(' ')} />
+      {stars.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={2.6} />
+      ))}
+      <text x={stars[0][0]} y={62}>
+        {name}
+      </text>
+    </svg>
+  )
 }
 
 /** A palace's part in the 三方四正 lit */
@@ -223,6 +243,14 @@ export function ZiweiScene({
         </span>
       </div>
       <div className="bazi-hero-dial">{wheel}</div>
+      {/* 北斗 and 南斗 in the margins, and the line 斗数 begins with (《紫微斗数全书·太微赋》) */}
+      <Dipper stars={BEI_DOU} name={term('北斗')} className="bei" />
+      <Dipper stars={NAN_DOU} name={term('南斗')} className="nan" />
+      {!en && (
+        <p className="zw-motto" aria-hidden="true">
+          斗数至玄至微
+        </p>
+      )}
       {cast}
       {/* At the foot on the left, the 生年四化, standing as 八字's pillars do */}
       <div className="bz-pillars zw-four cast-l4" aria-label={term('生年四化')}>

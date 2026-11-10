@@ -74,6 +74,11 @@ export function StarHero({ chart, place, wheel, balance, cast, captions, pointAt
           {t(place)} · {daytime ? t('昼生') : t('夜生')}
         </p>
       </div>
+      {/* In the margin, engraved small: the Emerald Tablet's line, as above so below (decoration) */}
+      <p className="st-motto" aria-hidden="true">
+        Quod est superius est sicut quod est inferius
+        <small>Tabula Smaragdina</small>
+      </p>
       {/* At the top right, the four elements */}
       <div className="st-elements cast-l4">{balance}</div>
       <div className="st-wheel">{wheel}</div>

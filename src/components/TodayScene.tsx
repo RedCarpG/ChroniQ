@@ -4,6 +4,8 @@
 // it, the 建除, the festivals, the Moon's phase; down the right, the 宜 and the 忌. What is in the sky today
 // and tonight, and what is coming, follow under the scene (TodayPage's own sections).
 import '@fontsource/zcool-xiaowei/400.css'
+// 马善政, the brush hand for the page's faint marginal note (tianshu.css); only the characters shown are fetched
+import '@fontsource/ma-shan-zheng/400.css'
 import { useState } from 'react'
 import type { DayDetail } from '../lib/calendar'
 import { enDate } from '../lib/calendar'
@@ -39,6 +41,7 @@ export function TodayScene({
   moon,
   onViewMoon,
   hint,
+  hou,
 }: {
   date: { year: number; month: number; day: number }
   detail: DayDetail
@@ -46,6 +49,8 @@ export function TodayScene({
   onViewMoon: () => void
   /** A line under the pillars: what choosing a chart would add */
   hint?: string
+  /** The day's 候 (七十二候): which of the 节气's three, and its name, e.g. 初候, 水始冰 */
+  hou?: { which: string; name: string }
 }) {
   const t = useT()
   const term = useTerm()
@@ -134,6 +139,16 @@ export function TodayScene({
         )}
       </div>
       {hint && <p className="td-hint">{hint}</p>}
+      {/* In the margin, in brush: the day's 候 of the 七十二候, as an almanac notes the season (decoration) */}
+      {hou && !en && (
+        <p className="td-hou" aria-hidden="true">
+          <span>
+            {term(detail.termName)}
+            {hou.which}
+          </span>
+          <b>{hou.name}</b>
+        </p>
+      )}
     </section>
   )
 }
