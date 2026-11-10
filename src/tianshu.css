@@ -303,6 +303,31 @@
   .bz-links { position: absolute; right: 3%; bottom: 14px; justify-items: end; margin: 0; max-width: 260px; text-align: right; }
 }
 
+/* ---------- 七政四余 (QizhengView): the sky's round chart in gold light, in 八字's places ---------- */
+:root[data-style] #qizheng-chart.scene .qz-toolbar { justify-content: flex-end; }
+:root[data-style] .qz-wheel { --z-east: #79c08e; --z-south: #ef6b55; --z-west: #e9dfc8; --z-north: #7aa3e6; font-family: var(--font-title); }
+:root[data-style] .qz-wheel .qz-plate { fill: rgb(10 8 6 / 0.42); filter: blur(5px); }
+:root[data-style] .qz-wheel .qz-ring.strong { filter: drop-shadow(0 0 3px rgb(220 188 124 / 0.7)); }
+:root[data-style] .qz-mansion.lit text { filter: drop-shadow(0 0 5px currentColor); }
+:root[data-style] .qz-body .qz-dot { filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 9px currentColor); }
+:root[data-style] .qz-body .qz-char { filter: drop-shadow(0 0 7px currentColor); }
+:root[data-style] .qz-body .qz-thread { filter: drop-shadow(0 0 3px currentColor); }
+:root[data-style] .qz-wheel .qz-heart { fill: rgb(10 8 6 / 0.7); filter: drop-shadow(0 0 8px rgb(220 188 124 / 0.8)); }
+:root[data-style] .qz-wheel .qz-heart-name { fill: var(--accent); }
+:root[data-style] :is(.qz-scene, .qz-table, .qz-notes) { font-family: var(--font-title); }
+/* The bodies' lights breathe slowly (opacity only) */
+.qz-scene .qz-body .qz-dot { animation: bd-breathe-dot 4s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .qz-scene .qz-body .qz-dot { animation: none; } }
+.qz-seven { gap: 18px; }
+.qz-seven b { font-size: 34px; }
+.qz-seven em { margin-top: 6px; font-style: normal; font-size: 12px; letter-spacing: 0.2em; color: var(--muted); writing-mode: vertical-rl; }
+:root[lang='en'] .qz-seven em { writing-mode: horizontal-tb; letter-spacing: 0.04em; }
+.qz-four { max-width: 320px; }
+.qz-four > span:first-child { font-size: 14px; letter-spacing: 0.3em; color: var(--accent); }
+.qz-four-row b { margin-inline-end: 10px; font-weight: 400; font-size: 17px; color: #c3a5f0; text-shadow: 0 0 10px rgb(195 165 240 / 0.5); }
+.qz-four small { margin-top: 6px; font-size: 11px; line-height: 1.7; letter-spacing: 0.08em; }
+.qz-scene .bazi-hero-dial { width: min(620px, 100%); }
+
 /* 简洁 ↔ 详细 (smoothUpdate 'chart-view'): the scene and the full chart crossfade */
 :root[data-vt='chart-view']::view-transition-old(root) { animation: ts-fade-out 0.3s ease both; }
 :root[data-vt='chart-view']::view-transition-new(root) { animation: ts-fade-in 0.45s ease 0.15s both; }

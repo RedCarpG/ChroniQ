@@ -2157,6 +2157,45 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 
 /* ---------- 紫微 四化飞星 ---------- */
 .zw-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 14px; margin-bottom: 10px; }
+/* 七政四余 (QizhengView): the round chart of the 宿 and the bodies, and the table, in any look */
+:root { --qz-sun: #c08a1c; --qz-moon: #75808f; --qz-four: #8a63c9; }
+:root[data-theme='dark'], :root[data-style] { --qz-sun: #f3c565; --qz-moon: #dfe6f0; --qz-four: #c3a5f0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --qz-sun: #f3c565; --qz-moon: #dfe6f0; --qz-four: #c3a5f0; } }
+.qz-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.qz-layout { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .qz-layout { grid-template-columns: minmax(300px, 440px) 1fr; } }
+.qz-detail-wheel { max-width: 440px; width: 100%; margin: 0 auto; }
+.qz-wheel { --z-east: #4f9e72; --z-south: #d1563f; --z-west: #a99c80; --z-north: #4d77b8; display: block; width: 100%; height: auto; overflow: visible; }
+.qz-wheel .qz-plate { fill: none; }
+.qz-wheel .qz-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.45; stroke-width: 0.7; }
+.qz-wheel .qz-ring.strong { stroke-opacity: 0.85; stroke-width: 1.1; }
+.qz-wheel .qz-ring.faint { stroke-opacity: 0.18; stroke-dasharray: 1 5; }
+.qz-wheel .qz-ci line { stroke: var(--accent); stroke-opacity: 0.25; stroke-width: 0.5; }
+.qz-wheel .qz-ci text { font-size: 11px; letter-spacing: 2px; fill: var(--muted); opacity: 0.75; }
+.qz-wheel .qz-ci .ming text { fill: var(--accent); opacity: 1; }
+.qz-mansion path { fill: transparent; transition: fill 0.4s ease; }
+.qz-mansion line { stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 0.5; }
+.qz-mansion text { font-size: 15px; fill: var(--muted); opacity: 0.7; }
+.qz-mansion.z-east { color: var(--z-east); } .qz-mansion.z-south { color: var(--z-south); }
+.qz-mansion.z-west { color: var(--z-west); } .qz-mansion.z-north { color: var(--z-north); }
+.qz-mansion.lit path { fill: currentColor; fill-opacity: 0.16; }
+.qz-mansion.lit text { fill: currentColor; opacity: 1; font-size: 17px; }
+.qz-body .qz-thread { stroke: currentColor; stroke-opacity: 0.6; stroke-width: 0.8; }
+.qz-body.four .qz-thread { stroke-dasharray: 2 4; }
+.qz-body.reckoned .qz-thread { stroke-opacity: 0.35; }
+.qz-body .qz-dot { fill: currentColor; }
+.qz-body .qz-char { font-size: 22px; fill: currentColor; }
+.qz-body.four .qz-char { font-size: 18px; }
+.qz-body .qz-retro { font-size: 10px; fill: currentColor; opacity: 0.8; }
+.qz-wheel .qz-heart { fill: var(--surface, transparent); stroke: var(--accent); stroke-width: 1; }
+.qz-wheel .qz-heart-name { font-size: 26px; letter-spacing: 8px; fill: var(--text); }
+.qz-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.qz-table :is(th, td) { padding: 6px 8px; text-align: start; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.qz-table thead th { font-weight: 500; color: var(--muted); font-size: 12px; }
+.qz-table tbody th { font-weight: 400; }
+.qz-table tr.four th { font-style: normal; }
+.qz-table-char { font-size: 18px; }
+.qz-notes { margin: 14px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 .fx-active .palace:not(.fx-src, .fx-to) { opacity: 0.4; }
 .palace.fx-src { box-shadow: inset 0 0 0 2px var(--accent); }
 .palace.fx-to { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }

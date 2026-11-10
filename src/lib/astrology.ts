@@ -152,7 +152,7 @@ export function bodyLon(body: A.Body, t: A.AstroTime): number {
 }
 
 /** Longitude of the Moon's ascending node: mean (Meeus 47.7) or true (instantaneous orbital plane). */
-function nodeLon(t: A.AstroTime, kind: StarSettings['node']): number {
+export function nodeLon(t: A.AstroTime, kind: StarSettings['node']): number {
   if (kind === 'mean') {
     const T = t.tt / 36525
     return norm(125.04452 - 1934.136261 * T + 0.0020708 * T * T + (T * T * T) / 450000)

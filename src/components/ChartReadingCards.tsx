@@ -3,6 +3,8 @@ import { ASPECT_INFO, HOUSE_INFO, PLANET_INFO, SIGN_INFO } from '../lib/astroInf
 import { ELEMENT_NAME, SIGNS, type Element, type StarChart } from '../lib/astrology'
 import { starReading, ziweiReading } from '../lib/chartReadings'
 import type { ZiweiChart } from '../lib/ziwei'
+import { ZONES, type MansionZone } from '../lib/mansions'
+import { CI, QIZHENG_INFO, SEVEN, type QizhengChart } from '../lib/qizheng'
 import { MUTAGEN_INFO, STAR_INFO } from '../lib/ziweiInfo'
 import { useT, useTerm } from '../settingsContext'
 import { InfoTip } from './InfoTip'
@@ -144,6 +146,60 @@ export function StarReadingCard({ chart }: { chart: StarChart }) {
             </dd>
           </>
         )}
+      </dl>
+    </section>
+  )
+}
+
+/** What each 四象 stands for, in the common telling */
+const ZONE_NOTE: Record<MansionZone, string> = {
+  east: '应春，主生发',
+  south: '应夏，主繁盛',
+  west: '应秋，主收敛',
+  north: '应冬，主收藏',
+}
+
+/** 白话解读 for 七政四余: the 命宫, where the Sun and Moon are, and which quarter of the sky the 七政 gather in */
+export function QizhengReadingCard({ chart }: { chart: QizhengChart }) {
+  const t = useT()
+  const term = useTerm()
+  const by = (key: string) => chart.bodies.find((b) => b.key === key)!
+  const ming = CI[chart.mingCi]
+  const inMing = chart.bodies.filter((b) => b.palace === 0)
+  const counts = (['east', 'north', 'west', 'south'] as MansionZone[])
+    .map((zone) => ({ zone, n: SEVEN.filter((k) => by(k).mansion.zone === zone).length }))
+    .sort((a, b) => b.n - a.n)
+  const light = (label: string, key: 'sun' | 'moon') => {
+    const b = by(key)
+    return (
+      <>
+        <dt>{label}</dt>
+        <dd>
+          <strong>{term(b.mansion.name)}</strong> {term(b.mansion.animal)} · {term(ZONES[b.mansion.zone].name)}，{t(ZONE_NOTE[b.mansion.zone])}
+        </dd>
+      </>
+    )
+  }
+  return (
+    <section className="card chart-reading" id="qizheng-reading">
+      <ReadingTitle id="qizheng-reading" />
+      <dl className="reading-list">
+        <dt>{term('命宫')}</dt>
+        <dd>
+          <strong>{t('{ci}之次', { ci: term(ming.name) })}</strong> {t('（{branch}宫），命度在{m}宿', { branch: term(ming.branch), m: term(chart.ascMansion.char) })}
+          {t('；')}
+          {inMing.length
+            ? t('{bodies}守命，命宫的性情多从这几颗星看', { bodies: inMing.map((b) => term(QIZHENG_INFO[b.key].name)).join(t('、')) })
+            : t('命宫无星守，传统上看命宫之主和对宫')}
+        </dd>
+        {light(term('日躔'), 'sun')}
+        {light(term('月离'), 'moon')}
+        <dt>{term('七政')}</dt>
+        <dd>
+          {t('七政有 {n} 颗在{zone}', { n: counts[0].n, zone: term(ZONES[counts[0].zone].name) })}
+          {t('，')}
+          {t(ZONE_NOTE[counts[0].zone])}
+        </dd>
       </dl>
     </section>
   )

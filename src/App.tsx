@@ -15,6 +15,7 @@ import { loadLastInput, saveLastInput } from './lib/savedCharts'
 import { parseShareHash } from './lib/shareLink'
 import { loadSchools, saveSchools, type SchoolSettings } from './lib/schools'
 import { loadZiweiSchools, saveZiweiSchools, type ZiweiSchoolSettings } from './lib/ziweiSchools'
+import { loadQizhengSchools, saveQizhengSchools, type QizhengSchoolSettings } from './lib/qizhengSchools'
 import { loadStarSettings, saveStarSettings, type StarSettings } from './lib/starPrefs'
 import { DEFAULT_PLACE, type Place } from './lib/place'
 import { toUtc } from './lib/timeZone'
@@ -30,7 +31,7 @@ import { play, setSoundEnabled, startClickSounds } from './sound'
 type Tab = Page
 type SkyMoment = import('./components/SkyView').SkyMoment
 /** Order of the pages, which sets the way a page switch slides. */
-const TAB_ORDER: Tab[] = ['today', 'calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'star', 'timeline']
+const TAB_ORDER: Tab[] = ['today', 'calendar', 'sky', 'moon', 'solar', 'bazi', 'ziwei', 'qizheng', 'star', 'timeline']
 
 // Calendar is the default page; load the 八字 UI only when it is opened.
 const loadBazi = () => import('./components/BaziView')
@@ -39,6 +40,9 @@ const BaziView = lazy(() => loadBazi().then((m) => ({ default: m.BaziView })))
 // 紫微斗数 pulls in iztro (~150 KB gzip); load it only when the tab is opened.
 const loadZiwei = () => import('./components/ZiweiView')
 const ZiweiView = lazy(() => loadZiwei().then((m) => ({ default: m.ZiweiView })))
+// 七政四余 brings astronomy-engine, as 星盘 does
+const loadQizheng = () => import('./components/QizhengView')
+const QizhengView = lazy(() => loadQizheng().then((m) => ({ default: m.QizhengView })))
 // 星盘 pulls in astronomy-engine; likewise only loaded when its tab opens.
 const loadStar = () => import('./components/StarChartView')
 const StarChartView = lazy(() => loadStar().then((m) => ({ default: m.StarChartView })))
@@ -58,7 +62,7 @@ const TimelinePage = lazy(() => loadTimeline().then((m) => ({ default: m.Timelin
 // 观月, with its maps of the Moon
 const loadMoon = () => import('./components/MoonPage')
 const MoonPage = lazy(() => loadMoon().then((m) => ({ default: m.MoonPage })))
-const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { today: loadToday, timeline: loadTimeline, bazi: loadBazi, ziwei: loadZiwei, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
+const LOADERS: Partial<Record<Tab, () => Promise<unknown>>> = { today: loadToday, timeline: loadTimeline, bazi: loadBazi, ziwei: loadZiwei, qizheng: loadQizheng, star: loadStar, sky: loadSky, moon: loadMoon, solar: loadSolar }
 const loadedTabs = new Set<Tab>()
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -162,6 +166,11 @@ export function App() {
     setZiweiSchools(next)
     saveZiweiSchools(next)
   }
+  const [qizhengSchools, setQizhengSchools] = useState<QizhengSchoolSettings>(loadQizhengSchools)
+  const changeQizhengSchools = (next: QizhengSchoolSettings) => {
+    setQizhengSchools(next)
+    saveQizhengSchools(next)
+  }
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const changeSettings = (next: Settings) => {
     setSettings(next)
@@ -223,7 +232,7 @@ export function App() {
   const immersive = tab === 'sky' || tab === 'moon' || tab === 'solar'
   // The decorative stars (starfield.ts) step aside on those pages, which draw a sky of their own,
   // and on the 八字 and 星盘 pages for the sky of the moment of birth (BirthSky)
-  const realSky = immersive || ((tab === 'bazi' || tab === 'star') && settings.birthSky === 'show')
+  const realSky = immersive || ((tab === 'bazi' || tab === 'qizheng' || tab === 'star') && settings.birthSky === 'show')
   useEffect(() => {
     document.querySelector('.starfield')?.classList.toggle('aside', realSky)
   }, [realSky])
@@ -419,6 +428,10 @@ export function App() {
           ) : tab === 'solar' ? (
             <Suspense fallback={<SplashSignal />}>
               <SolarSystemView planet={solarPlanet} />
+            </Suspense>
+          ) : tab === 'qizheng' ? (
+            <Suspense fallback={<SplashSignal />}>
+              <QizhengView key={loads} input={baziInput} onChange={setBaziInput} schools={qizhengSchools} onSchoolsChange={changeQizhengSchools} />
             </Suspense>
           ) : tab === 'star' ? (
             <Suspense fallback={<SplashSignal />}>
