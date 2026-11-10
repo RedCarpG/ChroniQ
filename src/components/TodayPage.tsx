@@ -408,7 +408,7 @@ export function TodayPage({
 
 
       {/* At the right edge, opened over the page when wanted */}
-      <RightDrawer label={t('AI 解读')}>
+      <RightDrawer label={t('解读')}>
         {/* What the reading goes by: the chart chosen in the drawer, or the day alone */}
         <p className={`ai-basis${chart ? '' : ' none'}`}>
           {chart
