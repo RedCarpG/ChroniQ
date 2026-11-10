@@ -1,7 +1,8 @@
 name: Release chroniq-core
 
 # Pushing a tag core-v<version> (matching core/package.json) builds the package and puts the
-# tarball on a GitHub Release, where other projects install it from.
+# tarball on a GitHub Release, where other projects install it from; and with it the Claude Code
+# skill mingli-chart-reading (core/skill), zipped, of the same version.
 on:
   push:
     tags: ['core-v*']
@@ -26,10 +27,23 @@ jobs:
       - run: npx vitest run core
       - run: npm run pack:core
       - run: npm run check:core
+      - run: npm run build:skill
+      - name: Zip the skill
+        # The folder itself in the zip, so it unzips into ~/.claude/skills as mingli-chart-reading/
+        run: |
+          version=$(node -p "require('./core/package.json').version")
+          cd core/skill/dist && zip -r "../../mingli-chart-reading-$version.zip" mingli-chart-reading
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         # A block, as the notes' "Install: " would otherwise be read as a YAML key
         run: |
           tgz=$(basename core/chroniq-core-*.tgz)
-          gh release create "$GITHUB_REF_NAME" "core/$tgz" --title "chroniq-core ${GITHUB_REF_NAME#core-v}" --notes "Install: npm install https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/$tgz"
+          zip=$(basename core/mingli-chart-reading-*.zip)
+          url="https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME"
+          {
+            echo "Install: npm install $url/$tgz"
+            echo
+            echo "Claude Code skill: unzip $zip into ~/.claude/skills/ (it holds the folder mingli-chart-reading/)"
+          } > release-notes.md
+          gh release create "$GITHUB_REF_NAME" "core/$tgz" "core/$zip" --title "chroniq-core ${GITHUB_REF_NAME#core-v}" --notes-file release-notes.md

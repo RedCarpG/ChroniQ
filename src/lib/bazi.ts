@@ -6,6 +6,7 @@ import {
   China95ChildLimitProvider,
   DefaultChildLimitProvider,
   DefaultEightCharProvider,
+  EightChar,
   LunarSect1ChildLimitProvider,
   LunarSect2ChildLimitProvider,
   Gender,
@@ -23,6 +24,7 @@ import { DEFAULT_SCHOOLS, type SchoolSettings } from './schools'
 import { computeShenSha, type ShenSha } from './shensha'
 import { DEFAULT_PLACE, type Place } from './place'
 import { toTrueSolarTime, type WallTime } from './solarTime'
+import { toUtc } from './timeZone'
 
 export type ElementName = '木' | '火' | '土' | '金' | '水'
 export const ELEMENTS: ElementName[] = ['木', '火', '土', '金', '水']
@@ -100,6 +102,9 @@ export interface BaziInput {
   place?: Place
   /** Cast 八字 / 紫微 from 真太阳时 at the birthplace instead of the clock time */
   trueSolar?: boolean
+  /** 交节对照 (schools JIE_SCHOOL): 'instant' takes the year and month pillars, and the 起运, from the
+   *  birth's actual moment against the 节; 'local' (ChroniQ's way, and the default) from the time cast by */
+  jie?: 'local' | 'instant'
 }
 
 const eightCharProviders = { nextDay: new DefaultEightCharProvider(), sameDay: new LunarSect2EightCharProvider() }
@@ -173,7 +178,16 @@ export function buildBazi(input: BaziInput, schools: SchoolSettings = DEFAULT_SC
   const { corrected, time: t } = effectiveTime(input)
   const time = SolarTime.fromYmdHms(t.year, t.month, t.day, t.hour, t.minute, 0)
   const lunarHour = time.getLunarHour()
-  const ec = lunarHour.getEightChar()
+  let ec = lunarHour.getEightChar()
+  // tyme4ts sets a time against the 节 as if it were 北京时间. By the actual moment, the year and
+  // month pillars and the 起运 come from that moment on 北京's clock; the day and hour stay local.
+  let limitTime = time
+  if (input.jie === 'instant') {
+    const at = new Date(toUtc(input, (input.place ?? DEFAULT_PLACE).timeZone).date.getTime() + 8 * 3600_000)
+    limitTime = SolarTime.fromYmdHms(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate(), at.getUTCHours(), at.getUTCMinutes(), 0)
+    const byMoment = limitTime.getLunarHour().getEightChar()
+    ec = new EightChar(byMoment.getYear(), byMoment.getMonth(), ec.getDay(), ec.getHour())
+  }
   const me = ec.getDay().getHeavenStem()
   const pillars = [
     pillar('年柱', ec.getYear(), me, false),
@@ -194,7 +208,7 @@ export function buildBazi(input: BaziInput, schools: SchoolSettings = DEFAULT_SC
     elementCount[p.branch.element]++
   }
 
-  const childLimit = ChildLimit.fromSolarTime(time, input.gender === 1 ? Gender.MAN : Gender.WOMAN)
+  const childLimit = ChildLimit.fromSolarTime(limitTime, input.gender === 1 ? Gender.MAN : Gender.WOMAN)
   const end = childLimit.getEndTime()
   const decades: DecadeInfo[] = []
   let df = childLimit.getStartDecadeFortune()
@@ -333,7 +347,7 @@ export function fortunePillars(chart: BaziChart, columns: FortuneColumn[], schoo
     chart.pillars.map((p) => ({ stem: p.stem.char, branch: p.branch.char })),
     schools,
     pillars.map((p) => ({ stem: p.stem.char, branch: p.branch.char })),
-  ).slice(4)
+  ).slice(chart.pillars.length)
   pillars.forEach((p, i) => (p.shenSha = stars[i]))
   return pillars
 }

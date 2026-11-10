@@ -171,7 +171,8 @@ export function computeShenSha(
       for (const [name, list] of Object.entries(DAY_PILLAR_STARS)) if (list.includes(gz)) add(name)
       if (TIAN_SHE[month.branch] === gz) add('天赦')
     }
-    if ((i === 2 || i === 3) && JIN_SHEN.includes(gz)) add('金神')
+    // 时柱 is index 3 only when the chart has one (a birth with its hour unknown has three pillars)
+    if ((i === 2 || (i === 3 && i < pillars.length)) && JIN_SHEN.includes(gz)) add('金神')
   })
 
   return result.map((m) => [...m.values()])
