@@ -8,10 +8,10 @@ const BirthPoster = lazy(() => import('./BirthPoster'))
 const BirthMoonPoster = lazy(() => import('./BirthMoonPoster'))
 
 /** The card each chart page saves as its image */
-const TARGET = { bazi: 'bazi-natal', ziwei: 'ziwei-board', star: 'star-natal' } as const
+const TARGET = { bazi: 'bazi-natal', ziwei: 'ziwei-board', qizheng: 'qizheng-chart', star: 'star-natal' } as const
 /** Controls inside those cards, which mean nothing in a picture */
-const CONTROLS = '.no-export, .zw-toolbar, .overlay-bar, .partner-form'
-const PAGE_NAME = { bazi: '八字', ziwei: '紫微', star: '星盘' } as const
+const CONTROLS = '.no-export, .zw-toolbar, .qz-toolbar, .overlay-bar, .partner-form'
+const PAGE_NAME = { bazi: '八字', ziwei: '紫微', qizheng: '七政', star: '星盘' } as const
 
 const FOOTER_HEIGHT = 28
 const pad = (n: number) => String(n).padStart(2, '0')

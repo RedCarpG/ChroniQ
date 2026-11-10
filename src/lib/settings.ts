@@ -173,7 +173,7 @@ export function applyScale(scale: Settings['uiScale']): void {
 }
 
 /** The pages the 天书 look covers, and which night each is drawn in: the east's for 八字 and 紫微, the west's for 星盘 */
-export const TIANSHU_REALM: Partial<Record<string, 'east' | 'west'>> = { today: 'east', calendar: 'east', bazi: 'east', ziwei: 'east', star: 'west', timeline: 'east' }
+export const TIANSHU_REALM: Partial<Record<string, 'east' | 'west'>> = { today: 'east', calendar: 'east', bazi: 'east', ziwei: 'east', qizheng: 'east', star: 'west', timeline: 'east' }
 
 /**
  * Apply the 界面风格 to <html> for the page shown: data-style names its night (east or west), and the

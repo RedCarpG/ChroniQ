@@ -5,8 +5,8 @@ import type { BaziInput } from './bazi'
 import { placeFromLongitude, toPlace } from './place'
 import { toBaziInput } from './savedCharts'
 
-export type ChartTab = 'bazi' | 'ziwei' | 'star'
-const TABS: ChartTab[] = ['bazi', 'ziwei', 'star']
+export type ChartTab = 'bazi' | 'ziwei' | 'qizheng' | 'star'
+const TABS: ChartTab[] = ['bazi', 'ziwei', 'qizheng', 'star']
 
 export interface SharedChart {
   tab: ChartTab
