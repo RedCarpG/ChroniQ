@@ -19,6 +19,9 @@ import {
   lunarToSolar,
   starChartText,
   transits,
+  buildQizheng,
+  qizhengText,
+  DEFAULT_QIZHENG_SCHOOLS,
 } from '../index'
 
 const INPUT = { year: 1990, month: 5, day: 17, hour: 10, minute: 30, gender: 1 as const }
@@ -91,5 +94,24 @@ describe('chroniq-core', () => {
     expect(findCity('上海')).toMatchObject({ name: '上海', timeZone: 'Asia/Shanghai' })
     expect(findCity('东京')).toMatchObject({ timeZone: 'Asia/Tokyo' })
     expect(findCity('不存在的地方')).toBeNull()
+  })
+
+  it('writes out a 七政四余 chart: each body in its 宿 and palace, the twelve palaces from 命宫', () => {
+    const chart = buildQizheng({ ...INPUT, place: findCity('北京市')! }, DEFAULT_QIZHENG_SCHOOLS)
+    const text = qizhengText(chart, DEFAULT_QIZHENG_SCHOOLS)
+    expect(text).toMatch(/^乾造（男命）/)
+    expect(text).toContain('命宫：鹑首之次（未宫），上升点黄经')
+    expect(text).toMatch(/^ {2}木星（岁星，五行属木）：井宿.+落命宫$/m)
+    expect(text).toMatch(/^ {2}土星（镇星，五行属土）：斗宿.+落夫妻宫，逆行$/m)
+    expect(text).toContain('出生：1990年5月17日 10:30（当地时间，UTC+9，夏令时）· 北京')
+    expect(text).toMatch(/^ {2}太阳（五行属火）：胃宿（胃土雉）入宿 \d+\.\d 古度/m)
+    expect(text).toMatch(/^ {2}太阴（五行属水）：女宿/m)
+    expect(text).toMatch(/^ {2}紫炁（五行属木）：.+（依流派推算，天上没有对应的天体）$/m)
+    const palaces = text.split('\n').filter((l) => /^ {2}\S{2}（\S{2} · [子丑寅卯辰巳午未申酉戌亥]）：/.test(l))
+    expect(palaces).toHaveLength(12)
+    expect(palaces[0]).toMatch(/^ {2}命宫/)
+    expect(text).toContain('流派：罗睺计都取罗睺为升交点（北交）；月交点取真交点；紫炁取二十八年一周天')
+    const hidden = qizhengText(buildQizheng(INPUT, { ...DEFAULT_QIZHENG_SCHOOLS, ziqi: 'hidden' }), { ...DEFAULT_QIZHENG_SCHOOLS, ziqi: 'hidden' })
+    expect(hidden).not.toMatch(/^ {2}紫炁/m)
   })
 })

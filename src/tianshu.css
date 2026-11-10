@@ -161,9 +161,16 @@
 :root[data-style] .overlay-bar .birth-chip { margin-left: auto; }
 :root[data-style] .overlay-bar .star-view { margin-left: 0; }
 :root[data-style] .natal-head { align-items: center; }
+/* The birth, 流派设置 and the switches wrap onto a second line where they do not fit in one (a phone), as
+   紫微's toolbar does, rather than the birth being pushed off the left edge */
+:root[data-style] .natal-head { flex-wrap: wrap; row-gap: 8px; }
+/* (详细: the chart's own lines take what room is left, but never less than a readable width; on a phone
+   the birth and the switches go under them) */
+:root[data-style] .natal-head .chart-meta { flex: 1 1 220px; }
 /* 流派设置 by the switches (SchoolsMenu): its panel opening under it */
 .schools-menu { position: relative; }
-.schools-menu > .ghost { height: auto; padding: 4px 2px; font-size: 13px; letter-spacing: 0.12em; }
+.schools-menu > .ghost { height: auto; padding: 4px 2px; font-size: 13px; letter-spacing: 0.12em; white-space: nowrap; }
+.schools-menu { flex: none; }
 .schools-menu-panel { font-size: 13px; line-height: 1.7; }
 .schools-menu-panel select {
   height: 28px; margin: 0 6px; padding: 0 24px 0 8px; font: inherit; font-size: 13px; color: var(--text);

@@ -77,7 +77,11 @@ export interface QizhengBody {
 
 export interface QizhengChart {
   utc: Date
+  /** The birth's offset from UTC there and then (minutes), and whether that was summer time */
+  offsetMinutes: number
+  dst: boolean
   place: Place
+  gender: '男' | '女'
   bodies: QizhengBody[]
   /** The Ascendant's ecliptic longitude, its 次 (the 命宫) and its 宿 */
   asc: number
@@ -143,7 +147,18 @@ export function buildQizheng(input: BaziInput, schools: QizhengSchoolSettings): 
     ...(schools.ziqi === 'cycle28' ? [['ziqi', ziqiLon(t)] as const] : []),
   ] as const)
     bodies.push(make(key, eclipticRa(lon, t), lon))
-  return { utc: star.utc, place, bodies, asc: star.asc, mingCi, ascMansion: mansionOf(eclipticRa(star.asc, t)).mansion, ciRa: CI.map((_, k) => eclipticRa(k * 30, t)) }
+  return {
+    utc: star.utc,
+    offsetMinutes: star.offsetMinutes,
+    dst: star.dst,
+    place,
+    gender: input.gender === 1 ? '男' : '女',
+    bodies,
+    asc: star.asc,
+    mingCi,
+    ascMansion: mansionOf(eclipticRa(star.asc, t)).mansion,
+    ciRa: CI.map((_, k) => eclipticRa(k * 30, t)),
+  }
 }
 
 /** The 古度 into a mansion as the books write it: 十二度, or 初度 under one */

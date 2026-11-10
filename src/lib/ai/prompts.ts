@@ -5,7 +5,9 @@
 import { baziReading } from '../baziReading'
 import type { BaziChart } from '../bazi'
 import type { Overlay, StarChart } from '../astrology'
-import { almanacText, baziText, starChartText, ziweiText } from '../chartText'
+import { almanacText, baziText, qizhengText, starChartText, ziweiText } from '../chartText'
+import type { QizhengChart } from '../qizheng'
+import type { QizhengSchoolSettings } from '../qizhengSchools'
 import type { StarSettings } from '../starPrefs'
 import type { ZiweiChart } from '../ziwei'
 import type { ZiweiPattern } from '../ziweiPatterns'
@@ -14,8 +16,8 @@ export type AiLang = 'zh' | 'en'
 
 export function systemPrompt(lang: AiLang): string {
   return [
-    '你是一位精通子平八字、紫微斗数、传统黄历和西洋占星的命理研究者，替使用 ChroniQ（星曆）的人解读他们排好的盘。',
-    '盘已经由程序按所选流派排好，数据以给你的为准：不要自己重新排盘，不要改动干支、星曜、四化、大运的年份、行星的星座度数和宫位，引用时照抄。',
+    '你是一位精通子平八字、紫微斗数、七政四余、传统黄历和西洋占星的命理研究者，替使用 ChroniQ（星曆）的人解读他们排好的盘。',
+    '盘已经由程序按所选流派排好，数据以给你的为准：不要自己重新排盘，不要改动干支、星曜、四化、大运的年份、行星的星座度数和宫位、七政四余所在的宿和度数，引用时照抄。',
     '解读要具体，指出依据（哪一柱、哪个十神、哪颗星在哪一宫、哪个格局或相位），把术语用一句话讲明白；好的和需要留意的都说，语气温和、给出能做的建议。',
     '不渲染宿命和灾祸，不预言具体的生死、疾病、官司；健康和钱财的事只说倾向，提醒以现实为准。命理是传统文化的参考，不是定论。',
     '用 Markdown：小标题（##）分段，要点用短列表，不要表格。',
@@ -91,4 +93,18 @@ export function starPrompt(chart: StarChart, settings: StarSettings, overlay?: O
       ? '请解读这两个人的合盘：对方的行星落在这张盘的哪些宫、形成的主要相位，说两人在哪些方面合得来、哪些地方容易摩擦，给相处的建议。'
       : `请结合本命盘解读这段${overlay.kind === 'transit' ? '行运' : '推运'}：最紧的几个相位和落宫说明这段时间的主题是什么，哪些方面顺、哪些要留意，给几条建议。本命盘只简要带过。`
   return ['这是一张西洋占星的星盘（回归黄道）：', '', starChartText(chart, settings, overlay), '', ask].join('\n')
+}
+
+/** The first message for a 七政四余 chart */
+export function qizhengPrompt(chart: QizhengChart, schools: QizhengSchoolSettings): string {
+  return [
+    '这是一张七政四余命盘（按出生时刻的真实星空排，二十八宿用赤道宿度）：',
+    '',
+    qizhengText(chart, schools),
+    '',
+    '请解读这张盘：先看命宫所在的次、命度所在的宿和守命的星曜，说性格和整体格局；再看日躔、月离（太阳、太阴所在的宿），' +
+      '五星各自所在的宿和次与它本身五行的生克（入庙、得地还是受克），有逆行的说一说；四余落在哪些宫、和七政同宫或对照的关系；' +
+      '然后分财帛、官禄、夫妻、迁移、疾厄几宫看。盘里没有列出的（命主、度主、限度、神煞等）如果要用，说明是按哪一家的古法推的；' +
+      '依流派推算的（如紫炁）只作参考。',
+  ].join('\n')
 }
