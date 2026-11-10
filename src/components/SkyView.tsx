@@ -1441,8 +1441,9 @@ export function SkyView({ place, placeControls, moment }: { place: StarPlace; pl
     }
     svg.addEventListener('wheel', onWheel, { passive: false })
     return () => svg.removeEventListener('wheel', onWheel)
-    // zoomAt uses refs, setView and the transform only
-  }, [])
+    // zoomAt uses refs, setView and the transform only. The map is unmounted under the dome (or while
+    // the phone points), so coming back is a new svg, to listen on again.
+  }, [domeOn])
   /** How fast the time runs: "10 分钟/秒", "−1 小时/秒" */
   const rateLabel = (v: number) =>
     (v < 0 ? '−' : '') +
