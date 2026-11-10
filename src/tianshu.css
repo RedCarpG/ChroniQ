@@ -768,4 +768,32 @@
   content: ''; position: absolute; left: -4px; bottom: -11px; width: 120px; height: 12px; pointer-events: none; opacity: 0.55;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9 0.06' numOctaves='2' seed='2' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='3'/%3E%3CfeComposite in2='n' operator='in'/%3E%3C/filter%3E%3Cpath d='M3 7 C 30 3 70 5 116 3' stroke='%23c69a62' stroke-width='7' stroke-linecap='round' fill='none' filter='url(%23d)'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
 }
-@media print { .ts-paper, .bz-ink, .bz-note { display: none; } }
+/* Each page's own motif, in the same faint manner, and only where there is room (decoration, never content):
+   紫微 its 星斗, 北斗 and 南斗, with the line 斗数 begins with; 今日 the day's 候 of the 七十二候; 时间轴 a
+   life's ages from 《论语》; 星盘, engraved, the Emerald Tablet's line */
+.zw-dipper, .zw-motto, .td-hou, .tl-motto, .st-motto { display: none; }
+@media (min-width: 1100px) {
+  .zw-dipper { display: block; position: absolute; width: 150px; height: auto; overflow: visible; pointer-events: none; opacity: 0.6; }
+  .zw-dipper polyline { fill: none; stroke: var(--accent); stroke-opacity: 0.45; stroke-width: 0.8; }
+  .zw-dipper circle { fill: #140e0a; stroke: var(--accent); stroke-width: 1; }
+  .zw-dipper text { font-family: 'ZCOOL XiaoWei', serif; font-size: 12px; letter-spacing: 3px; fill: var(--accent); opacity: 0.8; }
+  .zw-dipper.bei { left: calc(3% + 10px); top: 42%; }
+  .zw-dipper.nan { right: calc(3% + 70px); top: 50%; }
+  .zw-motto, .td-hou {
+    display: block; position: absolute; margin: 0; writing-mode: vertical-rl; pointer-events: none; user-select: none;
+    font-family: 'Ma Shan Zheng', serif; letter-spacing: 0.14em; line-height: 1.35; color: #b98a5a; opacity: 0.62;
+  }
+  .zw-motto { left: calc(3% + 180px); top: 44%; font-size: 17px; }
+  .td-hou { left: calc(3% + 4px); top: 280px; display: flex; gap: 8px; font-size: 15px; }
+  .td-hou b { font-weight: 400; font-size: 22px; }
+  :root[data-style='east'] .tl-motto {
+    display: block; margin-left: auto; align-self: center; font-family: 'Ma Shan Zheng', serif; font-size: 16px; letter-spacing: 0.12em;
+    color: #b98a5a; opacity: 0.55; white-space: nowrap; pointer-events: none; user-select: none;
+  }
+  .st-motto {
+    display: block; position: absolute; left: 3%; top: 46%; max-width: 200px; margin: 0; pointer-events: none; user-select: none;
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; line-height: 1.5; letter-spacing: 0.06em; color: var(--accent); opacity: 0.45;
+  }
+  .st-motto small { display: block; margin-top: 6px; font-style: normal; font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase; }
+}
+@media print { .ts-paper, .bz-ink, .bz-note, .zw-dipper, .zw-motto, .td-hou, .tl-motto, .st-motto { display: none; } }

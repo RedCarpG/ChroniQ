@@ -167,6 +167,10 @@ export function TodayPage({
           moon={moon}
           onViewMoon={onViewMoon}
           hint={chart && bazi && dayStar ? undefined : chartHint}
+          hou={(() => {
+            const p = today.getPhenologyDay().getPhenology()
+            return { which: p.getThreePhenology().getName(), name: p.getName() }
+          })()}
         />
       )}
       <div className="today-col">

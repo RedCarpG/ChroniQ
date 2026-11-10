@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+// 马善政, the brush hand for the page's faint marginal note (tianshu.css); only the characters shown are fetched
+import '@fontsource/ma-shan-zheng/400.css'
 import type { BaziInput } from '../lib/bazi'
 import { buildLifeTimeline, yearOf, type PlanetEventKind, type TimelineSystem } from '../lib/lifeTimeline'
 import type { SchoolSettings } from '../lib/schools'
@@ -79,6 +81,10 @@ export function TimelinePage({
           <h2 className="section-title">{t('人生时间轴')}</h2>
           <span className="muted">
             {t('{y}年{m}月{d}日出生 · 可在左侧「命盘」里换一张', { y: input.year, m: input.month, d: input.day })}
+          </span>
+          {/* 天书: a life's ages, as 《论语·为政》 has them, brushed faintly along the head (decoration) */}
+          <span className="tl-motto" aria-hidden="true">
+            吾十有五而志于学　三十而立　四十而不惑　五十而知天命　六十而耳顺　七十而从心所欲
           </span>
         </header>
         <div className="tl-board">
