@@ -44,6 +44,9 @@
 /* The atmosphere (TianshuAtmosphere), over the stars and under the page */
 .ts-atmos { position: fixed; inset: 0; z-index: -1; height: 100lvh; overflow: hidden; pointer-events: none; }
 .ts-mist { position: absolute; inset: 0; }
+/* A veil over the whole night, so the sky stays behind the chart and never competes with it */
+.ts-atmos::after { content: ''; position: absolute; inset: 0; background: rgb(5 4 3 / 0.3); }
+.ts-west::after { background: rgb(3 3 12 / 0.28); }
 .ts-east .ts-mist {
   background:
     radial-gradient(ellipse 55% 38% at 50% 26%, rgb(224 80 58 / 0.18), transparent 70%),
@@ -72,7 +75,7 @@
 }
 .ts-page-bazi .ts-motes { opacity: 0.35; }
 /* 八字's fog: wider than the screen, drifting slowly from side to side (drawn once, moved as a whole) */
-.ts-fog { position: absolute; left: -15%; top: -8%; width: 130%; height: 116%; opacity: 0.34; will-change: transform; animation: ts-fog-drift 80s ease-in-out infinite alternate; }
+.ts-fog { position: absolute; left: -15%; top: -8%; width: 130%; height: 116%; opacity: 0.24; will-change: transform; animation: ts-fog-drift 80s ease-in-out infinite alternate; }
 @keyframes ts-fog-drift { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
 @media (prefers-reduced-motion: reduce) { .ts-fog { animation: none; } }
 /* 星盘: the west's violet stays at the edges, thinner, so the sky of the birth reads through it */
@@ -84,19 +87,19 @@
 }
 .ts-page-star .ts-motes { opacity: 0.35; }
 
-/* The sky of the birth (八字 and 星盘), nearly at full strength: the chart is drawn over it. It and the
+/* The sky of the birth (八字 and 星盘), held back, so the chart drawn over it leads. It and the
    night over it are a little larger than the screen, so their edges never show as they move (useParallax) */
-:root[data-style] .birth-sky { opacity: 0.92; scale: 1.04; }
+:root[data-style] .birth-sky { opacity: 0.62; scale: 1.04; }
 :root[data-style] .ts-atmos { scale: 1.03; }
 /* 星盘's sky draws the Western figures across the whole page: fainter and unnamed, so they do not cross the words;
    the zodiac's own are drawn in the wheel (.zodiac-figures) */
-:root[data-style='west'][data-theme] { --bs-figure: rgb(216 191 140 / 0.2); --bs-label: rgb(216 191 140 / 0); }
+:root[data-style='west'][data-theme] { --bs-figure: rgb(216 191 140 / 0.14); --bs-label: rgb(216 191 140 / 0); --bs-milky-alpha: 0.5; }
 
 /* 八字's sky of the birth in the east's warm light: the Milky Way and the stars warm, the 二十八宿 in gold */
 :root[data-style='east'][data-theme] {
-  --bs-star: #f3e2c2; --bs-star-alpha: 0.95; --bs-milky-alpha: 0.75;
+  --bs-star: #f3e2c2; --bs-star-alpha: 0.8; --bs-milky-alpha: 0.5;
   --bs-mw-haze: #9a7650; --bs-mw-body: #d6b98a; --bs-mw-core: #f4e4c4; --bs-mw-grain: #ead6b0;
-  --bs-figure: rgb(216 191 140 / 0.34); --bs-label: rgb(216 191 140 / 0.58);
+  --bs-figure: rgb(216 191 140 / 0.24); --bs-label: rgb(216 191 140 / 0.4);
 }
 
 /* The top bar, as an old plate's head: the mark and the name in gold; the pages as words, the one shown
