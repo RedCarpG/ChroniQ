@@ -2600,8 +2600,24 @@ th .tip-label { border-bottom-color: color-mix(in srgb, currentColor 50%, transp
 .topbar-fold::before, .footer-tab::before, .footer-close::before {
   content: ''; position: absolute; left: 0; right: 0; height: 1px; pointer-events: none; background: var(--quiet-line); opacity: 0.6;
 }
+/* The line along the edge each hangs from: the top of the screen or bar for the top bar's, the bottom of the
+   screen or the footer's top for the footer's; the chevron a short way off it, drawn (not a font's ⌄ ⌃, which
+   sit high or low by the font) and lifted off whatever is behind by a soft shadow */
 .topbar-fold::before { top: 0; }
 .footer-tab::before, .footer-close::before { bottom: 0; }
+.topbar-fold, .footer-tab, .footer-close { height: 20px; padding: 0; }
+.topbar-fold > span, .footer-tab > span, .footer-close > span {
+  display: block; width: 7px; height: 7px; font-size: 0; border: solid currentColor; border-width: 0 1.5px 1.5px 0;
+  filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.9));
+}
+/* Pointing down (open the bar, put the footer away): 4px below the top line, or above the bottom one */
+.topbar-fold.down > span { transform: translateY(1px) rotate(45deg); }
+.footer-close > span { transform: translateY(-3px) rotate(45deg); }
+/* Pointing up (put the bar away, bring the footer up) */
+.topbar-fold.up > span { transform: translateY(3px) rotate(-135deg); }
+.footer-tab > span { transform: translateY(-1px) rotate(-135deg); }
+.topbar-fold.up { bottom: -20px; }
+.footer-close { top: -20px; }
 
 /* The jump links down the left edge (八字 / 紫微 / 星盘): no box, a fine line down the edge; the section
    in view marked by a soft wash and a short gold line at the edge, not a filled block */
