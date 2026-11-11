@@ -143,7 +143,6 @@
 }
 :root[data-style] .app.fold-bar.bar-folded .topbar { transform: translate(-50%, calc(-100% - 24px)); opacity: 0; pointer-events: none; }
 :root[data-style] .app.fold-bar > main { padding-top: 22px; }
-:root[data-style] .topbar-fold { background: color-mix(in srgb, var(--bg) 88%, transparent); border-color: var(--edge); }
 @media (prefers-reduced-motion: reduce) { :root[data-style] .app.fold-bar .topbar { transition: none; } }
 
 /* ---------- 天象, 观月, 太阳系 in 天书: the real skies stay as they are; what lies over them is 天书's ---------- */
@@ -157,7 +156,7 @@
   background: rgb(9 13 26 / 0.9); border-color: rgb(220 188 124 / 0.3); border-radius: 10px;
 }
 :root[data-ui='tianshu'] .app.immersive :is(.imm-when-pop, .sky-search-list, .sky-place-pop) { background: rgb(9 13 26 / 0.97); border-color: rgb(220 188 124 / 0.3); border-radius: 10px; }
-:root[data-ui='tianshu'] .app.immersive :is(.imm-panel-tab, .imm-zoom, .topbar-fold) { background: rgb(9 13 26 / 0.9); border-color: rgb(220 188 124 / 0.3); }
+:root[data-ui='tianshu'] .app.immersive :is(.imm-panel-tab, .imm-zoom) { background: rgb(9 13 26 / 0.9); border-color: rgb(220 188 124 / 0.3); }
 :root[data-ui='tianshu'] .app.immersive .sky-search input { border-color: rgb(220 188 124 / 0.35); background: rgb(9 13 26 / 0.86); }
 /* Titles as 天书 sets them: spaced and in gold, a fading hairline under a panel's head */
 :root[data-ui='tianshu'] .app.immersive :is(.section-title, .imm-panel-head h3) { font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
