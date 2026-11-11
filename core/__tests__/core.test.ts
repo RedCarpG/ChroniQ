@@ -120,6 +120,13 @@ describe('chroniq-core', () => {
     expect(text).toContain('流派：罗睺计都取罗睺为升交点（北交）；月交点取真交点；紫炁取二十八年一周天')
     const hidden = qizhengText(buildQizheng(INPUT, { ...DEFAULT_QIZHENG_SCHOOLS, ziqi: 'hidden' }), { ...DEFAULT_QIZHENG_SCHOOLS, ziqi: 'hidden' })
     expect(hidden).not.toMatch(/^ {2}紫炁/m)
+    // given a moment, the 洞微大限 (the one running marked) and the 流年's sky over the natal palaces
+    const withFortune = qizhengText(chart, DEFAULT_QIZHENG_SCHOOLS, new Date(Date.UTC(2026, 10, 11, 4)))
+    expect(withFortune).toMatch(/^ {2}命宫（鹑首）：0\.0–18\.6 年/m)
+    expect(withFortune).toMatch(/^ {2}福德宫（大梁）：28\.6–39\.6 年.+［当前大限］$/m)
+    expect(withFortune).toContain('流年（2026年11月11日的星空')
+    expect(withFortune).toMatch(/^ {2}木星：\S+宿，鹑火之次，落财帛宫$/m)
+    expect(text).not.toContain('大限')
   })
 
   it('writes out the 岁运 of a year: the 大运 (and when it changes), the 流年 and its twelve 流月', () => {

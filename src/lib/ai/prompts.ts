@@ -96,15 +96,16 @@ export function starPrompt(chart: StarChart, settings: StarSettings, overlay?: O
 }
 
 /** The first message for a 七政四余 chart */
-export function qizhengPrompt(chart: QizhengChart, schools: QizhengSchoolSettings): string {
+export function qizhengPrompt(chart: QizhengChart, schools: QizhengSchoolSettings, now = new Date()): string {
   return [
     '这是一张七政四余命盘（按出生时刻的真实星空排，二十八宿用赤道宿度）：',
     '',
-    qizhengText(chart, schools),
+    qizhengText(chart, schools, now),
     '',
     '请解读这张盘：先看命宫所在的次、命度所在的宿和守命的星曜，说性格和整体格局；再看日躔、月离（太阳、太阴所在的宿），' +
       '五星各自所在的宿和次与它本身五行的生克（入庙、得地还是受克），有逆行的说一说；四余落在哪些宫、和七政同宫或对照的关系；' +
-      '然后分财帛、官禄、夫妻、迁移、疾厄几宫看。盘里没有列出的（命主、度主、限度、神煞等）如果要用，说明是按哪一家的古法推的；' +
+      '然后分财帛、官禄、夫妻、迁移、疾厄几宫看；最后看当前大限所在的宫和宫内的星，以及流年（现在天上的七政四余）落在命宫、大限宫的情况，给出这几年的建议。' +
+      '盘里没有列出的（命主、度主、神煞等）如果要用，说明是按哪一家的古法推的；' +
       '依流派推算的（如紫炁）只作参考。',
   ].join('\n')
 }

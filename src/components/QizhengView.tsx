@@ -7,7 +7,7 @@
 // 起盘 (useCasting, four layers): the Sun, the Moon, the five planets, the 四余. The depth (useParallax)
 // moves the dial by its .bazi-hero-dial, as on 八字.
 import '@fontsource/zcool-xiaowei/400.css'
-import { Suspense, lazy, useMemo } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import type { BaziInput } from '../lib/bazi'
 import { hanNumber } from '../lib/hanNumber'
 import { ZONES } from '../lib/mansions'
@@ -21,6 +21,7 @@ import { AiAnalysis } from './AiAnalysis'
 import { CastLine } from './CastLine'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { QizhengReadingCard } from './ChartReadingCards'
+import { flowMoment, QizhengFortunes } from './QizhengFortunes'
 import { TitleMark } from './Logo'
 import { RightDrawer } from './RightDrawer'
 import { DrawerBirth } from './SavedCharts'
@@ -361,9 +362,13 @@ interface Props {
 
 export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props) {
   const t = useT()
+  const term = useTerm()
   const { birthSky, uiStyle } = useSettings()
   const chart = useMemo(() => buildQizheng(input, schools), [input, schools])
-  const aiPrompt = useMemo(() => qizhengPrompt(chart, schools), [chart, schools])
+  // 流年's year (this year until another is picked); the AI reads the same moment
+  const [flowYear, setFlowYear] = useState(() => new Date().getFullYear())
+  const flowAt = flowMoment(flowYear).getTime()
+  const aiPrompt = useMemo(() => qizhengPrompt(chart, schools, new Date(flowAt)), [chart, schools, flowAt])
   const [fullChart, toggleFullChart] = useChartFull()
   const tianshu = uiStyle === 'tianshu'
   const scene = tianshu && !fullChart
@@ -387,6 +392,7 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
       <SectionNav
         items={[
           ['qizheng-chart', t('盘面')],
+          ...(scene ? [] : [['qizheng-fortune', term('运限')] as [string, string]]),
         ]}
       />
       <section className={`card${scene ? ' scene' : ''}`} id="qizheng-chart" data-stage={cast.stageAttr}>
@@ -415,6 +421,9 @@ export function QizhengView({ input, onChange, schools, onSchoolsChange }: Props
           </>
         )}
       </section>
+
+      {/* 天书's 简洁 is the scene alone, as on 八字; the 运限 come with 详细 */}
+      {!scene && <QizhengFortunes chart={chart} schools={schools} year={flowYear} onYear={setFlowYear} />}
 
       {/* At the right edge, opened over the page when wanted */}
       <RightDrawer label={t('解读')}>

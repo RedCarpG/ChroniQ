@@ -120,11 +120,9 @@ export function ziqiLon(t: A.AstroTime): number {
 
 const ciOf = (lon: number) => Math.floor(norm(lon) / 30) % 12
 
-export function buildQizheng(input: BaziInput, schools: QizhengSchoolSettings): QizhengChart {
-  const place = input.place ?? DEFAULT_PLACE
-  const star = buildStarChart(input, place, { ...DEFAULT_STAR_SETTINGS, node: schools.node })
-  const t = A.MakeTime(star.utc)
-  const mingCi = ciOf(star.asc)
+/** The 七政 and 四余 at a moment, each placed in its 宿, 次 and (from the 命宫's 次) palace */
+export function qizhengBodiesAt(utc: Date, schools: QizhengSchoolSettings, mingCi: number): QizhengBody[] {
+  const t = A.MakeTime(utc)
   const make = (key: QizhengKey, ra: number, lon: number, retro = false): QizhengBody => {
     const { mansion, index, into } = mansionOf(ra)
     const ci = ciOf(lon)
@@ -147,6 +145,15 @@ export function buildQizheng(input: BaziInput, schools: QizhengSchoolSettings): 
     ...(schools.ziqi === 'cycle28' ? [['ziqi', ziqiLon(t)] as const] : []),
   ] as const)
     bodies.push(make(key, eclipticRa(lon, t), lon))
+  return bodies
+}
+
+export function buildQizheng(input: BaziInput, schools: QizhengSchoolSettings): QizhengChart {
+  const place = input.place ?? DEFAULT_PLACE
+  const star = buildStarChart(input, place, { ...DEFAULT_STAR_SETTINGS, node: schools.node })
+  const t = A.MakeTime(star.utc)
+  const mingCi = ciOf(star.asc)
+  const bodies = qizhengBodiesAt(star.utc, schools, mingCi)
   return {
     utc: star.utc,
     offsetMinutes: star.offsetMinutes,
