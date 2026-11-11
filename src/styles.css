@@ -189,6 +189,8 @@ button { cursor: pointer; }
 a { color: var(--accent); }
 .muted { color: var(--muted); }
 
+/* No browser tap flash (a blue box on Android): the page answers a tap itself */
+html { -webkit-tap-highlight-color: transparent; }
 .app { max-width: 1120px; margin: 0 auto; padding: 16px; zoom: var(--ui-zoom); }
 /* 显示大小: the whole page scales with CSS zoom (sizes here are in px). "Auto"
    grows it on large screens so the 1120px column doesn't look tiny there. */

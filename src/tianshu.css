@@ -477,7 +477,9 @@
 .zw-wheel.sf-picked .zw-sector.sf-self .zw-cell { fill: rgb(220 188 124 / 0.07); stroke: rgb(220 188 124 / 0.6); stroke-width: 0.9; }
 .zw-wheel.sf-picked .zw-sector.soul.sf-self .zw-cell { fill: rgb(224 80 58 / 0.2); stroke: rgb(255 138 115 / 0.55); }
 .zw-wheel.sf-picked .zw-sector.sf-self .zw-name { fill: #ecd9ac; }
-.zw-wheel.sf-picked .zw-sector:is(.sf-opposite, .sf-trine) .zw-name { filter: drop-shadow(0 0 3px rgb(220 188 124 / 0.45)); }
+/* Its 三方四正: the same line and wash, a step fainter */
+.zw-wheel.sf-picked .zw-sector:is(.sf-opposite, .sf-trine) .zw-cell { fill: rgb(220 188 124 / 0.035); stroke: rgb(220 188 124 / 0.3); stroke-width: 0.7; }
+.zw-wheel.sf-picked .zw-sector:is(.sf-opposite, .sf-trine) .zw-name { filter: drop-shadow(0 0 4px rgb(220 188 124 / 0.6)); }
 .zw-star text { font-weight: 400; fill: var(--text); filter: drop-shadow(0 0 6px rgb(235 227 207 / 0.3)); }
 .zw-mut rect { fill: var(--good); filter: drop-shadow(0 0 4px currentColor); }
 .zw-mut.wm-禄 { color: #3d8d5a; } .zw-mut.wm-禄 rect { fill: #3d8d5a; }
@@ -551,7 +553,8 @@
 :root[data-style] .sf-active:not(.sf-resting) .palace.sf-self { box-shadow: inset 0 0 0 1px rgb(220 188 124 / 0.5); background-color: rgb(220 188 124 / 0.05); }
 :root[data-style] .sf-active:not(.sf-resting) .palace.soul.sf-self { box-shadow: inset 0 0 0 1px rgb(255 138 115 / 0.5); }
 :root[data-style] .sf-active:not(.sf-resting) .palace.sf-self .palace-name { color: #ecd9ac; }
-:root[data-style] .sf-active:not(.sf-resting) .palace:is(.sf-opposite, .sf-trine) .palace-name { text-shadow: 0 0 6px var(--ts-glow); }
+:root[data-style] .sf-active:not(.sf-resting) .palace:is(.sf-opposite, .sf-trine) { box-shadow: inset 0 0 0 1px rgb(220 188 124 / 0.26); background-color: rgb(220 188 124 / 0.025); }
+:root[data-style] .sf-active:not(.sf-resting) .palace:is(.sf-opposite, .sf-trine) .palace-name { text-shadow: 0 0 8px var(--ts-glow); }
 /* Resting (nothing picked): the 命宫's light, without the tags; in 天书 the board is 详细's, for reading, so
    no palace is dimmed until one is pointed at */
 .sf-resting .sf-tag { display: none; }
