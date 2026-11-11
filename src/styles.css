@@ -189,6 +189,8 @@ button { cursor: pointer; }
 a { color: var(--accent); }
 .muted { color: var(--muted); }
 
+/* No browser tap flash (a blue box on Android): the page answers a tap itself */
+html { -webkit-tap-highlight-color: transparent; }
 .app { max-width: 1120px; margin: 0 auto; padding: 16px; zoom: var(--ui-zoom); }
 /* 显示大小: the whole page scales with CSS zoom (sizes here are in px). "Auto"
    grows it on large screens so the 1120px column doesn't look tiny there. */
@@ -325,6 +327,14 @@ footer .about-badges { margin-left: 0; }
 .about-title .muted { font-size: 13px; font-weight: 500; }
 .about-links { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .about-credits { font-size: 12px; }
+/* A phone: the panel held to the screen, 16px in from each side and just above the footer and the page
+   bar, rather than hung from the About link in the middle (it ran off the left edge and the top) */
+@media (max-width: 600px) {
+  .about-panel {
+    position: fixed; left: 16px; right: 16px; width: auto; bottom: calc(var(--foot-nav-h, 0px) + 48px);
+    max-height: calc(100dvh - var(--foot-nav-h, 0px) - 48px - 16px - env(safe-area-inset-top));
+  }
+}
 
 .card {
   background: linear-gradient(90deg, transparent 8%, var(--edge), transparent 92%) top / 100% 1px no-repeat, var(--card);
