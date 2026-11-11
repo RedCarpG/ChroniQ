@@ -1,8 +1,24 @@
 // 天书: the 命理 pages' sections settle into place when the page comes to rest near the top of one (原局,
 // 解读, 岁运 …), or near the top of the page; in the middle of a long one the page stays where it is. The
 // browser's own scroll snap jumps there; this glides, eased, and lets go the moment the reader scrolls,
-// drags or presses a key again.
-import { useEffect } from 'react'
+// drags or presses a key again. Not on a phone or a touch screen: there the page is one long column of
+// long sections, scrolled by flicks, and being drawn on after a flick came to rest read as the page jumping.
+import { useEffect, useState } from 'react'
+
+/** Where the sections settle: a wide screen worked with a mouse */
+const SNAP_MEDIA = '(min-width: 861px) and (hover: hover) and (pointer: fine)'
+
+function useSnapScreen() {
+  const [fits, setFits] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(SNAP_MEDIA).matches)
+  useEffect(() => {
+    const m = window.matchMedia?.(SNAP_MEDIA)
+    if (!m) return
+    const on = () => setFits(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return fits
+}
 
 /** How near the top of a section the page must stop to be drawn to it, as a share of the window's height */
 const REACH = 0.22
@@ -22,7 +38,8 @@ function stops() {
   return list
 }
 
-export function useSectionSnap(on: boolean) {
+export function useSectionSnap(wanted: boolean) {
+  const on = useSnapScreen() && wanted
   useEffect(() => {
     if (!on) return
     let frame = 0
