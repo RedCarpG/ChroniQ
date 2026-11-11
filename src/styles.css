@@ -483,6 +483,18 @@ footer .about-badges { margin-left: 0; }
 
 /* The current month's days: one outline round the whole block, on a faint plate (MonthOutline) */
 .grid.days { position: relative; }
+/* Every row as tall as the tallest: a day with a 命盘 or 天象 line (or a 休 badge) grows its row, and the
+   others in it, and the other rows, grow with it, rather than standing out below them. A day is at least
+   as tall as it was (0.9 of a column's width); the window-filling grid on a big screen sets its own rows. */
+.grid.days { container-type: inline-size; grid-auto-rows: 1fr; }
+.grid.days .day { aspect-ratio: auto; min-height: calc(100cqw / 7 * 0.9); }
+/* In a day, the date, 农历 and 干支 sit in the middle whatever else is there, so the dates of a row line up;
+   the 天象 and 命盘 lines go under them, in the lower half */
+.grid.days .day { display: grid; grid-template-rows: 1fr auto auto auto 1fr; justify-items: center; }
+.grid.days .day > .num { grid-row: 2; }
+.grid.days .day > .sub { grid-row: 3; }
+.grid.days .day > .gz { grid-row: 4; }
+.day-marks { grid-row: 5; align-self: start; display: grid; justify-items: center; max-width: 100%; min-width: 0; }
 .grid.days .day { z-index: 1; }
 .month-outline { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; animation: cal-fade 0.3s ease both; }
 @media (prefers-reduced-motion: reduce) { .month-outline { animation: none; } }

@@ -588,8 +588,13 @@ export function CalendarView({ onPickBazi, onShow, onWeekStart, skyPlace, onView
                       <span className={`sub ${c.subKind}`}>{term(c.sub)}</span>
                     )}
                     {dayGanzhi === 'show' && <span className="gz">{c.ganzhi}</span>}
-                    {stars.length > 0 && <span className="sky-line">✦ {skyText.title(stars[0])}{stars.length > 1 && ` +${stars.length - 1}`}</span>}
-                    {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
+                    {/* Under the date, a 天象 and a 命盘 line where there are any; the date stays where the others' are */}
+                    {(stars.length > 0 || mine.length > 0) && (
+                      <span className="day-marks">
+                        {stars.length > 0 && <span className="sky-line">✦ {skyText.title(stars[0])}{stars.length > 1 && ` +${stars.length - 1}`}</span>}
+                        {mine.length > 0 && <span className="mine-line">{chartLine(mine)}</span>}
+                      </span>
+                    )}
                   </button>
                   )
                 })}
