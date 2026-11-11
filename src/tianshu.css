@@ -441,6 +441,9 @@
 @keyframes ts-cast-in { from { opacity: 0; transform: translateY(4px); } }
 .ts-cast button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; opacity: 0.7; }
 .ts-cast button:hover { color: var(--accent); opacity: 1; }
+/* 跳过 / 重看起盘 are small words: on a touch screen the place to tap reaches round them (44px tall) */
+.ts-cast button { position: relative; }
+@media (pointer: coarse) { .ts-cast button::after { content: ''; position: absolute; inset: -13px -12px; } }
 @media print { .ts-cast { display: none; } }
 
 .ts-kicker { font-family: 'Cormorant Garamond', var(--font-title); font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); margin-left: 0.5em; }
@@ -730,7 +733,9 @@
 .td-yiji i { writing-mode: horizontal-tb; display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 4px; border: 1px solid currentColor; border-radius: 3px; font-style: normal; font-size: 20px; letter-spacing: 0; }
 .td-yi { color: var(--text); } .td-yi i { color: #8fc79a; box-shadow: 0 0 10px rgb(143 199 154 / 0.3); }
 .td-ji { color: var(--muted); } .td-ji i { color: #ff8a73; box-shadow: 0 0 10px rgb(255 138 115 / 0.3); }
-.td-hint { margin: 0; font-size: 12.5px; letter-spacing: 0.08em; color: var(--muted); }
+.td-hint { margin: 0; font-size: 12.5px; letter-spacing: 0.08em; color: var(--muted); text-wrap: pretty; }
+/* On a phone the line breaks after its comma, so no word is left alone on the next line */
+@media (max-width: 600px) { .td-hint { text-wrap: balance; } }
 /* In English the words run across */
 :root[lang='en'] :is(.td-lunar, .td-margin, .td-yiji > div) { writing-mode: horizontal-tb; letter-spacing: 0.06em; }
 :root[lang='en'] .td-lunar { align-self: center; }

@@ -511,7 +511,8 @@ function MoonHeights({
         {s
           .filter((p) => clock(p.time).endsWith(':00') && Number(clock(p.time).slice(0, 2)) % (compact === 'small' ? 6 : 3) === 0)
           .map((p) => (
-            <text key={p.time.getTime()} className="mh-label" x={xOf(p.time.getTime())} y={H - 6} textAnchor="middle">
+            // the last, at the right edge, set to end there rather than centred over it (half of it was cut off)
+            <text key={p.time.getTime()} className="mh-label" x={xOf(p.time.getTime())} y={H - 6} textAnchor={xOf(p.time.getTime()) > X1 - 16 ? 'end' : 'middle'}>
               {clock(p.time)}
             </text>
           ))}
