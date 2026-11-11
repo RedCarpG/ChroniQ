@@ -487,7 +487,6 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
           {/* 天书: the birth, opening the 命盘 drawer, and 流派设置, by the switches */}
           {tianshu && <BirthChip input={input} />}
           {tianshu && <SchoolsMenu panel={schoolsPanel} />}
-          <ChartViewSwitch full={fullChart} onToggle={() => (tianshu ? smoothUpdate('chart-view', toggleFullChart) : toggleFullChart())} />
           {!scene && (
           <div className="seg small" role="group" aria-label={t('宫位显示')}>
             {(
@@ -502,11 +501,13 @@ export function ZiweiView({ input, onChange, schools, onSchoolsChange, onColourC
             ))}
           </div>
           )}
+          {/* 简洁 / 详细 last, at the right, as on the other pages */}
+          <ChartViewSwitch full={fullChart} onToggle={() => (tianshu ? smoothUpdate('chart-view', toggleFullChart) : toggleFullChart())} />
         </div>
         {scene ? (
           <ZiweiScene
             chart={chart}
-            wheel={<ZiweiWheel chart={chart} roles={roles} lit={litPattern?.palaces} castLayer={castLayer} pick={palacePick.props} />}
+            wheel={<ZiweiWheel chart={chart} roles={roles} resting={resting} lit={litPattern?.palaces} castLayer={castLayer} pick={palacePick.props} />}
             cast={<CastLine cast={cast} captions={captions} />}
             patterns={patterns}
             pickPattern={patternPick.props}
