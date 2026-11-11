@@ -52,6 +52,8 @@ export const BAZI: Record<string, string> = {
   逆排: 'counted backward',
   '{date}起': 'from {date}',
   '未选 · 不入盘': 'Not picked · left out',
+  先选流年: 'pick a year first',
+  先选流月: 'pick a month first',
 
   // 岁运盘
   '合参{natal}': 'With {natal}',

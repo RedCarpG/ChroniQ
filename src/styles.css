@@ -702,6 +702,9 @@ footer .about-badges { margin-left: 0; }
 button.fortune:hover { background: var(--surface-2); }
 .fortune.current { border-color: var(--accent); }
 .fortune.selected { background: var(--accent-soft); }
+/* A level whose level above is left out of the 岁运盘: shown, not pickable until that one is picked again */
+button.fortune:disabled { opacity: 0.35; cursor: default; }
+button.fortune:disabled:hover { background: var(--surface); }
 
 .bazi-form .check { flex-direction: row; align-items: center; gap: 6px; height: 36px; color: var(--text); font-size: 14px; }
 .bazi-form .check input { height: auto; accent-color: var(--accent); }

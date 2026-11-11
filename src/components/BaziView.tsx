@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { ChartViewSwitch, useChartFull } from './ChartViewSwitch'
 import { BaziHero } from './BaziHero'
 import { smoothUpdate } from './smoothUpdate'
@@ -137,6 +137,10 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
     })
   }
   const pickDay = (key: string) => choose('day', key === day.key, () => setPickedDay(key))
+  // A level hangs off the one above it: with that one left out, its chips cannot be picked (else a 流日
+  // would go in without its 流月) until the one above is picked again
+  const monthLocked = off.year
+  const dayLocked = off.year || off.month
   const chipClass = (level: FortuneLevel, selected: boolean, current: boolean) =>
     ['fortune', current && 'current', selected && !off[level] && 'selected'].filter(Boolean).join(' ')
 
@@ -172,15 +176,32 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
       return true
     }
   })
-  const toggleSide = () =>
-    setSideOpen((v) => {
-      try {
-        localStorage.setItem(SIDE_KEY, v ? 'closed' : 'open')
-      } catch {
-        // storage unavailable: lasts for this visit
-      }
-      return !v
-    })
+  const setSide = (v: boolean) => {
+    try {
+      localStorage.setItem(SIDE_KEY, v ? 'open' : 'closed')
+    } catch {
+      // storage unavailable: lasts for this visit
+    }
+    setSideOpen(v)
+  }
+  const toggleSide = () => setSide(!sideOpen)
+  // Laid over the 岁运盘, it folds away at a press anywhere else (or Escape), as a menu does; its tab
+  // toggles it itself
+  const sideRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!sideOpen) return
+    const onDown = (e: PointerEvent) => {
+      const at = e.target as Element
+      if (!sideRef.current?.contains(at) && !at.closest?.('.side-handle')) setSide(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSide(false)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [sideOpen])
   const toggle = (key: keyof typeof open) => setOpen((o) => ({ ...o, [key]: !o[key] }))
   const toggleAll = () => {
     const next = !Object.values(open).every(Boolean)
@@ -345,7 +366,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </span>
           <span aria-hidden="true">›</span>
         </button>
-        <aside id="fortune-side" className="fortune-side" aria-label={term('岁运')} hidden={!sideOpen}>
+        <aside ref={sideRef} id="fortune-side" className="fortune-side" aria-label={term('岁运')} hidden={!sideOpen}>
           <div className="fortunes-head">
             <h3>
               <TitleMark />
@@ -417,7 +438,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </FortuneRow>
           <FortuneRow
             title={term('流月')}
-            summary={off.month ? unpicked : `${month.ganzhi} · ${t('{date}起', { date: month.start })}`}
+            summary={monthLocked ? t('先选流年') : off.month ? unpicked : `${month.ganzhi} · ${t('{date}起', { date: month.start })}`}
             open={open.month}
             onToggle={() => toggle('month')}
           >
@@ -427,6 +448,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
                   key={m.index}
                   className={chipClass('month', m.index === month.index, m.index === todayMonth)}
                   aria-pressed={m.index === month.index && !off.month}
+                  disabled={monthLocked}
                   onClick={() => pickMonth(m.index)}
                 >
                   <small>{m.start}</small>
@@ -439,7 +461,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
           </FortuneRow>
           <FortuneRow
             title={term('流日')}
-            summary={off.day ? unpicked : `${day.month}/${day.day} ${day.ganzhi}`}
+            summary={dayLocked ? (off.year ? t('先选流年') : t('先选流月')) : off.day ? unpicked : `${day.month}/${day.day} ${day.ganzhi}`}
             open={open.day}
             onToggle={() => toggle('day')}
           >
@@ -449,6 +471,7 @@ export function BaziView({ input, onChange, schools, onSchoolsChange }: Props) {
                   key={d.key}
                   className={chipClass('day', d.key === day.key, d.isToday)}
                   aria-pressed={d.key === day.key && !off.day}
+                  disabled={dayLocked}
                   onClick={() => pickDay(d.key)}
                 >
                   <small>
