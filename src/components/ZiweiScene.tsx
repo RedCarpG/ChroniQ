@@ -94,10 +94,13 @@ export function ZiweiWheel({
   lit,
   castLayer,
   pick,
+  resting = false,
 }: {
   chart: ZiweiChart
   /** The 三方四正 lit (the 命宫's, resting, or a palace pointed at's) */
   roles: Map<string, Role> | null
+  /** The lit 三方四正 is the 命宫's, nothing being picked: no palace marked as the one picked */
+  resting?: boolean
   /** The palaces of a 格局 pointed at */
   lit?: string[]
   castLayer: (branch: string) => string
@@ -110,7 +113,7 @@ export function ZiweiWheel({
   const sf = from ? sanFangSiZheng(from) : null
   const point = (b: string) => at(R_IN, angleOf(b))
   return (
-    <svg className={`zw-wheel${roles ? ' sf-on' : ''}${lit ? ' pt-on' : ''}`} viewBox="-24 -24 648 648" role="img" aria-label={t('紫微命盘')}>
+    <svg className={`zw-wheel${roles ? ' sf-on' : ''}${roles && !resting ? ' sf-picked' : ''}${lit ? ' pt-on' : ''}`} viewBox="-24 -24 648 648" role="img" aria-label={t('紫微命盘')}>
       <circle className="zw-plate" cx={C} cy={C} r={R_RIM + 6} />
       {/* The rim, turning slowly */}
       <g className="zw-turn">
