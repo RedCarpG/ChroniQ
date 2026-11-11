@@ -3318,3 +3318,14 @@ html.night-red body::after { z-index: 2147483647; background: #ff2a14; mix-blend
 :is(.card.scene, .today-scene, .sky-stage, .imm-stage, .card.calendar, .topbar) :is(.imm-panel-body, .imm-sheet-body, .star-table, .sky-detail, .sky-event, input, textarea, [contenteditable]) {
   user-select: text; -webkit-user-select: text;
 }
+
+/* ---------- 七政四余's 运限 (QizhengFortunes): the 大限 as chips, then the 流年's sky in a table ---------- */
+.qz-fortunes { display: grid; gap: 10px; }
+.qz-fortunes .row-note { margin: 0; }
+.fortune-row.qz-limits { grid-template-columns: repeat(12, minmax(58px, 1fr)); }
+.fortune-row.qz-years { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
+.qz-limit-line { margin: 0; font-size: 13.5px; }
+.qz-limit-line strong { font-family: var(--font-title); color: var(--accent); }
+.qz-flow-title { margin: 6px 0 0; font-family: var(--font-title); font-size: 15px; font-weight: 500; letter-spacing: 0.1em; }
+.qz-flow tr.hit th, .qz-flow tr.hit td { background: var(--accent-soft); }
+.qz-hit { color: var(--accent); font-weight: 600; letter-spacing: 0.05em; }

@@ -24,6 +24,7 @@ import type { LayerKind, ZiweiChart, ZiweiLayer, ZiweiStar } from './ziwei'
 import { ZONES, type MansionZone } from './mansions'
 import { CI, FOUR, PALACES, QIZHENG_INFO, SEVEN, type QizhengBody, type QizhengChart } from './qizheng'
 import { QIZHENG_SCHOOLS, type QizhengSchoolSettings } from './qizhengSchools'
+import { qizhengLimits, qizhengTransit } from './qizhengFortune'
 import type { ZiweiPattern } from './ziweiPatterns'
 
 const list = (items: string[], none = '无') => (items.length ? items.join('、') : none)
@@ -435,8 +436,9 @@ const qizhengBodyText = (b: QizhengBody) => {
 
 /** A 七政四余 chart in full: when and where, the 命宫 and 命度, each of the 七政 and the 四余 in its 宿,
  *  次 and palace, the twelve palaces from the 命宫 with what is in each, how the 七政 fall among the four
- *  quarters, and the 流派 it was cast by */
-export function qizhengText(chart: QizhengChart, schools: QizhengSchoolSettings): string {
+ *  quarters, and the 流派 it was cast by; given a moment, the 洞微大限 (marking the one then running) and
+ *  the 流年: where the 七政 and 四余 are in the sky then, over the natal palaces (lib/qizhengFortune) */
+export function qizhengText(chart: QizhengChart, schools: QizhengSchoolSettings, now?: Date): string {
   const by = (key: string) => chart.bodies.find((b) => b.key === key)
   const name = (b: QizhengBody) => QIZHENG_INFO[b.key].name
   const zones: MansionZone[] = ['east', 'north', 'west', 'south']
@@ -468,5 +470,26 @@ export function qizhengText(chart: QizhengChart, schools: QizhengSchoolSettings)
       .join('；')}`,
     '十二次按黄道从春分点起每 30° 一次（清代《时宪历》的分法），命宫取上升点所在的次；月孛取月亮的平远地点。',
   ]
+  if (now) {
+    const born = chart.utc.getUTCFullYear()
+    // 虚岁 of a year, as the 八字's 大运 are written
+    const sui = (d: Date) => d.getUTCFullYear() - born + 1
+    const limits = qizhengLimits(chart)
+    const flow = qizhengTransit(chart, schools, now)
+    const day = `${now.getUTCFullYear()}年${now.getUTCMonth() + 1}月${now.getUTCDate()}日`
+    lines.push(
+      '大限（洞微大限：从命宫起逆行十二宫；命宫的年数按太阳入次的度数，每 3 度一年，再加 10 年，其余各宫年数固定）：',
+      ...limits.map(
+        (l) =>
+          `  ${palaceName(l.palace)}（${CI[l.ci].name}）：${l.fromAge.toFixed(1)}–${l.toAge.toFixed(1)} 年，` +
+          `${l.from.getUTCFullYear()}–${l.to.getUTCFullYear()}（${sui(l.from)}–${sui(l.to)} 岁）；宫内 ${list(l.bodies.map(name))}` +
+          (l.palace === flow.limit?.palace ? '［当前大限］' : ''),
+      ),
+      `流年（${day}的星空，落在本命盘的哪一宫）：`,
+      ...flow.bodies.map((b) => `  ${QIZHENG_INFO[b.key].name}：${b.mansion.name}，${CI[b.ci].name}之次，落${palaceName(b.palace)}${b.retro ? '，逆行' : ''}`),
+      `流年入命宫的星：${list(flow.bodies.filter((b) => b.palace === 0).map(name))}` +
+        (flow.limit && flow.limit.palace !== 0 ? `；入当前大限${palaceName(flow.limit.palace)}的星：${list(flow.bodies.filter((b) => b.palace === flow.limit!.palace).map(name))}` : ''),
+    )
+  }
   return lines.join('\n')
 }

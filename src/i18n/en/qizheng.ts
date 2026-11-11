@@ -67,4 +67,16 @@ export const QIZHENG: Record<string, string> = {
   '应夏，主繁盛': 'answering to summer: flourishing',
   '应秋，主收敛': 'answering to autumn: gathering in',
   '应冬，主收藏': 'answering to winter: storing away',
+  // 运限 (QizhengFortunes)
+  '洞微大限：从命宫起逆行十二宫；命宫的年数按太阳入次的度数，每 3 度一年，再加 10 年（{years} 年），其余各宫年数固定。':
+    'The Dongwei limits run from the 命宫 backward round the twelve palaces. The 命宫 lasts 10 years plus a year for every 3° the Sun has gone into its 次 ({years} years here); every other palace has fixed years.',
+  '{from}–{to} 年（{a}–{b}岁）': '{from}–{to} (age {a}–{b})',
+  '宫内：{bodies}': 'In it: {bodies}',
+  宫内无星: 'No bodies in it',
+  '{date}的星空': 'the sky of {date}',
+  落本命: 'Natal palace',
+  入命: 'in the 命宫',
+  入大限: 'in the limit',
+  '流年看所选那一年今天这个日子（今年就是今天）天上的七政四余，落在本命盘的哪一宫；太阳、月亮和水金火走得快，木星、土星和罗计一年里变化不大。':
+    'The year’s sky is taken on today’s month and day in the year picked (today itself this year): where the Seven Governors and Four Remainders stand then, in the natal palaces. The Sun, Moon, Mercury, Venus and Mars move fast; Jupiter, Saturn and the nodes change little in a year.',
 }

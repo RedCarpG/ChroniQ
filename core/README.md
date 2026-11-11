@@ -25,7 +25,7 @@ import {
   buildBazi, baziReading, baziText, fortuneText, birthNotes,
   buildZiwei, findPatterns, ziweiText, buildHoroscope, ziweiHoroscopeText, DEFAULT_ZIWEI_SCHOOLS,
   buildStarChart, transits, starChartText, DEFAULT_STAR_SETTINGS, findCity, lunarToSolar,
-  buildQizheng, qizhengText, DEFAULT_QIZHENG_SCHOOLS,
+  buildQizheng, qizhengText, qizhengLimits, qizhengTransit, DEFAULT_QIZHENG_SCHOOLS,
   upcomingSkyEvents, skyEventText, DEFAULT_PLACE,
 } from 'chroniq-core'
 
@@ -56,6 +56,8 @@ lunarToSolar(1990, 4, 23) // { year: 1990, month: 5, day: 17 }
 // 七政四余（和星盘一样要出生地；用当地钟表时间，不用真太阳时）
 const qizheng = buildQizheng({ ...input, place }, DEFAULT_QIZHENG_SCHOOLS)
 qizhengText(qizheng, DEFAULT_QIZHENG_SCHOOLS) // 命宫和命度、七政四余各在哪一宿几度、哪一次哪一宫、逆行，十二宫，四象分布，流派
+qizhengText(qizheng, DEFAULT_QIZHENG_SCHOOLS, new Date()) // 再加上洞微大限（标出当前的）和此刻天上的七政四余落在本命盘哪一宫（流年）
+qizhengLimits(qizheng) // 十二个大限：哪一宫、起止的年数和日期、宫内的星
 
 // 接下来 30 天的天象（地点要有经纬度和时区）
 for (const e of upcomingSkyEvents(new Date(), 30, DEFAULT_PLACE)) console.log(skyEventText(e, DEFAULT_PLACE.timeZone))

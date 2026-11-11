@@ -55,6 +55,7 @@ export { DEFAULT_STAR_SETTINGS, STAR_SCHOOLS, type StarSettings, type StarPlace 
 // 七政四余 (the real sky at birth, placed in the 28 mansions)
 export {
   buildQizheng,
+  qizhengBodiesAt,
   CI,
   PALACES,
   QIZHENG_INFO,
@@ -66,6 +67,16 @@ export {
 } from '../src/lib/qizheng'
 export { MANSIONS, ZONES, type Mansion, type MansionZone } from '../src/lib/mansions'
 export { DEFAULT_QIZHENG_SCHOOLS, QIZHENG_SCHOOLS, type QizhengSchoolSettings } from '../src/lib/qizhengSchools'
+export {
+  qizhengLimits,
+  qizhengTransit,
+  limitAt,
+  mingYears,
+  LIMIT_ORDER,
+  LIMIT_YEARS,
+  type QizhengLimit,
+  type QizhengTransit,
+} from '../src/lib/qizhengFortune'
 
 // Places (for 真太阳时, 星盘 houses and the sky), and a birth as people say it
 export { CITIES, type City } from '../src/lib/solarTime'
