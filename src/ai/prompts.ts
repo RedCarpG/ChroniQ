@@ -2,15 +2,15 @@
 // reads it rather than casting it again (which models get wrong), and what to write about it. One
 // system prompt for every page; each page's chart and request go in the first message.
 
-import { baziReading } from '../baziReading'
-import type { BaziChart } from '../bazi'
-import type { Overlay, StarChart } from '../astrology'
-import { almanacText, baziText, qizhengText, starChartText, ziweiText } from '../chartText'
-import type { QizhengChart } from '../qizheng'
-import type { QizhengSchoolSettings } from '../qizhengSchools'
-import type { StarSettings } from '../starPrefs'
-import type { ZiweiChart } from '../ziwei'
-import type { ZiweiPattern } from '../ziweiPatterns'
+import { baziReading } from '../lib/baziReading'
+import type { BaziChart } from '../lib/bazi'
+import type { Overlay, StarChart } from '../lib/astrology'
+import { almanacText, baziText, qizhengText, starChartText, ziweiText } from '../lib/chartText'
+import type { QizhengChart } from '../lib/qizheng'
+import type { QizhengSchoolSettings } from '../lib/qizhengSchools'
+import type { StarSettings } from '../lib/starPrefs'
+import type { ZiweiChart } from '../lib/ziwei'
+import type { ZiweiPattern } from '../lib/ziweiPatterns'
 
 export type AiLang = 'zh' | 'en'
 

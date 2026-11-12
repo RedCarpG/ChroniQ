@@ -8,7 +8,7 @@ import { BaziReadingCard } from './BaziReadingCard'
 import { SectionNav } from './SectionNav'
 import { AiAnalysis } from './AiAnalysis'
 import { RightDrawer } from './RightDrawer'
-import { baziPrompt } from '../lib/ai/prompts'
+import { baziPrompt } from '../ai/prompts'
 import { useScrollHints } from './useScrollHints'
 import {
   ELEMENTS,

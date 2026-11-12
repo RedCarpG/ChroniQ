@@ -3,10 +3,10 @@
 // reader brings their own key (Claude, or an OpenAI-compatible service), kept in this browser; or,
 // without one, copies the whole prompt to paste into a chat they already pay for (claude.ai …).
 import { useEffect, useRef, useState } from 'react'
-import { promptForPasting, systemPrompt } from '../lib/ai/prompts'
-import { aiLabel, aiReady, CLAUDE_MODELS, loadAi, saveAi, type AiSettings } from '../lib/ai/settings'
-import { AiError, streamAnswer, type AiTurn } from '../lib/ai/stream'
-import { forgetChat, loadChat, saveChat } from '../lib/ai/history'
+import { promptForPasting, systemPrompt } from '../ai/prompts'
+import { aiLabel, aiReady, CLAUDE_MODELS, loadAi, saveAi, type AiSettings } from '../ai/settings'
+import { AiError, streamAnswer, type AiTurn } from '../ai/stream'
+import { forgetChat, loadChat, saveChat } from '../ai/history'
 import { useSettings, useT } from '../settingsContext'
 import { AiText } from './AiText'
 import { TitleMark } from './Logo'

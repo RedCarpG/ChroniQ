@@ -144,14 +144,27 @@ describe('the skill as it ships', () => {
   }, 120_000)
   afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-  it('is SKILL.md, its references and one bundled script, without the sources', () => {
+  it('is SKILL.md, its references, one bundled script and its licences, without the sources', () => {
     const skill = join(dir, 'mingli-chart-reading')
-    expect(readdirSync(skill).sort()).toEqual(['SKILL.md', 'references', 'scripts'])
+    expect(readdirSync(skill).sort()).toEqual(['LICENSE', 'SKILL.md', 'THIRD_PARTY_NOTICES.md', 'references', 'scripts'])
     expect(readdirSync(join(skill, 'scripts'))).toEqual(['chart.mjs'])
     expect(readdirSync(join(skill, 'references')).sort()).toEqual(['glossary-en.md', 'schools.md'])
     expect(readFileSync(join(skill, 'SKILL.md'), 'utf8')).toMatch(/^---\nname: mingli-chart-reading\ndescription: .+\n---\n/)
     // Every library inside: nothing left for node to find in node_modules
     expect(readFileSync(script, 'utf8')).not.toMatch(/from ["'](tyme4ts|iztro|astronomy-engine)["']/)
+  })
+
+  it('carries chroniq-core\'s licence and credits every library bundled into the script', () => {
+    const skill = join(dir, 'mingli-chart-reading')
+    expect(readFileSync(join(skill, 'LICENSE'), 'utf8')).toMatch(/^MIT License\n\nCopyright \(c\) \d{4} RedCarpG\n/)
+    const notices = readFileSync(join(skill, 'THIRD_PARTY_NOTICES.md'), 'utf8')
+    for (const lib of ['tyme4ts', 'iztro', 'astronomy-engine'])
+      expect(notices).toMatch(new RegExp(`\\| \\[${lib}\\]\\([^)]+\\) \\| [\\d.]+ \\| MIT \\| Copyright `))
+    // No row without a copyright line: a library with none needs COPYRIGHT_FALLBACK in build.mjs
+    expect(notices).not.toMatch(/\| MIT \|\s*\|/)
+    // No machine paths in what ships
+    for (const file of ['SKILL.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md'])
+      expect(readFileSync(join(skill, file), 'utf8')).not.toMatch(/[A-Za-z]:\\(Users|Project)\\/)
   })
 
   it('runs with node alone and prints the chart', () => {

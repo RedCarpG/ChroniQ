@@ -1,0 +1,47 @@
+ChroniQ 许可说明 / License overview
+
+本仓库的文件分两种许可。
+This repository is licensed in two parts.
+
+1. MIT 许可 / MIT License
+
+   以下两个目录以 MIT 许可发布，全文见各目录下的 LICENSE：
+   The following directories are released under the MIT License; see the
+   LICENSE file in each:
+
+     core/      chroniq-core（排盘与历法计算的对外包 / the calculation package）
+     src/lib/   计算层：历法、八字、紫微、星盘、七政四余、天象及其文字输出
+                the calculation layer: calendar, BaZi, Zi Wei, natal charts,
+                Qi Zheng Si Yu, sky events and their plain-text output
+
+   例外：src/lib/ 里由第三方数据生成的文件遵守原数据的许可。其中
+   xingguan.ts 和 messierData.ts 是 CC BY-SA 4.0，不是 MIT。完整清单见
+   src/lib/DATA_SOURCES.md。
+   Exception: files in src/lib/ derived from third-party data keep that
+   data's license. xingguan.ts and messierData.ts are CC BY-SA 4.0, not MIT.
+   See src/lib/DATA_SOURCES.md for the full list.
+
+2. 保留所有权利 / All rights reserved
+
+   除上述两个目录外，本仓库的其余全部文件，包括但不限于界面组件、样式
+   （含「天书」视觉风格）、AI 解读（src/ai/）、文档、图片与其他素材，
+   版权归 RedCarpG 所有，保留所有权利。未经许可，不得复制、修改或再分发。
+
+   All other files in this repository, including but not limited to the user
+   interface components, styles (including the "Tianshu" visual style), the AI
+   reading code (src/ai/), documentation, images and other assets, are
+   Copyright (c) 2021-2026 RedCarpG. All rights reserved. They may not be
+   copied, modified or redistributed without permission.
+
+3. 名称 / Names
+
+   「ChroniQ」「星曆」这两个名称和标志不在任何许可范围内。
+   The names "ChroniQ" and "星曆" and the logo are not licensed.
+
+4. 第三方 / Third parties
+
+   依赖的开源库、字体、星表和其他数据，遵守它们各自的许可。src/lib/ 里
+   来自第三方的数据见 src/lib/DATA_SOURCES.md。
+   Third-party libraries, fonts, star catalogues and other data remain under
+   their own licenses. Third-party data inside src/lib/ is listed in
+   src/lib/DATA_SOURCES.md.

@@ -2,7 +2,7 @@
   "name": "chroniq-core",
   "version": "0.5.0",
   "description": "ChroniQ's reckoning for other programs: 黄历, 八字, 紫微, 星盘, 七政四余 and the sky's events, with plain-text summaries for AI",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "RedCarpG",
   "repository": {
     "type": "git",
@@ -20,7 +20,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
