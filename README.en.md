@@ -78,4 +78,6 @@ Calendar and Bazi: [tyme4ts](https://github.com/6tail/tyme4ts) · Ziwei Doushu: 
 
 Fonts: [Noto Serif SC](https://fonts.google.com/noto/specimen/Noto+Serif+SC) / [Cormorant Garamond](https://fonts.google.com/specimen/Cormorant+Garamond) (SIL Open Font License). See the [asset notes](src/assets/moon/README.md) for lunar texture sources.
 
+**License:** the calculation layer (`core/` and `src/lib/`, published as [chroniq-core](core/README.md)) is MIT. Everything else (UI, the Tianshu visual style, AI readings, docs, assets) is all rights reserved. See [LICENSE](LICENSE).
+
 > Divination-related content is provided for cultural reference only.

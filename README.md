@@ -141,6 +141,8 @@ npm run build:core # 打包 chroniq-core（给别的程序用的计算部分）
 
 字体：[Noto Serif SC](https://fonts.google.com/noto/specimen/Noto+Serif+SC) / [Cormorant Garamond](https://fonts.google.com/specimen/Cormorant+Garamond)（SIL Open Font License）。月球贴图来源见 [资源说明](src/assets/moon/README.md)。
 
+**许可：** 计算层（`core/`、`src/lib/`，即 [chroniq-core](core/README.md)）以 MIT 发布；其余部分（界面、「天书」风格、AI 解读、文档、素材）保留所有权利。详见 [LICENSE](LICENSE)。
+
 ---
 
 <p align="center">

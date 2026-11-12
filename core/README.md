@@ -104,4 +104,4 @@ buildBazi({ ...input, place, trueSolar: true, jie: 'local' })
 
 ## 许可
 
-和 ChroniQ 仓库一样，目前没有对外的开源许可（`UNLICENSED`），供作者自己的项目使用。
+MIT，见 [LICENSE](LICENSE)。chroniq-core 打包的是 `core/` 和 `src/lib/` 的代码，这两个目录都以 MIT 发布；ChroniQ 仓库的其余部分（界面、样式、AI 解读、文档、素材）保留所有权利，见仓库根目录的 [LICENSE](../LICENSE)。打包进来的第三方库和数据遵守各自的许可，见 [src/lib/DATA_SOURCES.md](../src/lib/DATA_SOURCES.md)。

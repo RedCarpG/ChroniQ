@@ -132,20 +132,21 @@ node "<本skill目录>/scripts/chart.mjs" bazi --date 1990-05-17 --time 10:30 --
 ## 来源与维护
 
 - **来源：**
-  - ChroniQ（RedCarpG/ChroniQ）的 AI 解读和排盘代码：
-    - `src/lib/ai/prompts.ts`：解读要求；
+  - ChroniQ（[RedCarpG/ChroniQ](https://github.com/RedCarpG/ChroniQ)）的 AI 解读和排盘代码：
+    - `src/ai/prompts.ts`：解读要求；
     - `src/lib/chartText.ts`：盘面写成文字，以及岁运和紫微运限；
     - `src/lib/birth.ts`：出生时间的边界提示；
     - `docs/schools.md`：流派和可信度；
     - `docs/features.md`：「AI 解读」「紫微、七政四余与星盘的白话解读」两节；
     - `core/README.md`。
-  - 经验来自 `C:\Users\51282\.claude\lessons\mingli-charts-ai.md`。
-- **源头：** ChroniQ 仓库的 `core/skill/mingli-chart-reading/`，包括这个 SKILL.md、`references/` 和脚本源码 `scripts/chart.ts`、`scripts/run.ts`。它和 chroniq-core 用同一个版本号，`node scripts/chart.mjs --version` 可以查看。`C:\Users\51282\.claude\skills\mingli-chart-reading\` 是构建出来的副本，不要直接改。
+  - 经验来自私人 repo 的 [`lessons/mingli-charts-ai.md`](https://github.com/RedCarpG/redcarpg-skills-private/blob/main/lessons/mingli-charts-ai.md)。
+- **源头：** ChroniQ 仓库的 `core/skill/mingli-chart-reading/`，包括这个 SKILL.md、`references/` 和脚本源码 `scripts/chart.ts`、`scripts/run.ts`。它和 chroniq-core 用同一个版本号，`node scripts/chart.mjs --version` 可以查看。[redcarpg-skills](https://github.com/RedCarpG/redcarpg-skills) 的 `skills/mingli-chart-reading/` 和 `~/.claude/skills/mingli-chart-reading/` 都是构建出来的副本，不要直接改。
 - **怎么改：**
   1. 在 ChroniQ 开 PR 修改。脚本的计算和文字大多在 `src/lib`，参数处理在 `scripts/run.ts`。
   2. 用 `npm test` 测试，`npm run build:skill` 构建到 `core/skill/dist/`。
   3. 合并后，改 `core/package.json` 的版本号，打 `core-v<版本>` 标签发布。GitHub Release 会附上 `mingli-chart-reading-<版本>.zip`。
-  4. 解压这个 zip，或者复制 `core/skill/dist/mingli-chart-reading/`，覆盖本地副本。
+  4. 解压这个 zip，或者复制 `core/skill/dist/mingli-chart-reading/`，覆盖本地副本；再把它复制进 redcarpg-skills 的 `skills/mingli-chart-reading/`（保留那边的 `manifest.json`、`README.md`，把 `manifest.json` 的版本改成新的 core 版本），走 redcarpg-skills 的 PR 发版。
 - **更新记录：**
+  - 2026-11-12 · ChroniQ · chroniq-core 和 `src/lib/` 改为 MIT 许可（`xingguan.ts`、`messierData.ts` 仍是 CC BY-SA 4.0）；构建时附上 `LICENSE` 和 `THIRD_PARTY_NOTICES.md`；「来源与维护」去掉本机路径，写明 redcarpg-skills 里的副本；AI 解读代码从 `src/lib/ai/` 移到 `src/ai/`。
   - 2026-11-10 · ChroniQ · 初版：脚本可排八字（含三柱、岁运、流月）、紫微（含大限流年）、星盘（本命、行运、推运、合盘）、七政四余、黄历、天象，八字的交节默认按实际时刻对照，并提示夏令时、交节、真太阳时换柱、时辰交界和晚子时；收录解读要求、预测问题的答法、流派与英文术语。
   - 2026-11-10 · ChroniQ · chroniq-core 0.4.0：网页的交节也改为按实际时刻对照，「流派」一节和交节提示不再把另一种比法称作网页的做法；夏令时提示说明年柱、月柱和起运不受夏令时影响。
