@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AiAnalysis } from '../AiAnalysis'
 import { blocks } from '../AiText'
-import { DEFAULT_AI, saveAi } from '../../lib/ai/settings'
+import { DEFAULT_AI, saveAi } from '../../ai/settings'
 
 const sse = (...texts: string[]) =>
   new Response(
